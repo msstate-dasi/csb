@@ -1,0 +1,2 @@
+/opt/spark-2.0.1/bin/spark-submit --class csb_GraphGen csb_GraphGen-0.0.1-SNAPSHOT-jar-with-dependencies.jar
+

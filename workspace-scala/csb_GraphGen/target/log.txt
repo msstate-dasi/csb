@@ -1,0 +1,455 @@
+Graph:
+1 2 1
+1 3 1
+
+Adding Node 4 connected to Node2 with P = 2
+Graph:
+1 3 1
+4 2 1
+1 2 1
+
+Adding Node 5 connected to Node2 with P = 3
+Graph:
+5 2 1
+1 3 1
+4 2 1
+1 2 1
+
+Adding Node 6 connected to Node2 with P = 2
+Graph:
+1 2 1
+5 2 1
+6 2 1
+1 3 1
+4 2 1
+
+Adding Node 7 connected to Node3 with P = 6
+Graph:
+7 3 1
+6 2 1
+1 3 1
+4 2 1
+5 2 1
+1 2 1
+
+Adding Node 8 connected to Node2 with P = 4
+Graph:
+8 2 1
+6 2 1
+1 2 1
+5 2 1
+4 2 1
+1 3 1
+7 3 1
+
+Adding Node 9 connected to Node2 with P = 7
+Graph:
+9 2 1
+7 3 1
+1 2 1
+8 2 1
+5 2 1
+6 2 1
+4 2 1
+1 3 1
+
+Adding Node 10 connected to Node5 with P = 13
+Graph:
+1 2 1
+1 3 1
+4 2 1
+9 2 1
+10 5 1
+6 2 1
+5 2 1
+7 3 1
+8 2 1
+
+Adding Node 11 connected to Node2 with P = 7
+Graph:
+5 2 1
+8 2 1
+4 2 1
+9 2 1
+10 5 1
+11 2 1
+6 2 1
+7 3 1
+1 3 1
+1 2 1
+
+Adding Node 12 connected to Node2 with P = 7
+Graph:
+11 2 1
+1 3 1
+7 3 1
+10 5 1
+12 2 1
+1 2 1
+6 2 1
+8 2 1
+9 2 1
+4 2 1
+5 2 1
+
+Adding Node 13 connected to Node2 with P = 7
+Graph:
+8 2 1
+1 3 1
+4 2 1
+11 2 1
+12 2 1
+13 2 1
+1 2 1
+9 2 1
+10 5 1
+6 2 1
+7 3 1
+5 2 1
+
+Adding Node 14 connected to Node5 with P = 20
+Graph:
+1 2 1
+6 2 1
+8 2 1
+7 3 1
+11 2 1
+12 2 1
+1 3 1
+5 2 1
+13 2 1
+9 2 1
+10 5 1
+14 5 1
+4 2 1
+
+Adding Node 15 connected to Node2 with P = 9
+Graph:
+7 3 1
+1 3 1
+12 2 1
+4 2 1
+8 2 1
+1 2 1
+13 2 1
+5 2 1
+6 2 1
+10 5 1
+11 2 1
+14 5 1
+15 2 1
+9 2 1
+
+Adding Node 16 connected to Node2 with P = 8
+Graph:
+13 2 1
+7 3 1
+14 5 1
+9 2 1
+10 5 1
+5 2 1
+6 2 1
+8 2 1
+1 2 1
+11 2 1
+12 2 1
+1 3 1
+4 2 1
+15 2 1
+16 2 1
+
+Adding Node 17 connected to Node2 with P = 16
+Graph:
+8 2 1
+1 2 1
+9 2 1
+1 3 1
+14 5 1
+15 2 1
+16 2 1
+17 2 1
+10 5 1
+11 2 1
+4 2 1
+6 2 1
+7 3 1
+12 2 1
+13 2 1
+5 2 1
+
+Adding Node 18 connected to Node4 with P = 22
+Graph:
+6 2 1
+10 5 1
+7 3 1
+11 2 1
+14 5 1
+15 2 1
+16 2 1
+17 2 1
+18 4 1
+1 2 1
+1 3 1
+4 2 1
+5 2 1
+8 2 1
+12 2 1
+9 2 1
+13 2 1
+
+Adding Node 19 connected to Node14 with P = 30
+Graph:
+1 2 1
+13 2 1
+14 5 1
+17 2 1
+18 4 1
+19 14 1
+8 2 1
+9 2 1
+10 5 1
+15 2 1
+16 2 1
+11 2 1
+12 2 1
+1 3 1
+6 2 1
+7 3 1
+4 2 1
+5 2 1
+
+Adding Node 20 connected to Node15 with P = 34
+Graph:
+18 4 1
+16 2 1
+17 2 1
+9 2 1
+10 5 1
+6 2 1
+13 2 1
+14 5 1
+15 2 1
+11 2 1
+12 2 1
+7 3 1
+4 2 1
+19 14 1
+5 2 1
+8 2 1
+20 15 1
+1 2 1
+1 3 1
+
+Adding Node 21 connected to Node2 with P = 18
+Graph:
+9 2 1
+4 2 1
+5 2 1
+6 2 1
+19 14 1
+20 15 1
+21 2 1
+17 2 1
+14 5 1
+15 2 1
+16 2 1
+1 2 1
+1 3 1
+12 2 1
+7 3 1
+18 4 1
+10 5 1
+8 2 1
+13 2 1
+11 2 1
+
+Adding Node 22 connected to Node19 with P = 21
+Graph:
+9 2 1
+10 5 1
+11 2 1
+20 15 1
+15 2 1
+4 2 1
+16 2 1
+21 2 1
+22 19 1
+1 2 1
+17 2 1
+1 3 1
+5 2 1
+18 4 1
+6 2 1
+19 14 1
+12 2 1
+13 2 1
+14 5 1
+7 3 1
+8 2 1
+
+Adding Node 23 connected to Node22 with P = 35
+Graph:
+4 2 1
+5 2 1
+6 2 1
+15 2 1
+16 2 1
+17 2 1
+1 2 1
+1 3 1
+18 4 1
+19 14 1
+20 15 1
+21 2 1
+22 19 1
+23 22 1
+7 3 1
+8 2 1
+9 2 1
+13 2 1
+14 5 1
+10 5 1
+11 2 1
+12 2 1
+
+Adding Node 24 connected to Node20 with P = 28
+Graph:
+1 2 1
+1 3 1
+4 2 1
+5 2 1
+6 2 1
+19 14 1
+20 15 1
+21 2 1
+7 3 1
+8 2 1
+9 2 1
+22 19 1
+23 22 1
+24 20 1
+13 2 1
+14 5 1
+15 2 1
+10 5 1
+11 2 1
+12 2 1
+16 2 1
+17 2 1
+18 4 1
+
+Adding Node 25 connected to Node7 with P = 45
+Graph:
+11 2 1
+12 2 1
+13 2 1
+5 2 1
+6 2 1
+7 3 1
+23 22 1
+24 20 1
+25 7 1
+14 5 1
+15 2 1
+16 2 1
+17 2 1
+18 4 1
+8 2 1
+19 14 1
+9 2 1
+10 5 1
+20 15 1
+21 2 1
+22 19 1
+1 2 1
+1 3 1
+4 2 1
+
+Adding Node 26 connected to Node2 with P = 11
+Graph:
+5 2 1
+6 2 1
+7 3 1
+14 5 1
+15 2 1
+16 2 1
+11 2 1
+12 2 1
+13 2 1
+20 15 1
+21 2 1
+22 19 1
+1 2 1
+1 3 1
+4 2 1
+17 2 1
+18 4 1
+19 14 1
+23 22 1
+24 20 1
+25 7 1
+26 2 1
+8 2 1
+9 2 1
+10 5 1
+
+Adding Node 27 connected to Node8 with P = 2
+Graph:
+24 20 1
+25 7 1
+26 2 1
+1 2 1
+15 2 1
+16 2 1
+17 2 1
+21 2 1
+22 19 1
+23 22 1
+18 4 1
+19 14 1
+20 15 1
+27 8 1
+11 2 1
+12 2 1
+13 2 1
+14 5 1
+8 2 1
+1 3 1
+9 2 1
+10 5 1
+4 2 1
+5 2 1
+6 2 1
+7 3 1
+
+Adding Node 28 connected to Node10 with P = 11
+Graph:
+22 19 1
+23 22 1
+24 20 1
+15 2 1
+16 2 1
+17 2 1
+5 2 1
+6 2 1
+7 3 1
+18 4 1
+19 14 1
+20 15 1
+21 2 1
+1 2 1
+1 3 1
+4 2 1
+25 7 1
+26 2 1
+27 8 1
+28 10 1
+8 2 1
+9 2 1
+10 5 1
+11 2 1
+12 2 1
+13 2 1
+14 5 1
+
+FINISHED!!!
