@@ -23,7 +23,7 @@ class ba_GraphGen extends base_GraphGen {
 
     var theGraph = Graph(vRDD, eRDD, nodeData(""))
 
-    val (facts: RDD[String], nodeDegs: VertexRDD[Int], degList: RDD[(Int,Int)]) = printGraph(theGraph)
+    //val (facts: RDD[String], nodeDegs: VertexRDD[Int], degList: RDD[(Int,Int)]) = printGraph(theGraph)
 
     var length = vRDD.count()
 
@@ -70,7 +70,7 @@ class ba_GraphGen extends base_GraphGen {
       length = length+1
       val nodeID: Long = length.toLong
 
-      println("Adding Node " + nodeID.toString + " connected to Node" + attachNode.toString + " with P = " + attachTo.toString)
+      //println("Adding Node " + nodeID.toString + " connected to Node" + attachNode.toString + " with P = " + attachTo.toString)
 
       vRDD = vRDD.union(sc.parallelize(Array((nodeID, tempNodeData))))
       eRDD = eRDD.union(sc.parallelize(Array(Edge(nodeID, attachNode, tempEdgeData))))

@@ -34,7 +34,12 @@ object csb_GraphGen{
 
     val baGenerator = new ba_GraphGen()
 
+    val inVertices: RDD[(VertexId, nodeData)] = sc.parallelize(Array((1L, nodeData("Node 1")),(2L, nodeData("Node 2")),(3L, nodeData("Node 3"))))
+    val inEdges: RDD[Edge[edgeData]] = sc.parallelize(Array(Edge(1L,2L,edgeData("","",0,0,"",0,0,0,0,"")),Edge(1L,3L,edgeData("","",0,0,"",0,0,0,0,""))))
+    var theGraph = baGenerator.generateBAGraph(sc, inVertices, inEdges, 100000)
 
+
+    baGenerator.printGraph(theGraph)
 
     System.exit(0)
   }

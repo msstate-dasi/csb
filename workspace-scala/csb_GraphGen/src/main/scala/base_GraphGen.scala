@@ -40,4 +40,12 @@ class base_GraphGen {
       case e: Exception => println("Couldn't save file " + path)
     }
   }
+
+  def inDegreesDist(theGraph: Graph[nodeData, edgeData]): RDD[(Int,Int)] = {
+    theGraph.inDegrees.map(record => (record._2,1)).reduceByKey(_+_)
+  }
+  
+  def outDegreesDist(theGraph: Graph[nodeData, edgeData]): RDD[(Int,Int)] = {
+    theGraph.outDegrees.map(record => (record._2,1)).reduceByKey(_+_)
+  }
 }

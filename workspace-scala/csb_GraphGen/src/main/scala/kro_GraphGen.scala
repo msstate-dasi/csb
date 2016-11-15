@@ -12,50 +12,49 @@ class kro_GraphGen {
     var adjMtx = startMtx
 
     for (x <- 1 to iter) {
-      var tmpMtx = adjMtx.map(record => expMtx(record, adjMtx))
-      adjMtx = tmpMtx.flatMap(record => flatMtx(record))
+      var tmpMtx = adjMtx.map(record => expMtx(sc, record, adjMtx))
+      adjMtx = tmpMtx.flatMap(record => flatMtx(sc, record).collect())
 
     }
 
-    var edges: Array[Edge[String]] = mtx2Edges(adjMtx)
 
-    var eRDD = sc.parallelize(edges)
+    var eRDD = mtx2Edges(adjMtx)
 
-    var vertices = Array(for (x <- 1 to adjMtx.length) yield (x.toLong,"Node " + x.toString))
+    var vertices = Array(for (x <- 1 to adjMtx.count().toInt) yield (x.toLong,nodeData("Node " + x.toString)))
 
-    var vRDD: RDD[(VertexId, String)] = sc.parallelize(vertices)
+    var vRDD: RDD[(VertexId, nodeData)] = sc.parallelize(vertices)
 
     var theGraph = Graph(vRDD, eRDD, nodeData(""))
 
     theGraph
   }
 
-  def flatMtx(row: RDD[RDD[RDD[Int]]]): RDD[RDD[Int]] = {
-    val n = (row.count()-1).toInt
+  def flatMtx(sc: SparkContext, row: RDD[RDD[RDD[Int]]]): RDD[RDD[Int]] = {
 
-    (for (i <- 0 to n) yield {
-      //for every element in the row, grab each element
-      val newRow = (for (j <- 0 to n) yield row(j)(i)).flatMap(record => for (x <- record) yield x).toArray
+    val redRow: RDD[RDD[Int]] = row.flatMap(record => record.collect())
 
-      newRow
-    }).toArray
-
+    redRow
   }
 
-  def expMtx(row: RDD[Int], adjMtx: RDD[RDD[Int]]): RDD[RDD[RDD[Int]]] = {
-    val zeroMtx: RDD[RDD[Int]] = (for (x <- 1 to adjMtx.length) yield (for (x <- 1 to adjMtx.length) yield 0).toArray).toArray
-    val n = row.length - 1
-    (for (x <- 0 to n) yield if(row(x)==0) zeroMtx else adjMtx).toArray
+  def expMtx(sc: SparkContext, row: RDD[Int], adjMtx: RDD[RDD[Int]]): RDD[RDD[RDD[Int]]] = {
+    val zeroMtx: RDD[RDD[Int]] = sc.parallelize((for (x <- 1 to adjMtx.count.toInt) yield (for (x <- 1 to adjMtx.count.toInt) yield 0).toArray).toArray)
+    val n = row.count().toInt - 1
+
+    val temp: RDD[RDD[RDD[Int]]] = row.map (record =>
+     if (record == 1) adjMtx
+     else zeroMtx)
+
+    temp
   }
 
   def mtx2Edges(adjMtx: RDD[RDD[Int]]): RDD[Edge[edgeData]] = {
     adjMtx.zipWithIndex
       .map(record => (record._2, record._1))
-      //.map(record => (record._1, record._2.zipWithIndex.map(record=>(record._2, record._1))))
+      .map(record => (record._1, record._2.zipWithIndex.map(record=>(record._2, record._1))))
       .flatMap{record =>
-      for {
-        x <- 1 to record._2.row if record._2(x) == 1
-      } yield Edge(record._1.toLong, x.toLong, "")
-    }
+        val edgesTo = record._2.filter(record => record._2!=0).map(record => record._1)
+        edgesTo.map(record2 => Edge(record._1, record2, edgeData("","",0,0,"",0,0,0,0,""))).collect()
+      }
+
   }
 }
