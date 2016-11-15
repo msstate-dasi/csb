@@ -7,20 +7,18 @@ import org.apache.spark.rdd.RDD
   * Created by spencer on 11/3/16.
   */
 class kro_GraphGen {
-  def kro_GraphGen(sc: SparkContext, startMtx: RDD[RDD[Int]], iter: Int): Graph[nodeData, edgeData] = {
+  def generateKroGraph(sc: SparkContext, startMtx: RDD[RDD[Int]], iter: Int): Graph[nodeData, edgeData] = {
 
     var adjMtx = startMtx
 
     for (x <- 1 to iter) {
       var tmpMtx = adjMtx.map(record => expMtx(sc, record, adjMtx))
       adjMtx = tmpMtx.flatMap(record => flatMtx(sc, record).collect())
-
     }
-
 
     var eRDD = mtx2Edges(adjMtx)
 
-    var vertices = Array(for (x <- 1 to adjMtx.count().toInt) yield (x.toLong,nodeData("Node " + x.toString)))
+    var vertices = (for (x <- 1 to adjMtx.count().toInt) yield (x.toLong,nodeData("Node " + x.toString))).toArray
 
     var vRDD: RDD[(VertexId, nodeData)] = sc.parallelize(vertices)
 
@@ -37,7 +35,7 @@ class kro_GraphGen {
   }
 
   def expMtx(sc: SparkContext, row: RDD[Int], adjMtx: RDD[RDD[Int]]): RDD[RDD[RDD[Int]]] = {
-    val zeroMtx: RDD[RDD[Int]] = sc.parallelize((for (x <- 1 to adjMtx.count.toInt) yield (for (x <- 1 to adjMtx.count.toInt) yield 0).toArray).toArray)
+    val zeroMtx: RDD[RDD[Int]] = adjMtx.map(record => record.map(record => 0))
     val n = row.count().toInt - 1
 
     val temp: RDD[RDD[RDD[Int]]] = row.map (record =>

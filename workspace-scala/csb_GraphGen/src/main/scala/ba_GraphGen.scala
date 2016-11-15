@@ -57,6 +57,7 @@ class ba_GraphGen extends base_GraphGen {
 
       //TODO: distribution of how many nodes to attach to
 
+      println(degSum)
       val attachTo = r.nextInt(degSum)
 
       //lookup that index number in the attachList
