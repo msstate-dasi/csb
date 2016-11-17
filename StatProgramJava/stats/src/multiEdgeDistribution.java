@@ -6,6 +6,7 @@
  */
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -22,8 +23,9 @@ public class multiEdgeDistribution
 
 		multiEdgeDistribution torun = new multiEdgeDistribution(); 
 		String inFile = args[0];
-		String outFile = args[1];
-		torun.propertyDistributionConditional(inFile, outFile);
+		String statFile = args[1] + "_stat.txt";
+		String countFile = args[1] + "_count.txt";;
+		torun.propertyDistributionConditional(inFile, statFile, countFile);
 		//torun.outputValuesOfField_Range(inFile, outFile, 17, 80, 89);
 
 	}
@@ -63,12 +65,13 @@ public class multiEdgeDistribution
 		return range;
 	}
 	
-	private static final void readPreviousDistribution()
+	private static final void readPreviousDistribution(final String inFile) throws FileNotFoundException
 	{
-		
+		FileReader fr = new FileReader(inFile);
+		BufferedReader br = new BufferedReader(fr);
 	}
 	
-	private static final void writeStatsToFileDist(BufferedWriter bw, String propertyName, HashMap<String, 
+	private static final void writeStatsToFileDist(BufferedWriter bw, BufferedWriter bwc, String propertyName, HashMap<String, 
 													HashMap<String, Integer> > distribution, HashMap<String, Integer>  
 													origByteDist, long total) throws IOException
 	{
@@ -83,7 +86,7 @@ public class multiEdgeDistribution
 			{
 				//bw.write("Sorted " + key + " (probability) Distribution below:" + "\n");
 				HashMap<String, Integer> inDistribution = distribution.get(key);
-				writeStatsToFile(bw, key, inDistribution, keyTotal);
+				writeStatsToFile(bw, bwc, key, inDistribution, keyTotal);
 			}
 		}
 		
@@ -93,31 +96,18 @@ public class multiEdgeDistribution
 	
 	
 	
-	private static final void writeStatsToFile(BufferedWriter bw, String propertyName, HashMap<String, Integer> distribution, long total) throws IOException
+	private static final void writeStatsToFile(BufferedWriter bw, BufferedWriter bwc, String propertyName, 
+												HashMap<String, Integer> distribution, long total) 
+												throws IOException
 	{
-		/*
-		bw.write(propertyName + " (count) Distribution below: " + "\n");
-		
-		for(String key : distribution.keySet())
-		{
-			bw.write(key + ": " + distribution.get(key) + "\n");
-		}
-		
-		bw.write(propertyName + " (probability) Distribution below:" + "\n");
-		
-		for(String key : distribution.keySet())
-		{
-			bw.write(key + ": " + (double)distribution.get(key) / (double)total  + "\n");
-		}
-		*/
 		
 		distribution = (HashMap<String, Integer>) sortByValueDescending(distribution);
 
-		bw.write("Sorted " + propertyName + " (count) Distribution below:" +"\n");
+		bwc.write("Sorted " + propertyName + " (count) Distribution below:" +"\n");
 		
 		for(String key : distribution.keySet())
 		{
-			bw.write(key + ": " + distribution.get(key) + "\n");
+			bwc.write(key + ": " + distribution.get(key) + "\n");
 		}
 		
 		bw.write("Sorted " + propertyName + " (probability) Distribution below:" + "\n");
@@ -128,6 +118,7 @@ public class multiEdgeDistribution
 		}
 		
 		bw.write("\n\n");
+		bwc.write("\n\n");
 		
 	}
 	
@@ -418,6 +409,7 @@ public class multiEdgeDistribution
 			distribution.put(count, newCount);
 		}*/
 		
+		/*
 		writeStatsToFile(bw, "Edge distributions", edgeDistributionStr, tcp_udp_count);
 		writeStatsToFile(bw, "Original byte count", origByteCount, tcp_udp_count);
 		writeStatsToFile(bw, "Resp byte count", respByteCount, tcp_udp_count);
@@ -428,7 +420,7 @@ public class multiEdgeDistribution
 		writeStatsToFile(bw, "Resp packet count", resp_pkt_cnt, tcp_udp_count);
 		writeStatsToFile(bw, "Original IP byte count", origIPByteCount, tcp_udp_count);
 		writeStatsToFile(bw, "Resp IP byte count", respIPByteCount, tcp_udp_count);
-		
+		*/
 		bw.close();
 		fw.close();
 	}
@@ -441,13 +433,15 @@ public class multiEdgeDistribution
 	 * @param statFile The name of the file containing distribution results
 	 */
 	
-	void propertyDistributionConditional(final String inFile, final String statFile) throws IOException
+	void propertyDistributionConditional(final String inFile, final String statFile, final String countFile) throws IOException
 	{
 		String line = "";
 		FileReader fr = new FileReader(inFile);
 		BufferedReader br = new BufferedReader(fr);
 		FileWriter fw = new FileWriter(statFile);
 		BufferedWriter bw = new BufferedWriter(fw);
+		FileWriter fwc = new FileWriter(countFile);
+		BufferedWriter bwc = new BufferedWriter(fwc);
 		
 		//the properties are bytecount, connection type, connection state, duration, orig_pkt_cnt, resp_pkt_cnt
 		HashMap<String, Integer> origByteCount = new HashMap();
@@ -643,18 +637,18 @@ public class multiEdgeDistribution
 			distribution.put(count, newCount);
 		}*/
 		
-		writeStatsToFile(bw, "Edge distributions", edgeDistributionStr, tcp_udp_count);
-		writeStatsToFile(bw, "Original byte count", origByteCount, tcp_udp_count);
+		writeStatsToFile(bw, bwc, "Edge distributions", edgeDistributionStr, tcp_udp_count);
+		writeStatsToFile(bw, bwc, "Original byte count", origByteCount, tcp_udp_count);
 		origByteCount = (HashMap<String, Integer>) sortByValueDescending(origByteCount);
-		writeStatsToFileDist(bw, "Resp byte count", respByteCount, origByteCount, tcp_udp_count);
-		writeStatsToFileDist(bw, "Connection type", connType, origByteCount, tcp_udp_count);
-		writeStatsToFileDist(bw, "Connection state", connState, origByteCount, tcp_udp_count);
-		writeStatsToFileDist(bw, "Original packet count", orig_pkt_cnt, origByteCount, tcp_udp_count);
-		writeStatsToFileDist(bw, "Resp packet count", resp_pkt_cnt, origByteCount, tcp_udp_count);
-		writeStatsToFileDist(bw, "Resp packet count", resp_pkt_cnt, origByteCount, tcp_udp_count);
-		writeStatsToFileDist(bw, "Original IP byte count", origIPByteCount, origByteCount, tcp_udp_count);
-		writeStatsToFileDist(bw, "Resp IP byte count", respIPByteCount, origByteCount, tcp_udp_count);
-		writeStatsToFileDist(bw, "Duration of connections", durationDist, origByteCount, tcp_udp_count);
+		writeStatsToFileDist(bw, bwc, "Resp byte count", respByteCount, origByteCount, tcp_udp_count);
+		writeStatsToFileDist(bw, bwc, "Connection type", connType, origByteCount, tcp_udp_count);
+		writeStatsToFileDist(bw, bwc, "Connection state", connState, origByteCount, tcp_udp_count);
+		writeStatsToFileDist(bw, bwc, "Original packet count", orig_pkt_cnt, origByteCount, tcp_udp_count);
+		writeStatsToFileDist(bw, bwc, "Resp packet count", resp_pkt_cnt, origByteCount, tcp_udp_count);
+		writeStatsToFileDist(bw, bwc, "Resp packet count", resp_pkt_cnt, origByteCount, tcp_udp_count);
+		writeStatsToFileDist(bw, bwc, "Original IP byte count", origIPByteCount, origByteCount, tcp_udp_count);
+		writeStatsToFileDist(bw, bwc, "Resp IP byte count", respIPByteCount, origByteCount, tcp_udp_count);
+		writeStatsToFileDist(bw, bwc, "Duration of connections", durationDist, origByteCount, tcp_udp_count);
 		
 		bw.close();
 		fw.close();
