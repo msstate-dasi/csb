@@ -9,12 +9,15 @@ import scala.util.Random
   * Created by spencer on 11/3/16.
   */
 class ba_GraphGen extends base_GraphGen {
-  import org.apache.log4j.{Level, Logger}
-  import org.apache.spark.graphx.{Graph, VertexRDD, _}
-  import org.apache.spark.rdd.RDD
-  import org.apache.spark.{SparkConf, SparkContext}
 
-  import scala.util.Random
+  /***
+    *
+    * @param sc Current Sparkcontext
+    * @param inVertices RDD of vertices and their nodeData
+    * @param inEdges RDD of edges and their edgeData
+    * @param iter Number of iterations to perform BA
+    * @return Graph containing vertices + nodeData, edges + edgeData
+    */
   def generateBAGraph(sc: SparkContext, inVertices: RDD[(VertexId, nodeData)], inEdges: RDD[Edge[edgeData]], iter: Int): Graph[nodeData,edgeData] = {
     val r = Random
 
