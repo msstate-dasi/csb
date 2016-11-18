@@ -107,14 +107,14 @@ public class multiEdgeDistribution
 		
 		for(String key : distribution.keySet())
 		{
-			bwc.write(key + ": " + distribution.get(key) + "\n");
+			bwc.write(key + "\t " + distribution.get(key) + "\n");
 		}
 		
 		bw.write("Sorted " + propertyName + " (probability) Distribution below:" + "\n");
 		
 		for(String key : distribution.keySet())
 		{
-			bw.write(key + ": " + (double)distribution.get(key) / (double)total  + "\n");
+			bw.write(key + "\t " + (double)distribution.get(key) / (double)total  + "\n");
 		}
 		
 		bw.write("\n\n");
@@ -190,241 +190,7 @@ public class multiEdgeDistribution
 		
 	}
 	
-	void propertyDistribution(final String inFile, final String statFile) throws IOException
-	{
-		String line = "";
-		FileReader fr = new FileReader(inFile);
-		BufferedReader br = new BufferedReader(fr);
-		FileWriter fw = new FileWriter(statFile);
-		BufferedWriter bw = new BufferedWriter(fw);
-		
-		//the properties are bytecount, connection type, connection state, duration, orig_pkt_cnt, resp_pkt_cnt
-		HashMap<String, Integer> origByteCount = new HashMap();
-		HashMap<String, Integer> respByteCount = new HashMap();
-		HashMap<String, Integer> connType = new HashMap();
-		HashMap<String, Integer> connState = new HashMap();
-		HashMap<String, Integer> duration = new HashMap();
-		HashMap<String, Integer> orig_pkt_cnt = new HashMap();
-		HashMap<String, Integer> resp_pkt_cnt = new HashMap();
-		HashMap<String, Integer> origIPByteCount = new HashMap();
-		HashMap<String, Integer> respIPByteCount = new HashMap();
-		
-		HashMap <String, Integer> nodes = new HashMap();
-		HashMap <Integer, ArrayList<Integer> > graph = new HashMap();
-		HashMap <String, Integer> edgeCount = new HashMap();
-		HashSet<String> edges = new HashSet<String> ();
-		int nodeCount = -1;
-		int badRecords = 0;
-		int totalRecords = 0;
-		long tcp_udp_count = 0;
-		int interval = 10;	//the interval/range of bytes and others
-		
-		while((line = br.readLine())!= null)
-		{
-			String[] split = line.split("\t");
-			totalRecords++;
-			if(split.length < 6 || !validate(split[2]) || !validate(split[4]) || !isNumeric(split[9]))
-			{
-				badRecords++;
-				continue;
-			}
 
-			String from = split[2] + ":" + split[3];
-			String to = split[4] + ":"+ split[5];
-			String conn = split[6];
-			if(!(conn.equals("tcp") ||  conn.equals("udp")))
-				continue;
-			tcp_udp_count++;
-			
-			String origBytes = split[9];
-			String respBytes = split[10];
-			String conState = split[11];
-			String origPktCnt = split[16];
-			String origIPBytes = split[17];
-			String respPktCnt = split[18];
-			String respIPBytes = split[19];
-			
-			double t = Double.parseDouble(split[0]);
-
-
-			//System.out.println(from);
-
-			int fNode = 0, tNode = 0;
-
-			if(nodes.containsKey(from))
-			{
-				fNode = ((Integer)nodes.get(from)).intValue();
-			}
-			else
-			{
-				nodeCount++;
-				fNode = nodeCount;
-				nodes.put(from, nodeCount);
-			}
-
-			if(nodes.containsKey(to))
-			{
-				tNode = ((Integer)nodes.get(to)).intValue();
-			}
-			else
-			{
-				nodeCount++;
-				tNode = nodeCount;
-				nodes.put(to, nodeCount);
-			}
-
-			String edge = String.valueOf(from) + "," + String.valueOf(to);
-			
-			int newCount = 1;
-			
-			if(edgeCount.containsKey(edge))
-				newCount += edgeCount.get(edge);
-			
-			edgeCount.put(edge, newCount);
-			
-			/*
-			 * The rest of the stats
-			 */
-			//connection type
-			newCount = 1;
-			if(connType.containsKey(conn))
-				newCount += connType.get(conn);
-			connType.put(conn, newCount);
-			
-			newCount = 1;
-			String range = computeRange(origBytes, interval);
-			if(origByteCount.containsKey(range))
-				newCount += origByteCount.get(range);
-			origByteCount.put(range, newCount);
-			
-			newCount = 1;
-			range = computeRange(respBytes, interval);
-			if(respByteCount.containsKey(range))
-				newCount += respByteCount.get(range);
-			respByteCount.put(range, newCount);
-			
-			newCount = 1;
-			if(connState.containsKey(conState))
-				newCount += connState.get(conState);
-			connState.put(conState, newCount);
-			
-			newCount = 1;	
-			//determine the range
-			range = computeRange(origPktCnt, interval);
-			if(orig_pkt_cnt.containsKey(range))
-				newCount += orig_pkt_cnt.get(range);
-			orig_pkt_cnt.put(range, newCount);
-			
-			newCount = 1;	
-			range = computeRange(respPktCnt, interval);
-			if(resp_pkt_cnt.containsKey(range))
-				newCount += resp_pkt_cnt.get(range);
-			resp_pkt_cnt.put(range, newCount);
-			
-			
-			newCount = 1;	
-			//determine the range
-			range = computeRange(origIPBytes, interval);
-			if(origIPByteCount.containsKey(range))
-				newCount += origIPByteCount.get(range);
-			origIPByteCount.put(range, newCount);
-			
-			newCount = 1;	
-			range = computeRange(respIPBytes, interval);
-			if(respIPByteCount.containsKey(range))
-				newCount += respIPByteCount.get(range);
-			respIPByteCount.put(range, newCount);
-			
-		}
-		
-		System.out.println("Finishes reading");
-		HashMap <Integer, Integer> edgeDistribution = new HashMap();
-		HashMap <String, Integer> edgeDistributionStr = new HashMap();
-		System.out.println("Total records: " + totalRecords);
-		System.out.println("Number of bad records: " + badRecords);
-		System.out.println("Total tcp/udp connections: " + tcp_udp_count);
-		System.out.println("Edge (count) Distribution below:");
-		
-		for(String key : edgeCount.keySet())
-		{
-			int count = edgeCount.get(key);
-			
-			int newCount = 1;
-			if(edgeDistribution.containsKey(count))
-				newCount += edgeDistribution.get(count);
-			edgeDistribution.put(count, newCount);
-			edgeDistributionStr.put(Integer.toString(count), newCount);
-		}
-		
-		//write the output to file
-		bw.write("Total records: " + totalRecords + "\n");
-		bw.write("Number of bad records: " + badRecords + "\n");
-		bw.write("Total tcp/udp connections: " + tcp_udp_count + "\n");
-		bw.write("Edge (count) Distribution below:" + "\n");
-		SortedSet<Integer> keys = new TreeSet<Integer>(edgeDistribution.keySet());
-		
-		/*
-		for(int key : keys)
-		{
-			bw.write(key + ": " + edgeDistribution.get(key) + "\n");
-		}
-		
-		bw.write("Edge (probability) Distribution below:" + "\n");
-		
-		for(int key : keys)
-		{
-			bw.write(key + ": " + (double)edgeDistribution.get(key) / (double)tcp_udp_count  + "\n");
-		}
-		*/
-		/*
-		edgeDistribution = (HashMap<Integer, Integer>) sortByValueDescending(edgeDistribution);
-		bw.write("Edge distributions based on sorted multi-edge count: " + totalRecords + "\n");
-		bw.write("Edge (count) Distribution below:" +"\n");
-		Set<Integer> keys2 = edgeDistribution.keySet();
-		
-		for(int key : keys2)
-		{
-			bw.write(key + ": " + edgeDistribution.get(key) + "\n");
-		}
-		
-		bw.write("Edge (probability) Distribution below:" + "\n");
-		
-		for(int key : keys2)
-		{
-			bw.write(key + ": " + (double)edgeDistribution.get(key) / (double)tcp_udp_count  + "\n");
-		}
-		
-		bw.write("\n\n");
-		*/
-		
-/*		HashMap <Integer, Integer> distribution = new HashMap();
-		
-		for(String key : origByteCount.keySet())
-		{
-			int count = origByteCount.get(key);
-			
-			int newCount = 1;
-			if(distribution.containsKey(count))
-				newCount += distribution.get(count);
-			distribution.put(count, newCount);
-		}*/
-		
-		/*
-		writeStatsToFile(bw, "Edge distributions", edgeDistributionStr, tcp_udp_count);
-		writeStatsToFile(bw, "Original byte count", origByteCount, tcp_udp_count);
-		writeStatsToFile(bw, "Resp byte count", respByteCount, tcp_udp_count);
-		writeStatsToFile(bw, "Connection type", connType, tcp_udp_count);
-		writeStatsToFile(bw, "Connection state", connState, tcp_udp_count);
-		writeStatsToFile(bw, "Original packet count", orig_pkt_cnt, tcp_udp_count);
-		writeStatsToFile(bw, "Resp packet count", resp_pkt_cnt, tcp_udp_count);
-		writeStatsToFile(bw, "Resp packet count", resp_pkt_cnt, tcp_udp_count);
-		writeStatsToFile(bw, "Original IP byte count", origIPByteCount, tcp_udp_count);
-		writeStatsToFile(bw, "Resp IP byte count", respIPByteCount, tcp_udp_count);
-		*/
-		bw.close();
-		fw.close();
-	}
-	
 	/*
 	 * This method takes a connection log file (sorted with respect to time of connections)
 	 * and then generates the conditional distributions of all the fields given (origin)byte 
@@ -572,17 +338,23 @@ public class multiEdgeDistribution
 		System.out.println("Number of bad records: " + badRecords);
 		System.out.println("Total tcp/udp connections: " + tcp_udp_count);
 		System.out.println("Edge (count) Distribution below:");
+		int totalMultiedges = 0;
 		
 		for(String key : edgeCount.keySet())
 		{
 			int count = edgeCount.get(key);
+			//total += count;
 			
 			int newCount = 1;
 			if(edgeDistribution.containsKey(count))
 				newCount += edgeDistribution.get(count);
+			totalMultiedges++;
+			
 			edgeDistribution.put(count, newCount);
 			edgeDistributionStr.put(Integer.toString(count), newCount);
 		}
+		
+		System.out.println("Total edges: " + totalMultiedges);
 		
 		//write the output to file
 		bw.write("Total records: " + totalRecords + "\n");
@@ -591,60 +363,14 @@ public class multiEdgeDistribution
 		bw.write("Edge (count) Distribution below:" + "\n");
 		SortedSet<Integer> keys = new TreeSet<Integer>(edgeDistribution.keySet());
 		
-		/*
-		for(int key : keys)
-		{
-			bw.write(key + ": " + edgeDistribution.get(key) + "\n");
-		}
 		
-		bw.write("Edge (probability) Distribution below:" + "\n");
-		
-		for(int key : keys)
-		{
-			bw.write(key + ": " + (double)edgeDistribution.get(key) / (double)tcp_udp_count  + "\n");
-		}
-		*/
-		/*
-		edgeDistribution = (HashMap<Integer, Integer>) sortByValueDescending(edgeDistribution);
-		bw.write("Edge distributions based on sorted multi-edge count: " + totalRecords + "\n");
-		bw.write("Edge (count) Distribution below:" +"\n");
-		Set<Integer> keys2 = edgeDistribution.keySet();
-		
-		for(int key : keys2)
-		{
-			bw.write(key + ": " + edgeDistribution.get(key) + "\n");
-		}
-		
-		bw.write("Edge (probability) Distribution below:" + "\n");
-		
-		for(int key : keys2)
-		{
-			bw.write(key + ": " + (double)edgeDistribution.get(key) / (double)tcp_udp_count  + "\n");
-		}
-		
-		bw.write("\n\n");
-		*/
-		
-/*		HashMap <Integer, Integer> distribution = new HashMap();
-		
-		for(String key : origByteCount.keySet())
-		{
-			int count = origByteCount.get(key);
-			
-			int newCount = 1;
-			if(distribution.containsKey(count))
-				newCount += distribution.get(count);
-			distribution.put(count, newCount);
-		}*/
-		
-		writeStatsToFile(bw, bwc, "Edge distributions", edgeDistributionStr, tcp_udp_count);
+		writeStatsToFile(bw, bwc, "Edge distributions", edgeDistributionStr, totalMultiedges);
 		writeStatsToFile(bw, bwc, "Original byte count", origByteCount, tcp_udp_count);
 		origByteCount = (HashMap<String, Integer>) sortByValueDescending(origByteCount);
 		writeStatsToFileDist(bw, bwc, "Resp byte count", respByteCount, origByteCount, tcp_udp_count);
 		writeStatsToFileDist(bw, bwc, "Connection type", connType, origByteCount, tcp_udp_count);
 		writeStatsToFileDist(bw, bwc, "Connection state", connState, origByteCount, tcp_udp_count);
 		writeStatsToFileDist(bw, bwc, "Original packet count", orig_pkt_cnt, origByteCount, tcp_udp_count);
-		writeStatsToFileDist(bw, bwc, "Resp packet count", resp_pkt_cnt, origByteCount, tcp_udp_count);
 		writeStatsToFileDist(bw, bwc, "Resp packet count", resp_pkt_cnt, origByteCount, tcp_udp_count);
 		writeStatsToFileDist(bw, bwc, "Original IP byte count", origIPByteCount, origByteCount, tcp_udp_count);
 		writeStatsToFileDist(bw, bwc, "Resp IP byte count", respIPByteCount, origByteCount, tcp_udp_count);
@@ -656,139 +382,7 @@ public class multiEdgeDistribution
 	
 
 	
-	void multiEdgeDistribution(final String inFile, final String statFile) throws IOException
-	{
-		String line = "";
-		FileReader fr = new FileReader(inFile);
-		BufferedReader br = new BufferedReader(fr);
-		FileWriter fw = new FileWriter(statFile);
-		BufferedWriter bw = new BufferedWriter(fw);
-		
-		HashMap <String, Integer> nodes = new HashMap();
-		HashMap <Integer, ArrayList<Integer> > graph = new HashMap();
-		HashMap <String, Integer> edgeCount = new HashMap();
-		HashSet<String> edges = new HashSet<String> ();
-		int nodeCount = -1;
-		int badRecords = 0;
-		int totalRecords = 0;
-		int tcp_udp_count = 0;
-		
-		while((line = br.readLine())!= null)
-		{
-			String[] split = line.split("\t");
-			totalRecords++;
-			if(split.length < 6 || !validate(split[2]) || !validate(split[4]))
-			{
-				badRecords++;
-				continue;
-			}
-
-			String from = split[2] + ":" + split[3];
-			String to = split[4] + ":"+ split[5];
-			String conn = split[6];
-			if(!(conn.equals("tcp") ||  conn.equals("udp")))
-				continue;
-			tcp_udp_count++;
-			
-			double t = Double.parseDouble(split[0]);
-
-
-			//System.out.println(from);
-
-			int fNode = 0, tNode = 0;
-
-			if(nodes.containsKey(from))
-			{
-				fNode = ((Integer)nodes.get(from)).intValue();
-			}
-			else
-			{
-				nodeCount++;
-				fNode = nodeCount;
-				nodes.put(from, nodeCount);
-			}
-
-			if(nodes.containsKey(to))
-			{
-				tNode = ((Integer)nodes.get(to)).intValue();
-			}
-			else
-			{
-				nodeCount++;
-				tNode = nodeCount;
-				nodes.put(to, nodeCount);
-			}
-
-			String edge = String.valueOf(from) + "," + String.valueOf(to);
-			
-			int newCount = 1;
-			
-			if(edgeCount.containsKey(edge))
-				newCount += edgeCount.get(edge);
-			
-			edgeCount.put(edge, newCount);			
-		}
-		
-		System.out.println("Finishes reading");
-		HashMap <Integer, Integer> edgeDistribution = new HashMap();
-		System.out.println("Total records: " + totalRecords);
-		System.out.println("Number of bad records: " + badRecords);
-		System.out.println("Total tcp/udp connections: " + tcp_udp_count);
-		System.out.println("Edge (count) Distribution below:");
-		
-		for(String key : edgeCount.keySet())
-		{
-			int count = edgeCount.get(key);
-			
-			int newCount = 1;
-			if(edgeDistribution.containsKey(count))
-				newCount += edgeDistribution.get(count);
-			edgeDistribution.put(count, newCount);
-		}
-		
-		//write the output to file
-		bw.write("Total records: " + totalRecords + "\n");
-		bw.write("Number of bad records: " + badRecords + "\n");
-		bw.write("Total tcp/udp connections: " + tcp_udp_count + "\n");
-		bw.write("Edge (count) Distribution below:" + "\n");
-		SortedSet<Integer> keys = new TreeSet<Integer>(edgeDistribution.keySet());
-		
-		for(int key : keys)
-		{
-			bw.write(key + ": " + edgeDistribution.get(key) + "\n");
-		}
-		
-		bw.write("Edge (probability) Distribution below:" + "\n");
-		
-		for(int key : keys)
-		{
-			bw.write(key + ": " + (double)edgeDistribution.get(key) / (double)tcp_udp_count  + "\n");
-		}
-		
-		
-		edgeDistribution = (HashMap<Integer, Integer>) sortByValue(edgeDistribution);
-		bw.write("Edge distributions based on sorted multi-edge count: " + totalRecords + "\n");
-		bw.write("Edge (count) Distribution below:" +"\n");
-		Set<Integer> keys2 = edgeDistribution.keySet();
-		
-		for(int key : keys2)
-		{
-			bw.write(key + ": " + edgeDistribution.get(key) + "\n");
-		}
-		
-		bw.write("Edge (probability) Distribution below:" + "\n");
-		
-		for(int key : keys2)
-		{
-			bw.write(key + ": " + (double)edgeDistribution.get(key) / (double)tcp_udp_count  + "\n");
-		}
-		
-		
-		bw.close();
-		fw.close();
-	}
-	
-	/*
+		/*
 	 * To determine the average rate each edge is added
 	 */
 	void multiEdgeDistributionWithTime(String inFile, String statFile) throws IOException
@@ -925,165 +519,6 @@ public class multiEdgeDistribution
 		fw.close();
 	}
 	
-
-	void readFile(String input) throws IOException
-	{
-		String line = "";
-		FileReader fr = new FileReader(input);
-		BufferedReader br = new BufferedReader(fr);
-
-
-
-		HashMap <String, Integer> nodes = new  HashMap();
-		HashMap <Integer, ArrayList<Integer> > graph = new HashMap();
-
-		HashSet<String> edges = new HashSet<String> ();
-		int nodeCount = -1;
-		//for(int i = 0; i < 9; i++)
-		//	line = br.readLine();
-		double  nextStart = Double.MAX_VALUE;
-		double thMinute = 6.0 * 60.0 * 60.0;
-		int index = 15;
-		int counts = (int)pow(2, index++);
-
-
-		int dumpCount = 0;
-		boolean dump = false;
-
-		while((line = br.readLine())!= null)
-		{
-			String[] split = line.split("\t");
-			if(split.length < 6 || !validate(split[2]) || !validate(split[4]))
-				continue;
-
-
-
-
-			String from = split[2] + ":" + split[3];
-			String to = split[4] + ":"+ split[5];
-			String conn = split[6];
-			if(!(conn.equals("tcp") ||  conn.equals("udp")))
-				continue;
-
-			double t = Double.parseDouble(split[0]);
-
-
-
-			//System.out.println(from);
-
-			int fNode = 0, tNode = 0;
-
-			if(nodes.containsKey(from))
-			{
-				fNode = ((Integer)nodes.get(from)).intValue();
-			}
-			else
-			{
-				nodeCount++;
-				fNode = nodeCount;
-				nodes.put(from, nodeCount);
-			}
-
-			if(nodes.containsKey(to))
-			{
-				tNode = ((Integer)nodes.get(to)).intValue();
-			}
-			else
-			{
-				nodeCount++;
-				tNode = nodeCount;
-				nodes.put(to, nodeCount);
-			}
-
-			String edge = String.valueOf(from) + "," + String.valueOf(to);
-			if(edges.contains(edge))
-				continue;
-			edges.add(edge);
-
-			if(graph.containsKey(fNode))
-			{
-				graph.get(fNode).add(tNode);
-			}
-			else
-			{
-				ArrayList<Integer> neighbors = new ArrayList<Integer> ();
-				neighbors.add(tNode);
-				graph.put(fNode, neighbors);
-
-			}
-
-			if(nodeCount > counts)
-			{
-				dump = true;
-				counts = (int)pow(2, index++);
-				//System.out.println("nextStart " + nextStart);
-				//System.out.printf("%.2f\n", t); 
-				//System.out.printf("%.2f\n", nextStart); 
-
-			}
-
-			if(dump)
-			{
-				System.out.println("total nodes: " + (nodeCount - 1));
-				FileWriter fw = new FileWriter("dump_" + dumpCount++ + ".txt");
-				System.out.println("dumpCount " + dumpCount);
-
-				BufferedWriter bw = new BufferedWriter(fw);
-
-				for(int i = 0; i <= nodeCount - 1; i++)
-				{
-					if(graph.containsKey(i))
-					{
-						ArrayList<Integer> neighbors = graph.get(i);
-						Collections.sort(neighbors);
-
-						for(int j = 0; j < neighbors.size(); j++)
-						{
-							String l = i + "\t" + neighbors.get(j);
-							bw.write(l + "\n");
-						}
-					}
-
-
-				}
-
-				bw.close();
-				fw.close();
-				dump = false;
-			}
-		}
-
-		if(!dump)
-		{
-
-			System.out.println("total nodes: " + nodeCount);
-			FileWriter fw = new FileWriter("dump_" + dumpCount++ + ".txt");
-			System.out.println("dumpCount " + dumpCount);
-			BufferedWriter bw = new BufferedWriter(fw);
-
-			for(int i = 0; i <= nodeCount; i++)
-			{
-				if(graph.containsKey(i))
-				{
-					ArrayList<Integer> neighbors = graph.get(i);
-					Collections.sort(neighbors);
-
-					for(int j = 0; j < neighbors.size(); j++)
-					{
-						String l = i + "\t" + neighbors.get(j);
-						bw.write(l + "\n");
-					}
-				}
-
-
-			}
-
-			bw.close();
-			fw.close();
-		}
-
-	}
-
 	    public static <K, V extends Comparable<? super V>> Map<K, V> 
 	        sortByValue( Map<K, V> map )
 	    {
