@@ -98,10 +98,11 @@ object csb_GraphGen{
 
     //Replace the spots where a side exists with 1
     inEdges.foreach(record =>
-      adjArr(record.srcId.toInt)(record.dstId.toInt) = 0
+      adjArr(record.srcId.toInt - 1)(record.dstId.toInt - 1) = 0
     )
     //Make it parallel
-    val adjMtx: RDD[RDD[Int]] = sc.parallelize(adjArr).map(record => sc.parallelize(record))
+    val adjList: Array[RDD[Int]] = adjArr.map(record => sc.parallelize(record))
+    val adjMtx: RDD[RDD[Int]] = sc.parallelize(adjList)
 
     println()
     println("Running Kronecker with " + args(3) + " iterations.")
