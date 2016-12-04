@@ -12,7 +12,6 @@ import scala.util.Random
 
 object csb_GraphGen{
 
-
   /*** Main function of our program, controls graph generation and other pieces.
     *
     * @param args array of command line arguments
@@ -31,7 +30,6 @@ object csb_GraphGen{
       System.err.println("Usage: csb_GraphGen <seed_vertices_file> <seed_edges_file> <BA_iterations> <Kro_iterations> [partitions]")
       System.exit(1)
     }
-
 
     //Initialize an instance of each type of generator
     val baGenerator = new ba_GraphGen()
@@ -69,7 +67,6 @@ object csb_GraphGen{
     println("Running BA with " + args(2) + " iterations.")
     println()
 
-
     //Generate a BA Graph with iterations
     startTime = System.nanoTime()
     val baGraph = baGenerator.generateBAGraph(sc, inVertices, inEdges, args(2).toInt)
@@ -80,18 +77,21 @@ object csb_GraphGen{
     println()
 
     println()
-    println("Saving BA Graph.....")
+    println("Saving BA Graph and Veracity measurements.....")
     println()
 
     //Save the ba graph into a format to be read later
     startTime = System.nanoTime()
     baGenerator.saveGraph(sc, baGraph, "ba_"+args(2))
+    baGenerator.saveGraphVeracity(sc, baGraph, "ba_"+args(2))
     timeSpan = (System.nanoTime() - startTime) / 1e9
+
     println()
     println("Finished saving BA graph.")
     println("\tTotal time elapsed: " + timeSpan.toString)
     println()
 
+    /*
     //Convert edge list to a Zero adjacency matrix
     val n = inVertices.count().toInt
     var adjArr: Array[Array[Int]] = (for (x <- 1 to n) yield (for(y<-1 to n) yield 0).toArray).toArray
@@ -116,6 +116,7 @@ object csb_GraphGen{
     println("Finished generating Kronecker graph.")
     println("\tTotal time elapsed: " + timeSpan.toString)
     println()
+    */
 
     System.exit(0)
   }
@@ -149,31 +150,31 @@ object csb_GraphGen{
 
       //Just a bunch of string formatting and splitting
       val edgeStrs = inData(2).stripPrefix("edgeData(").stripSuffix(")").split(',')
-      println(inData(2).stripPrefix("edgeData(").stripSuffix(")"))
+      //println(inData(2).stripPrefix("edgeData(").stripSuffix(")"))
 
       val TS: String = edgeStrs(0)
-      println("TS: \"" + TS + "\"")
+      //println("TS: \"" + TS + "\"")
       val PROTOCOL: String = edgeStrs(1)
-      println("PROTOCOL: \"" + PROTOCOL + "\"")
+      //println("PROTOCOL: \"" + PROTOCOL + "\"")
       val ORIG_BYTES: Int = edgeStrs(2).toInt
-      println("ORIG_BYTES: \"" + ORIG_BYTES + "\"")
+      //println("ORIG_BYTES: \"" + ORIG_BYTES + "\"")
       val RESP_BYTES: Int = edgeStrs(3).toInt
-      println("RESP_BYTES: \"" + RESP_BYTES + "\"")
+      //println("RESP_BYTES: \"" + RESP_BYTES + "\"")
       val CONN_STATE: String = edgeStrs(4)
-      println("CONN_STATE: \"" + CONN_STATE + "\"")
+      //println("CONN_STATE: \"" + CONN_STATE + "\"")
       val ORIG_PKTS: Int = edgeStrs(5).toInt
-      println("ORIG_PKTS: \"" + ORIG_PKTS + "\"")
+      //println("ORIG_PKTS: \"" + ORIG_PKTS + "\"")
       val ORIG_IP_BYTES: Int = edgeStrs(6).toInt
-      println("ORIG_IP_BYTES: \"" + ORIG_IP_BYTES + "\"")
+      //println("ORIG_IP_BYTES: \"" + ORIG_IP_BYTES + "\"")
       val RESP_PKTS: Int = edgeStrs(7).toInt
-      println("RESP_PKTS: \"" + RESP_PKTS + "\"")
+      //println("RESP_PKTS: \"" + RESP_PKTS + "\"")
       val RESP_IP_BYTES: Int = edgeStrs(8).toInt
-      println("RESP_IP_BYTES: \"" + RESP_IP_BYTES + "\"")
+      //println("RESP_IP_BYTES: \"" + RESP_IP_BYTES + "\"")
 
       val DESC: String = if (edgeStrs.length > 8) edgeStrs(0) else ""
 
-      println("DESC: \"" + DESC + "\"")
-      println()
+      //println("DESC: \"" + DESC + "\"")
+      //println()
 
       (true, Edge(srcNode, dstNode, edgeData(TS, PROTOCOL, ORIG_BYTES, RESP_BYTES, CONN_STATE, ORIG_PKTS, ORIG_IP_BYTES, RESP_PKTS, RESP_IP_BYTES, DESC)))
     } catch {

@@ -53,6 +53,35 @@ class base_GraphGen {
     }
   }
 
+  /*** Saves the Graph's degree distribution, inDegree distribution, and outDegree distribution to the specified path
+    *
+    * @param sc Current SparkContext
+    * @param theGraph The graph to save
+    * @param path The folder path that Spark will output the files under
+    */
+  def saveGraphVeracity(sc: SparkContext, theGraph: Graph[nodeData, edgeData], path: String): Unit = {
+    val degDist = sc.parallelize(Array("Degree,NumNodesWithDegree")).union(degreesDist(theGraph).sortBy(_._2, ascending = false).map(record => record._1.toString+','+record._2.toString))
+    val inDegDist = sc.parallelize(Array("InDegree,NumNodesWithDegree")).union(inDegreesDist(theGraph).sortBy(_._2, ascending = false).map(record => record._1.toString+','+record._2.toString))
+    val outDegDist = sc.parallelize(Array("OutDegree,NumNodesWithDegree")).union(outDegreesDist(theGraph).sortBy(_._2, ascending = false).map(record => record._1.toString+','+record._2.toString))
+
+    try {
+      degDist.repartition(1).saveAsTextFile(path+"_veracity/degDist")
+      inDegDist.repartition(1).saveAsTextFile(path+"_veracity/inDegDist")
+      outDegDist.repartition(1).saveAsTextFile(path+"_veracity/outDegDist")
+    } catch {
+      case e: Exception => println("Couldn't save Veracity files")
+    }
+  }
+
+  /*** Function to generate the degree distribution
+    *
+    * @param theGraph The graph to analyze
+    * @return RDD containing degree numbers, and the number of nodes at that specific degree
+    */
+  def degreesDist(theGraph: Graph[nodeData, edgeData]): RDD[(Int,Int)] = {
+    theGraph.degrees.map(record => (record._2,1)).reduceByKey(_+_)
+  }
+
   /*** Function to generate the degree distribution
     *
     * @param theGraph The graph to analyze

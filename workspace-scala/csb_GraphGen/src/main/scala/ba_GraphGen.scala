@@ -21,69 +21,77 @@ class ba_GraphGen extends base_GraphGen {
   def generateBAGraph(sc: SparkContext, inVertices: RDD[(VertexId, nodeData)], inEdges: RDD[Edge[edgeData]], iter: Int): Graph[nodeData,edgeData] = {
     val r = Random
 
-    var vRDD: RDD[(VertexId, nodeData)] = inVertices
-    var eRDD: RDD[Edge[edgeData]] = inEdges
+    var theGraph = Graph(inVertices, inEdges, nodeData(""))
 
-    var theGraph = Graph(vRDD, eRDD, nodeData(""))
+    var degList: Array[(VertexId,Int)] = theGraph.degrees.sortBy(_._1).collect()
+    var degSum: Long = degList.map(_._2).sum
 
-    //val (facts: RDD[String], nodeDegs: VertexRDD[Int], degList: RDD[(Int,Int)]) = printGraph(theGraph)
-
-    var length = vRDD.count()
-
-    //saveGraph(sc, theGraph, "BA_Graph.step.0.csv")
+    var edgesToAdd: Array[Edge[edgeData]] = Array.empty[Edge[edgeData]]
+    var vertToAdd: Array[(VertexId, nodeData)] = Array.empty[(VertexId, nodeData)]
 
     for(i <- 1 to iter) {
-      val nodeDegs: VertexRDD[Int] = theGraph.degrees // returns degree for each node
+      val srcId: VertexId = degList.last._1 + 1
+      val srcIndex = degList.length
 
-      // reduces the list down to unique degrees, and adds up the number of nodes at that degree
-      val degList: RDD[(Int, Int)] = nodeDegs.map(record => (record._2, 1)).reduceByKey(_ + _)
+      //TODO: Generate random node properties here
+      val tempNodeProp: nodeData = nodeData("")
 
-      // Calculates the total degree of the whole graph
-      val degSum: Int = degList.map(record => record._1 * record._2).sum().toInt
+      vertToAdd = vertToAdd :+ (srcId, tempNodeProp)
+      degList = degList :+ (srcId, 0) //initial degree of 0
 
-      //(5L,12)
+      //TODO: Generate how many edges to attach from the new node
+      val numEdgesToAdd = 1
 
-      //1 to 12, return 5L each time
-      //5L 5L 5L ..
-      //zipWithIndex
-      //5L,1 5L,2, 5L,3 ...
-      //map
-      //1,5L 2,5L
+      for (i <- 1 to numEdgesToAdd) {
+        val attachTo: Long = (Math.abs(r.nextLong()) % (degSum-1)) + 1
 
-      val attachList: RDD[(Int, VertexId)] = nodeDegs.flatMap { record =>
-        for {
-          x <- 1 to record._2
-        } yield record._1
-      }.zipWithIndex().map(record => (record._2.toInt, record._1))
+        var dstIndex: Int = 0
+        var tempDegSum: Long = 0
+        while (tempDegSum < attachTo) {
+          tempDegSum += degList(dstIndex)._2
+          dstIndex+=1
+        }
 
-      //grab a random number from 1 to Kf, degSum
+        dstIndex = dstIndex - 1
+        //now we know that the node must attach at index
+        val dstId: VertexId = degList(dstIndex)._1
 
-      //TODO: distribution of how many nodes to attach to
+        /*
+        print("degSum = " + degSum.toString + " r = " + attachTo.toString + " degList = ")
+        degList.sortBy(_._2).reverse.take(10).foreach(print)
+        print(" Adding Edge from " + srcId + " to " + dstId)
+        println()
+        */
 
-      println(degSum)
-      val attachTo = r.nextInt(degSum)
+        //TODO: Generate random edge properties here
+        val tempEdgeProp: edgeData = edgeData("","",0,0,"",0,0,0,0,"")
+        edgesToAdd = edgesToAdd :+ Edge(srcId, dstId, tempEdgeProp)
 
-      //lookup that index number in the attachList
-      val attachNode: Long = attachList.lookup(attachTo).head
+        //This doesn't matter, but to be correct, this code updates the degList dstId's degree
+        degList(dstIndex) = (degList(dstIndex)._1, degList(dstIndex)._2+1)
+        degList(srcIndex) = (degList(srcIndex)._1, degList(srcIndex)._2+1)
 
-      //TODO: distribution of edge properties with randomization
+        degSum += 2
 
-      val tempEdgeData = edgeData("","",0,0,"",0,0,0,0,"")
-      val tempNodeData = nodeData("")
-
-      length = length+1
-      val nodeID: Long = length.toLong
-
-      //println("Adding Node " + nodeID.toString + " connected to Node" + attachNode.toString + " with P = " + attachTo.toString)
-
-      vRDD = vRDD.union(sc.parallelize(Array((nodeID, tempNodeData))))
-      eRDD = eRDD.union(sc.parallelize(Array(Edge(nodeID, attachNode, tempEdgeData))))
+      }
 
     }
 
-    theGraph = Graph(vRDD, eRDD, nodeData(""))
-
+    theGraph = Graph(inVertices.union(sc.parallelize(vertToAdd)), inEdges.union(sc.parallelize(edgesToAdd)), nodeData(""))
     theGraph
   }
+
+  /*
+  def runGen(sc: SparkContext): Unit = {
+    val inVertices: RDD[(VertexId, nodeData)] = sc.parallelize(Array((1L, nodeData("")), (2L, nodeData("")), (3L, nodeData(""))))
+    val inEdges: RDD[Edge[edgeData]] = sc.parallelize(Array(
+      Edge(1L, 2L, edgeData("","",0,0,"",0,0,0,0,"")),
+      Edge(1L, 3L, edgeData("","",0,0,"",0,0,0,0,""))
+    ))
+
+    generateBAGraph(sc, inVertices, inEdges, 500)
+  }
+  */
+
 
 }
