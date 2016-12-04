@@ -9,8 +9,8 @@
   <inceptionYear>2016</inceptionYear>
 
   <properties>
-    <maven.compiler.source>1.8</maven.compiler.source>
-    <maven.compiler.target>1.8</maven.compiler.target>
+    <maven.compiler.source>1.7</maven.compiler.source>
+    <maven.compiler.target>1.7</maven.compiler.target>
     <encoding>UTF-8</encoding>
     <scala.tools.version>2.11</scala.tools.version>
     <!-- Put the Scala version of the cluster -->

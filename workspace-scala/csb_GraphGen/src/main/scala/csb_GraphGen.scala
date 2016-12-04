@@ -31,6 +31,9 @@ object csb_GraphGen{
       System.exit(1)
     }
 
+    val distParser: multiEdgeDistributionJustin = new multiEdgeDistributionJustin();
+    distParser.init(Array("conn.log", "asdf"))
+
     //Initialize an instance of each type of generator
     val baGenerator = new ba_GraphGen()
     val kroGenerator = new kro_GraphGen()

@@ -17,13 +17,13 @@
   */
 case class edgeData(TS: String,
                     PROTOCOL: String,
-                    ORIG_BYTES: Int,
-                    RESP_BYTES: Int,
+                    ORIG_BYTES: Long,
+                    RESP_BYTES: Long,
                     CONN_STATE: String,
-                    ORIG_PKTS: Int,
-                    ORIG_IP_BYTES: Int,
-                    RESP_PKTS: Int,
-                    RESP_IP_BYTES: Int,
+                    ORIG_PKTS: Long,
+                    ORIG_IP_BYTES: Long,
+                    RESP_PKTS: Long,
+                    RESP_IP_BYTES: Long,
                     DESC: String)
 
 /***
