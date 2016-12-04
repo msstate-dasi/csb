@@ -1,0 +1,2 @@
+sshpass -p "A_ong_00" scp csb_GraphGen-0.0.1-SNAPSHOT-jar-with-dependencies.jar jlewis@shadow-login:/work/jlewis/;
+
