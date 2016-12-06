@@ -1,2 +1,2 @@
-sshpass -p "A_ong_00" scp csb_GraphGen-0.0.1-SNAPSHOT-jar-with-dependencies.jar jlewis@shadow-login:/work/jlewis/;
+/opt/spark-2.0.1/bin/spark-submit --class csb_GraphGen --executor-memory 8G --driver-memory 8G csb_GraphGen-0.0.1-SNAPSHOT-jar-with-dependencies.jar
 

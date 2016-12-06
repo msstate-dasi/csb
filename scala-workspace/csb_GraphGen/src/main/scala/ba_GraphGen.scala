@@ -1,11 +1,14 @@
 import java.io.FileWriter
+import java.util
 
-import scala.io.Source
+import com.google.common.primitives.UnsignedInteger
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.graphx.{Graph, VertexRDD, _}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 
+import scala.collection.mutable.HashMap
+import scala.io.Source
 import scala.util.Random
 
 /**
@@ -13,16 +16,24 @@ import scala.util.Random
   */
 class ba_GraphGen extends base_GraphGen {
 
+  /***
+    *
+    * @return
+    */
+  def generateNodeData(): String = {
+    val r = Random
 
-  def returnRange(fileIter: Iterator[String]): String =
+    r.nextInt(255)+"."+r.nextInt(255)+"."+r.nextInt(255)+"."+r.nextInt(255)+":"+r.nextInt(65536)
+  }
+
+  def generateRandomFromFile(filename: String): Int =
   {
     val r = new Random
     val numEdgesProb = r.nextFloat()
     var chance = 0.0
     var num = 0
+    var fileIter = Source.fromFile(filename).getLines()
     //    fileIter.next() //we do the next here since the heading is always just text describeing the file
-
-
     while(fileIter.hasNext && num == 0)
     {
       val line = fileIter.next()
@@ -30,7 +41,6 @@ class ba_GraphGen extends base_GraphGen {
       chance = chance + percentage
       if(chance > numEdgesProb)
       {
-        return line
         if(!line.split("\t")(0).contains("-"))
         {
           num = line.split("\t")(0).split("\\*")(1).toInt //split is a reg expression function so i escape the *
@@ -46,41 +56,9 @@ class ba_GraphGen extends base_GraphGen {
         }
       }
     }
-    return null
+    num
   }
 
-  def generateRandomFromFile(filename: String): Int =
-  {
-    val r = new Random
-    val numEdgesProb = r.nextFloat()
-    var chance = 0.0
-    var num = 0
-    var fileIter = Source.fromFile(filename).getLines()
-//    fileIter.next() //we do the next here since the heading is always just text describeing the file
-    while(fileIter.hasNext && num == 0)
-    {
-      val line = fileIter.next()
-      val percentage = line.split("\t")(1).toFloat
-      chance = chance + percentage
-      if(chance > numEdgesProb)
-      {
-        if(!line.split("\t")(0).contains("-"))
-          {
-            num = line.split("\t")(0).split("\\*")(1).toInt //split is a reg expression function so i escape the *
-          }
-        else
-          {
-            val firstTabLine = line.split("\t")(0)
-            val begin: Int = firstTabLine.split("\\*")(1).split("-")(0).toInt
-            val end: Int   = firstTabLine.split("\\*")(1).split("-")(1).toInt
-            num = r.nextInt(end - begin) + begin
-
-
-          }
-      }
-    }
-    return num;
-  }
   def generateRandomFromFileConditional(filename: String, byteNum: Long, sc: SparkContext): Long =
   {
     val r = new Random
@@ -88,24 +66,24 @@ class ba_GraphGen extends base_GraphGen {
     var chance = 0.0
     var num = 0
     var fileIter = Source.fromFile(filename).getLines()
-//    fileIter.next() //we do the next here since the heading is always just text describeing the file
+    //    fileIter.next() //we do the next here since the heading is always just text describeing the file
 
 
     var file = sc.textFile(filename)
     var text = file.filter(record => record.split("\\*")(0).split("-")(0).toLong <= byteNum && record.split("\\*")(0).split("-")(1).toLong >= byteNum)
 
     if(text.isEmpty())
-      {
-        println("bytecount " + byteNum + " produced nothing")
-      }
+    {
+      println("bytecount " + byteNum + " produced nothing")
+    }
 
     var allStr = ""
 
     for (aStr <- text.collect())
-      {
-        allStr = allStr + aStr + "\n"
-      }
-//    println(allStr)
+    {
+      allStr = allStr + aStr + "\n"
+    }
+    //    println(allStr)
 
     var temp = new FileWriter("temp")
 
@@ -114,15 +92,16 @@ class ba_GraphGen extends base_GraphGen {
 
     var line: String = returnRange(Source.fromFile("temp").getLines())
 
-//    val randNum: Long = r.nextInt(text.count().toInt)
+    //    val randNum: Long = r.nextInt(text.count().toInt)
 
-    val range: String= line.split("\t").head.split("\\*")(1)
+    val range: String = line.split("\t").head.split("\\*")(1)
 
     val begin: Int = range.split("-").head.toInt
     val end  : Int = range.split("-")(1).toInt
 
     return r.nextInt(end - begin) + begin
   }
+
   def generateRandomFromFileConditionalString(filename: String, byteNum: Long, sc: SparkContext): String =
   {
     val r = new Random
@@ -137,9 +116,9 @@ class ba_GraphGen extends base_GraphGen {
     var text = file.filter(record => record.split("\\*")(0).split("-")(0).toLong <= byteNum && record.split("\\*")(0).split("-")(1).toLong >= byteNum)
 
     if(text.isEmpty())
-  {
-    println("bytecount " + byteNum + " produced nothing")
-  }
+    {
+      println("bytecount " + byteNum + " produced nothing")
+    }
 
 
     var allStr = ""
@@ -160,6 +139,43 @@ class ba_GraphGen extends base_GraphGen {
     return line.split("\t").head.split("\\*")(1)
   }
 
+  def returnRange(fileIter: Iterator[String]): String =
+  {
+    val r = new Random
+    val numEdgesProb = r.nextFloat()
+    var chance = 0.0
+    var num = 0
+    //    fileIter.next() //we do the next here since the heading is always just text describeing the file
+
+
+    while(fileIter.hasNext && num == 0)
+    {
+      val line = fileIter.next()
+      val percentage = line.split("\t")(1).toFloat
+      chance = chance + percentage
+      if(chance > numEdgesProb)
+      {
+        return line
+        /*
+        if(!line.split("\t")(0).contains("-"))
+        {
+          num = line.split("\t")(0).split("\\*")(1).toInt //split is a reg expression function so i escape the *
+        }
+        else
+        {
+          val firstTabLine = line.split("\t")(0)
+          val begin: Int = firstTabLine.split("\\*")(1).split("-")(0).toInt
+          val end: Int   = firstTabLine.split("\\*")(1).split("-")(1).toInt
+          num = r.nextInt(end - begin) + begin
+
+
+        }
+        */
+      }
+    }
+    return null
+  }
+
   /***
     *
     * @param sc Current Sparkcontext
@@ -170,113 +186,111 @@ class ba_GraphGen extends base_GraphGen {
     */
   def generateBAGraph(sc: SparkContext, inVertices: RDD[(VertexId, nodeData)], inEdges: RDD[Edge[edgeData]], iter: Int): Graph[nodeData,edgeData] = {
     val r = Random
+    val dataGenerator = DataGenerator
 
-    var vRDD: RDD[(VertexId, nodeData)] = inVertices
-    var eRDD: RDD[Edge[edgeData]] = inEdges
+    var theGraph = Graph(inVertices, inEdges, nodeData(""))
 
-    var theGraph = Graph(vRDD, eRDD, nodeData(""))
+    //String is IP:Port ex. "192.168.0.1:80"
+    var nodeIndices: HashMap[String, VertexId] = HashMap[String, VertexId]()
+    println("there are " + theGraph.vertices.count() + "vertices.")
+    println("8 bytes equal Long " + (theGraph.vertices.count() * 8))
+    var degList: Array[(VertexId,Int)] = theGraph.degrees.sortBy(_._1).collect()
 
-    //val (facts: RDD[String], nodeDegs: VertexRDD[Int], degList: RDD[(Int,Int)]) = printGraph(theGraph)
+    inVertices.foreach(record => nodeIndices += record._2.data -> record._1)
 
-    var length = vRDD.count()
+    var degSum: Long = degList.map(_._2).sum
 
-    //saveGraph(sc, theGraph, "BA_Graph.step.0.csv")
+    var edgesToAdd: Array[Edge[edgeData]] = Array.empty[Edge[edgeData]]
+    var vertToAdd: Array[(VertexId, nodeData)] = Array.empty[(VertexId, nodeData)]
 
     for(i <- 1 to iter) {
-      val nodeDegs: VertexRDD[Int] = theGraph.degrees // returns degree for each node
+      val tempNodeProp: nodeData = nodeData(generateNodeData())
 
-      // reduces the list down to unique degrees, and adds up the number of nodes at that degree
-      val degList: RDD[(Int, Int)] = nodeDegs.map(record => (record._2, 1)).reduceByKey(_ + _)
-      // Calculates the total degree of the whole graph
-      val degSum: Int = degList.map(record => record._1 * record._2).sum().toInt
+      val srcId: VertexId =
+        if (nodeIndices.get(tempNodeProp.data).isDefined)
+          nodeIndices.get(tempNodeProp.data).head
+        else
+          degList.last._1 + 1
 
-      //(5L,12)
+       var srcIndex =
+        if (nodeIndices.get(tempNodeProp.data).isDefined)
+          nodeIndices.get(tempNodeProp.data).head.toInt
+        else
+          degList.length
 
-      //1 to 12, return 5L each time
-      //5L 5L 5L ..
-      //zipWithIndex
-      //5L,1 5L,2, 5L,3 ...
-      //map
-      //1,5L 2,5L
+      if(degList.head._1 != 0L) {
+        srcIndex -= 1
+      }
 
-      val attachList: RDD[(Int, VertexId)] = nodeDegs.flatMap { record =>
-        for {
-          x <- 1 to record._2
-        } yield record._1
-      }.zipWithIndex().map(record => (record._2.toInt, record._1))
+      vertToAdd = vertToAdd :+ (srcId, tempNodeProp)
+      degList = degList :+ (srcId, 0) //initial degree of 0
 
-      //grab a random number from 1 to Kf, degSum
+      val numEdgesToAdd = generateRandomFromFile("Edge_distributions")
 
-      //TODO: distribution of how many nodes to attach to
-//
-//      val numEdgesProb = r.nextFloat()
-//      var chance = 0.0
-//      var numEdges = 0
-//      var fileIter = Source.fromFile("EdgeProbability").getLines()
-//      while(fileIter.hasNext && numEdges == 0)
-//        {
-//          val line = fileIter.next()
-//          val percentage = line.split(" ")(1).toFloat
-//          chance = chance + percentage
-//          if(chance > numEdgesProb)
-//            {
-//              numEdges = line.split(":")(0).toInt
-//            }
-//        }
-      val numEdges = generateRandomFromFile("Edge_distributions")
+      for (i <- 1 to numEdgesToAdd) {
+        val attachTo: Long = (Math.abs(r.nextLong()) % (degSum-1)) + 1
 
-
-      length = length+1
-      val nodeID: Long = length.toLong
-      println("we are attaching to " + numEdges.toString)
-      val tempNodeData = nodeData("")
-      vRDD = vRDD.union(sc.parallelize(Array((nodeID, tempNodeData))))
-      for(x <- 1 to numEdges)
-        {
-          val Orig_byte_count = generateRandomFromFile("Original_byte_count")
-          val Orig_IP_byte_count = generateRandomFromFileConditional("Original_IP_byte_count",Orig_byte_count, sc)
-          val connectState = generateRandomFromFileConditionalString("Connection_state", Orig_byte_count, sc)
-          val connectType = generateRandomFromFileConditionalString("Connection_type", Orig_byte_count, sc)
-          val Duration = generateRandomFromFileConditional("Duration_of_connection", Orig_byte_count, sc)
-          val OriginalPackCount = generateRandomFromFileConditional("Original_packet_count", Orig_byte_count, sc)
-          val RespByteCount = generateRandomFromFileConditional("Resp_byte_count", Orig_byte_count, sc)
-          val ResIPByteCount = generateRandomFromFileConditional("Resp_IP_byte_count", Orig_byte_count, sc)
-          val RespPackCount = generateRandomFromFileConditional("Resp_packet_count", Orig_byte_count, sc)
-
-
-          println("this line has " + Orig_byte_count.toString + " of data in it")
-          println("The IP source packet had " + Orig_IP_byte_count + " of data in it")
-          println("The connect state is " + connectState)
-
-//          println("degSum is: " + degSum)
-//          println("total num of nodes is " + vRDD.count())
-//          println("total num of edges is " + eRDD.count())
-
-          val attachTo = r.nextInt(degSum)
-
-          //lookup that index number in the attachList
-          val attachNode: Long = attachList.lookup(attachTo).head
-
-          //TODO: distribution of edge properties with randomization
-
-          val tempEdgeData = edgeData("",connectType,Orig_byte_count,RespByteCount,connectState,OriginalPackCount,Orig_IP_byte_count,RespPackCount,RespByteCount,"")
-
-
-          println("the data is " + vRDD.lookup(attachNode).head.data)
-
-
-
-          println("Adding Node " + nodeID.toString + " connected to Node " + attachNode.toString + " with P = " + attachTo.toString)
-
-          eRDD = eRDD.union(sc.parallelize(Array(Edge(nodeID, attachNode, tempEdgeData))))
+        var dstIndex: Int = 0
+        var tempDegSum: Long = 0
+        while (tempDegSum < attachTo) {
+          tempDegSum += degList(dstIndex)._2
+          dstIndex+=1
         }
 
-//      theGraph = Graph(vRDD, eRDD, nodeData(""))
+        dstIndex = dstIndex - 1
+        //now we know that the node must attach at index
+        val dstId: VertexId = degList(dstIndex)._1
+
+        /*
+        print("degSum = " + degSum.toString + " r = " + attachTo.toString + " degList = ")
+        degList.sortBy(_._2).reverse.take(10).foreach(print)
+        print(" Adding Edge from " + srcId + " to " + dstId)
+        println()
+        */
+
+//        val Orig_byte_count = generateRandomFromFile("Original_byte_count")
+//        val Orig_IP_byte_count = generateRandomFromFileConditional("Original_IP_byte_count",Orig_byte_count, sc)
+//        val connectState = generateRandomFromFileConditionalString("Connection_state", Orig_byte_count, sc)
+//        val connectType = generateRandomFromFileConditionalString("Connection_type", Orig_byte_count, sc)
+//        val Duration = generateRandomFromFileConditional("Duration_of_connection", Orig_byte_count, sc)
+//        val OriginalPackCount = generateRandomFromFileConditional("Original_packet_count", Orig_byte_count, sc)
+//        val RespByteCount = generateRandomFromFileConditional("Resp_byte_count", Orig_byte_count, sc)
+//        val ResIPByteCount = generateRandomFromFileConditional("Resp_IP_byte_count", Orig_byte_count, sc)
+//        val RespPackCount = generateRandomFromFileConditional("Resp_packet_count", Orig_byte_count, sc)
+        val OriginalByteCnt =   dataGenerator.originalByteCount()
+
+
+        val tempEdgeProp: edgeData = edgeData("","",0L,0L,"",0L,0L,0L,0L,"")
+//        val tempEdgeProp: edgeData = edgeData("",connectType,Orig_byte_count,RespByteCount,connectState,OriginalPackCount,Orig_IP_byte_count,RespPackCount,RespByteCount,"")
+        edgesToAdd = edgesToAdd :+ Edge(srcId, dstId, tempEdgeProp)
+
+        //checking to make sure it is doing right with randomization
+        println("Original byte count: " + OriginalByteCnt)
+
+        //This doesn't matter, but to be correct, this code updates the degList dstId's degree
+        degList(dstIndex) = (degList(dstIndex)._1, degList(dstIndex)._2+1)
+        degList(srcIndex) = (degList(srcIndex)._1, degList(srcIndex)._2+1)
+
+        degSum += 2
+
+      }
     }
 
-    theGraph = Graph(vRDD, eRDD, nodeData(""))
-
+    theGraph = Graph(inVertices.union(sc.parallelize(vertToAdd)), inEdges.union(sc.parallelize(edgesToAdd)), nodeData(""))
     theGraph
   }
+
+  /*
+  def runGen(sc: SparkContext): Unit = {
+    val inVertices: RDD[(VertexId, nodeData)] = sc.parallelize(Array((1L, nodeData("")), (2L, nodeData("")), (3L, nodeData(""))))
+    val inEdges: RDD[Edge[edgeData]] = sc.parallelize(Array(
+      Edge(1L, 2L, edgeData("","",0,0,"",0,0,0,0,"")),
+      Edge(1L, 3L, edgeData("","",0,0,"",0,0,0,0,""))
+    ))
+
+    generateBAGraph(sc, inVertices, inEdges, 500)
+  }
+  */
+
 
 }

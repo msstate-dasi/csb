@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ScalaCompilerConfiguration">
-    <profile name="Maven 1" modules="csb_GraphGen">
+    <profile name="Maven 1" modules="csb">
       <parameters>
         <parameter value="-dependencyfile" />
-        <parameter value="$PROJECT_DIR$/target/.scala_dependencies" />
+        <parameter value="C:\Classes\research\svn\branches\spencer-dev\workspace-scala\csb_GraphGen\target/.scala_dependencies" />
       </parameters>
     </profile>
   </component>
