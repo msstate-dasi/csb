@@ -1,6 +1,9 @@
 import org.apache.spark.SparkContext
 import org.apache.spark.graphx.{Edge, Graph, VertexId}
 import org.apache.spark.rdd.RDD
+import org.apache.spark.mllib.linalg.distributed.{CoordinateMatrix, IndexedRowMatrix, MatrixEntry}
+
+import scala.util.Random
 
 
 /***
@@ -12,59 +15,77 @@ class kro_GraphGen {
   /*** Function to generate and return a kronecker graph
     *
     * @param sc Current Sparkcontext
-    * @param startMtx Seed adjacency matrix
+    * @param probMtx Probability Matrix used to generate Kronecker Graph
     * @param iter Number of iterations to perform kronecker
     * @return Graph containing vertices + nodeData, edges + edgeData
     */
-  def generateKroGraph(sc: SparkContext, startMtx: RDD[RDD[Int]], iter: Int): Graph[nodeData, edgeData] = {
+  def generateKroGraph(sc: SparkContext, probMtx: Array[Array[Float]], iter: Int): Graph[nodeData, edgeData] = {
+    val r = Random
 
-    var adjMtx = startMtx
+    val n1 = probMtx.length
+    println("n1 = " + n1)
+    val nVert = Math.pow(n1, iter).toInt
+    println("Vertices: " + nVert)
 
-    for (x <- 1 to iter) {
-      var tmpMtx = adjMtx.map(record => expMtx(sc, record, adjMtx))
-      adjMtx = tmpMtx.flatMap(record => flatMtx(sc, record).collect())
+    var vertexList: Array[(VertexId, nodeData)] = Array.empty[(VertexId, nodeData)]
+    var edgeList: Array[Edge[edgeData]] = Array.empty[Edge[edgeData]]
+
+    var probSum: Float = 0
+
+    for(i <- 0 to nVert - 1) {
+      if( i % (nVert/10) == 0) {
+        println( ((10*i).toDouble/nVert * 10).toInt)
+
+      }
+
+      val tempNodeData = nodeData("")
+      val vId: VertexId = i.toLong
+      vertexList = vertexList :+ (vId, tempNodeData)
+      for(j <- 0 to nVert - 1) {
+        val prob = r.nextFloat()
+
+        if (checkProb(prob, i, j, n1, iter, probMtx)) {
+          //we add an edge
+          val srcId = i.toLong
+          val dstId = j.toLong
+          val tempEdgeData = edgeData("","",0,0,"",0,0,0,0,"")
+
+          probSum += prob
+          edgeList = edgeList :+ Edge(srcId, dstId, tempEdgeData)
+        } else {
+          //we don't add an edge
+        }
+      }
     }
 
-    var eRDD = mtx2Edges(adjMtx)
+    println("Total # of edges: " + edgeList.length)
+    println("probSum: " + probSum)
 
-    var vertices = (for (x <- 1 to adjMtx.count().toInt) yield (x.toLong,nodeData("Node " + x.toString))).toArray
-
-    var vRDD: RDD[(VertexId, nodeData)] = sc.parallelize(vertices)
-
-    var theGraph = Graph(vRDD, eRDD, nodeData(""))
+    val vRDD = sc.parallelize(vertexList)
+    val eRDD = sc.parallelize(edgeList)
+    val theGraph = Graph(vRDD, eRDD, nodeData(""))
 
     theGraph
   }
 
-  /*** Function to flatten an expanded adjacency matrix
-    *
-    * @param sc Current Sparkcontext
-    * @param row Current row of the expanded matrix
-    * @return Row of the compressed matrix
-    */
-  def flatMtx(sc: SparkContext, row: RDD[RDD[RDD[Int]]]): RDD[RDD[Int]] = {
+  def checkProb(prob: Float, u: Int, v: Int, n1: Int, k: Int, probMtx: Array[Array[Float]]): Boolean = {
 
-    val redRow: RDD[RDD[Int]] = row.flatMap(record => record.collect())
+    val adjProb = prob
 
-    redRow
-  }
+    var result = 1f
 
-  /*** Function to expand an adjacency matrix according to the Kronecker Model
-    *
-    * @param sc Current Sparkcontext
-    * @param row Current row in the seed matrix
-    * @param adjMtx The seed matrix
-    * @return Expanded matrix row
-    */
-  def expMtx(sc: SparkContext, row: RDD[Int], adjMtx: RDD[RDD[Int]]): RDD[RDD[RDD[Int]]] = {
-    val zeroMtx: RDD[RDD[Int]] = adjMtx.map(record => record.map(record => 0))
-    val n = row.count().toInt - 1
+    for(i <- 0 to (k-1)) {
 
-    val temp: RDD[RDD[RDD[Int]]] = row.map (record =>
-     if (record == 1) adjMtx
-     else zeroMtx)
+      val x: Int = Math.floor(u/Math.pow(n1,i)).toInt % n1
+      val y: Int = Math.floor(v/Math.pow(n1,i)).toInt % n1
+      val currProb = probMtx(x)(y)
 
-    temp
+      result = result * currProb
+
+      if (result < adjProb) return false
+    }
+
+    return true
   }
 
   /*** Function to convert an adjaceny matrix to an edge RDD with correct properties, for use with GraphX

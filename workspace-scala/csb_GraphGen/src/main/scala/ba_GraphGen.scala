@@ -7,7 +7,7 @@ import org.apache.spark.graphx.{Graph, VertexRDD, _}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 
-import scala.collection.mutable.HashMap
+import scala.collection.mutable
 import scala.io.Source
 import scala.util.Random
 
@@ -190,7 +190,9 @@ class ba_GraphGen extends base_GraphGen {
     var theGraph = Graph(inVertices, inEdges, nodeData(""))
 
     //String is IP:Port ex. "192.168.0.1:80"
-    var nodeIndices: HashMap[String, VertexId] = HashMap[String, VertexId]()
+    println("test1")
+    var nodeIndices: mutable.HashMap[String, VertexId] = new mutable.HashMap[String, VertexId]()
+    println("test2")
     var degList: Array[(VertexId,Int)] = theGraph.degrees.sortBy(_._1).collect()
 
     inVertices.foreach(record => nodeIndices += record._2.data -> record._1)

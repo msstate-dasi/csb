@@ -26,12 +26,17 @@ object csb_GraphGen{
     val sc = new SparkContext(conf)
 
     // Command line arguments
-    if (args.length < 5) {
-      System.err.println("Usage: csb_GraphGen <seed_vertices_file> <seed_edges_file> <BA_iterations> <Kro_iterations> [partitions]")
+    if (args.length < 4) {
+      System.err.println("Usage: csb_GraphGen <seed_vertices_file> <seed_edges_file> <'ba' or 'kro'> <number of iterations>")
       System.exit(1)
     }
 
-    val distParser: multiEdgeDistributionJustin = new multiEdgeDistributionJustin();
+    val seedVertFile = args(0)
+    val seedEdgeFile = args(1)
+    val genType = args(2)
+    val genIter = args(3)
+
+    val distParser: multiEdgeDistributionJustin = new multiEdgeDistributionJustin()
     distParser.init(Array("conn.log", "asdf"))
 
     //Initialize an instance of each type of generator
@@ -39,11 +44,11 @@ object csb_GraphGen{
     val kroGenerator = new kro_GraphGen()
 
     //Open the seed files for vertices and edges
-    val vFile = sc.textFile(args(0))
-    val eFile = sc.textFile(args(1))
+    val vFile = sc.textFile(seedVertFile)
+    val eFile = sc.textFile(seedEdgeFile)
 
     println()
-    println("Loading seed graph with vertices file: " + args(0) + " and edges file " + args(1) + " ...")
+    println("Loading seed graph with vertices file: " + seedVertFile + " and edges file " + seedEdgeFile + " ...")
 
     //read in and parse vertices and edges
     var startTime = System.nanoTime()
@@ -66,60 +71,70 @@ object csb_GraphGen{
     //val inVertices: RDD[(VertexId, nodeData)] = sc.parallelize(Array((1L, nodeData("Node 1")),(2L, nodeData("Node 2")),(3L, nodeData("Node 3"))))
     //val inEdges: RDD[Edge[edgeData]] = sc.parallelize(Array(Edge(1L,2L,edgeData("","",0,0,"",0,0,0,0,"")),Edge(1L,3L,edgeData("","",0,0,"",0,0,0,0,""))))
 
-    println()
-    println("Running BA with " + args(2) + " iterations.")
-    println()
+    if(genType.toLowerCase() == "ba") {
+      println()
+      println("Running BA with " + genIter + " iterations.")
+      println()
 
-    //Generate a BA Graph with iterations
-    startTime = System.nanoTime()
-    val baGraph = baGenerator.generateBAGraph(sc, inVertices, inEdges, args(2).toInt)
-    timeSpan = (System.nanoTime() - startTime) / 1e9
-    println()
-    println("Finished generating BA graph.")
-    println("\tTotal time elapsed: " + timeSpan.toString)
-    println()
+      //Generate a BA Graph with iterations
+      startTime = System.nanoTime()
+      val baGraph = baGenerator.generateBAGraph(sc, inVertices, inEdges, genIter.toInt)
+      timeSpan = (System.nanoTime() - startTime) / 1e9
+      println()
+      println("Finished generating BA graph.")
+      println("\tTotal time elapsed: " + timeSpan.toString)
+      println()
 
-    println()
-    println("Saving BA Graph and Veracity measurements.....")
-    println()
+      println()
+      println("Saving BA Graph and Veracity measurements.....")
+      println()
 
-    //Save the ba graph into a format to be read later
-    startTime = System.nanoTime()
-    baGenerator.saveGraph(sc, baGraph, "ba_"+args(2))
-    baGenerator.saveGraphVeracity(sc, baGraph, "ba_"+args(2))
-    timeSpan = (System.nanoTime() - startTime) / 1e9
+      //Save the ba graph into a format to be read later
+      startTime = System.nanoTime()
+      baGenerator.saveGraph(sc, baGraph, "ba_" + genIter)
+      baGenerator.saveGraphVeracity(sc, baGraph, "ba_" + genIter)
+      timeSpan = (System.nanoTime() - startTime) / 1e9
 
-    println()
-    println("Finished saving BA graph.")
-    println("\tTotal time elapsed: " + timeSpan.toString)
-    println()
+      println()
+      println("Finished saving BA graph.")
+      println("\tTotal time elapsed: " + timeSpan.toString)
+      println()
+    } else if (genType.toLowerCase() == "kro") {
+      //val probMtx: Array[Array[Float]] = Array(Array(0.1f, 0.9f), Array(0.9f, 0.5f))
+      val probMtx: Array[Array[Float]] = Array(Array(0.9999f, 0.618312f), Array(0.151483f, 0.248188f))
 
-    /*
-    //Convert edge list to a Zero adjacency matrix
-    val n = inVertices.count().toInt
-    var adjArr: Array[Array[Int]] = (for (x <- 1 to n) yield (for(y<-1 to n) yield 0).toArray).toArray
+      println()
+      println("Running Kronecker with " + genIter + " iterations.")
+      println()
 
-    //Replace the spots where a side exists with 1
-    inEdges.foreach(record =>
-      adjArr(record.srcId.toInt - 1)(record.dstId.toInt - 1) = 0
-    )
-    //Make it parallel
-    val adjList: Array[RDD[Int]] = adjArr.map(record => sc.parallelize(record))
-    val adjMtx: RDD[RDD[Int]] = sc.parallelize(adjList)
+      //Run Kronecker with the adjacency matrix
+      startTime = System.nanoTime()
+      val kroGraph = kroGenerator.generateKroGraph(sc, probMtx, genIter.toInt)
+      timeSpan = (System.nanoTime() - startTime) / 1e9
+      println()
+      println("Finished generating Kronecker graph.")
+      println("\tTotal time elapsed: " + timeSpan.toString)
+      println()
 
-    println()
-    println("Running Kronecker with " + args(3) + " iterations.")
-    println()
+      println()
+      println("Saving Kronecker Graph and Veracity measurements.....")
+      println()
 
-    //Run Kronecker with the adjacency matrix
-    startTime = System.nanoTime()
-    val kroGraph = kroGenerator.generateKroGraph(sc, adjMtx, args(3).toInt)
-    timeSpan = (System.nanoTime() - startTime) / 1e9
-    println()
-    println("Finished generating Kronecker graph.")
-    println("\tTotal time elapsed: " + timeSpan.toString)
-    println()
-    */
+      //Save the ba graph into a format to be read later
+      startTime = System.nanoTime()
+      baGenerator.saveGraph(sc, kroGraph, "kro_" + genIter)
+      baGenerator.saveGraphVeracity(sc, kroGraph, "kro_" + genIter)
+      timeSpan = (System.nanoTime() - startTime) / 1e9
+
+      println()
+      println("Finished saving Kronecker graph.")
+      println("\tTotal time elapsed: " + timeSpan.toString)
+      println()
+    } else {
+      println()
+      println("Unknown graph generator.")
+      println()
+    }
 
     System.exit(0)
   }
