@@ -1,0 +1,279 @@
+Using Spark's default log4j profile: org/apache/spark/log4j-defaults.properties
+Finishes reading
+Total records: 2061681
+Number of bad records: 34520
+Total tcp/udp connections: 1943438
+Edge (count) Distribution below:
+Total edges: 1545279
+
+Loading seed graph with vertices file: spark_0_vectrices and edges file spark_0_edges ...
+
+Finished loading seed graph.
+	Total time elapsed: 0.023965507
+	Vertices 32769
+	Edges 86283
+
+
+Running Kronecker with 2 iterations.
+
+
+Finished generating Kronecker graph.
+	Total time elapsed: 0.047577078
+
+
+Saving Kronecker Graph and Veracity measurements.....
+
+Couldn't save file kro_2
+Couldn't save Veracity files
+
+Finished saving Kronecker graph.
+	Total time elapsed: 0.152522981
+
+Using Spark's default log4j profile: org/apache/spark/log4j-defaults.properties
+Finishes reading
+Total records: 2061681
+Number of bad records: 34520
+Total tcp/udp connections: 1943438
+Edge (count) Distribution below:
+Total edges: 1545279
+
+Loading seed graph with vertices file: spark_0_vectrices and edges file spark_0_edges ...
+
+Finished loading seed graph.
+	Total time elapsed: 0.024718001
+	Vertices 32769
+	Edges 86283
+
+
+Running Kronecker with 3 iterations.
+
+
+Finished generating Kronecker graph.
+	Total time elapsed: 0.05569692
+
+
+Saving Kronecker Graph and Veracity measurements.....
+
+Couldn't save file kro_3
+Couldn't save Veracity files
+
+Finished saving Kronecker graph.
+	Total time elapsed: 1.130223987
+
+Using Spark's default log4j profile: org/apache/spark/log4j-defaults.properties
+Finishes reading
+Total records: 2061681
+Number of bad records: 34520
+Total tcp/udp connections: 1943438
+Edge (count) Distribution below:
+Total edges: 1545279
+
+Loading seed graph with vertices file: spark_0_vectrices and edges file spark_0_edges ...
+
+Finished loading seed graph.
+	Total time elapsed: 0.023842584
+	Vertices 32769
+	Edges 86283
+
+
+Running Kronecker with 4 iterations.
+
+
+Finished generating Kronecker graph.
+	Total time elapsed: 0.084825684
+
+
+Saving Kronecker Graph and Veracity measurements.....
+
+Couldn't save file kro_4
+[Stage 3:================================================>     (125 + 15) / 140][Stage 4:=========================>                             (55 + 20) / 120][Stage 4:=============================>                         (65 + 20) / 120][Stage 4:===========================================>           (95 + 20) / 120][Stage 5:===============>                                       (39 + 20) / 140][Stage 5:=======================>                               (59 + 21) / 140][Stage 5:=================================>                     (85 + 20) / 140]                                                                                Couldn't save Veracity files
+
+Finished saving Kronecker graph.
+	Total time elapsed: 4.420249878
+
+Using Spark's default log4j profile: org/apache/spark/log4j-defaults.properties
+Finishes reading
+Total records: 2061681
+Number of bad records: 34520
+Total tcp/udp connections: 1943438
+Edge (count) Distribution below:
+Total edges: 1545279
+
+Loading seed graph with vertices file: spark_0_vectrices and edges file spark_0_edges ...
+
+Finished loading seed graph.
+	Total time elapsed: 0.025868959
+[Stage 0:>                                                          (0 + 2) / 2]                                                                                	Vertices 32769
+	Edges 86283
+
+
+Running Kronecker with 5 iterations.
+
+
+Finished generating Kronecker graph.
+	Total time elapsed: 0.082937223
+
+
+Saving Kronecker Graph and Veracity measurements.....
+
+Couldn't save file kro_5
+[Stage 4:>                                                        (0 + 0) / 140][Stage 4:======================>                                (57 + 20) / 140][Stage 4:====================================>                  (93 + 20) / 140][Stage 4:====================================================>  (133 + 7) / 140][Stage 5:===================>                                   (49 + 21) / 140][Stage 5:========================>                              (63 + 20) / 140][Stage 5:===============================>                       (81 + 20) / 140][Stage 5:======================================================>(139 + 1) / 140]                                                                                Couldn't save Veracity files
+
+Finished saving Kronecker graph.
+	Total time elapsed: 5.051725162
+
+Using Spark's default log4j profile: org/apache/spark/log4j-defaults.properties
+Finishes reading
+Total records: 2061681
+Number of bad records: 34520
+Total tcp/udp connections: 1943438
+Edge (count) Distribution below:
+Total edges: 1545279
+
+Loading seed graph with vertices file: spark_0_vectrices and edges file spark_0_edges ...
+
+Finished loading seed graph.
+	Total time elapsed: 0.023884566
+	Vertices 32769
+	Edges 86283
+
+
+Running Kronecker with 6 iterations.
+
+
+Finished generating Kronecker graph.
+	Total time elapsed: 0.0670114
+
+
+Saving Kronecker Graph and Veracity measurements.....
+
+Couldn't save file kro_6
+Couldn't save Veracity files
+
+Finished saving Kronecker graph.
+	Total time elapsed: 2.63193838
+
+Using Spark's default log4j profile: org/apache/spark/log4j-defaults.properties
+Finishes reading
+Total records: 2061681
+Number of bad records: 34520
+Total tcp/udp connections: 1943438
+Edge (count) Distribution below:
+Total edges: 1545279
+
+Loading seed graph with vertices file: spark_0_vectrices and edges file spark_0_edges ...
+
+Finished loading seed graph.
+	Total time elapsed: 0.024149707
+	Vertices 32769
+	Edges 86283
+
+
+Running Kronecker with 7 iterations.
+
+
+Finished generating Kronecker graph.
+	Total time elapsed: 0.067046017
+
+
+Saving Kronecker Graph and Veracity measurements.....
+
+Couldn't save file kro_7
+Couldn't save Veracity files
+
+Finished saving Kronecker graph.
+	Total time elapsed: 2.75689306
+
+Using Spark's default log4j profile: org/apache/spark/log4j-defaults.properties
+Finishes reading
+Total records: 2061681
+Number of bad records: 34520
+Total tcp/udp connections: 1943438
+Edge (count) Distribution below:
+Total edges: 1545279
+
+Loading seed graph with vertices file: spark_0_vectrices and edges file spark_0_edges ...
+
+Finished loading seed graph.
+	Total time elapsed: 0.024370372
+[Stage 0:>                                                          (0 + 0) / 2]                                                                                	Vertices 32769
+	Edges 86283
+
+
+Running Kronecker with 8 iterations.
+
+
+Finished generating Kronecker graph.
+	Total time elapsed: 0.099559466
+
+
+Saving Kronecker Graph and Veracity measurements.....
+
+Couldn't save file kro_8
+[Stage 2:===========>  (168 + 20) / 200][Stage 3:>                (0 + 0) / 200][Stage 3:============>                                          (44 + 20) / 200][Stage 3:=======================================================(200 + 0) / 200][Stage 4:=======>                                               (28 + 20) / 200][Stage 4:=============>                                         (48 + 20) / 200][Stage 4:===================>                                   (70 + 20) / 200][Stage 4:===========================>                           (99 + 20) / 200][Stage 4:=================================>                    (125 + 20) / 200][Stage 4:======================================>               (144 + 20) / 200][Stage 4:=========================================>            (153 + 20) / 200][Stage 4:==========================================>           (157 + 20) / 200][Stage 4:==========================================>           (158 + 20) / 200][Stage 4:===========================================>          (161 + 20) / 200][Stage 4:============================================>         (163 + 20) / 200][Stage 4:=============================================>        (167 + 20) / 200][Stage 4:=============================================>        (170 + 20) / 200][Stage 4:==============================================>       (173 + 20) / 200][Stage 4:===============================================>      (176 + 20) / 200][Stage 4:================================================>     (178 + 20) / 200][Stage 4:=================================================>    (182 + 18) / 200][Stage 4:=================================================>    (185 + 15) / 200][Stage 4:==================================================>   (188 + 12) / 200][Stage 4:====================================================>  (192 + 8) / 200]                                                                                [Stage 11:===============================================>     (178 + 20) / 200]                                                                                Couldn't save Veracity files
+
+Finished saving Kronecker graph.
+	Total time elapsed: 8.219020568
+
+Using Spark's default log4j profile: org/apache/spark/log4j-defaults.properties
+Finishes reading
+Total records: 2061681
+Number of bad records: 34520
+Total tcp/udp connections: 1943438
+Edge (count) Distribution below:
+Total edges: 1545279
+
+Loading seed graph with vertices file: spark_0_vectrices and edges file spark_0_edges ...
+
+Finished loading seed graph.
+	Total time elapsed: 0.023673343
+	Vertices 32769
+	Edges 86283
+
+
+Running Kronecker with 9 iterations.
+
+
+Finished generating Kronecker graph.
+	Total time elapsed: 0.115647637
+
+
+Saving Kronecker Graph and Veracity measurements.....
+
+Couldn't save file kro_9
+[Stage 2:============> (195 + 21) / 220][Stage 3:>                (0 + 0) / 300][Stage 3:====================>                                 (115 + 20) / 300][Stage 4:>                                                       (0 + 20) / 220][Stage 4:>                                                       (1 + 20) / 220][Stage 4:=>                                                      (4 + 20) / 220][Stage 4:=======>                                               (30 + 20) / 220][Stage 4:==================>                                    (75 + 20) / 220][Stage 4:==============================>                       (124 + 21) / 220][Stage 4:==================================>                   (139 + 20) / 220][Stage 4:===============================================>      (194 + 20) / 220][Stage 5:===============================================>      (264 + 20) / 300]                                                                                [Stage 11:===========================>                         (153 + 20) / 300]                                                                                Couldn't save Veracity files
+
+Finished saving Kronecker graph.
+	Total time elapsed: 6.689433238
+
+Using Spark's default log4j profile: org/apache/spark/log4j-defaults.properties
+Finishes reading
+Total records: 2061681
+Number of bad records: 34520
+Total tcp/udp connections: 1943438
+Edge (count) Distribution below:
+Total edges: 1545279
+
+Loading seed graph with vertices file: spark_0_vectrices and edges file spark_0_edges ...
+
+Finished loading seed graph.
+	Total time elapsed: 0.024455706
+[Stage 0:>                                                          (0 + 0) / 2]                                                                                	Vertices 32769
+	Edges 86283
+
+
+Running Kronecker with 10 iterations.
+
+
+Finished generating Kronecker graph.
+	Total time elapsed: 0.09611329
+
+
+Saving Kronecker Graph and Veracity measurements.....
+
+Couldn't save file kro_10
+[Stage 3:=>                                                      (7 + 21) / 220][Stage 3:=============================>                        (119 + 21) / 220][Stage 4:=============>                                         (40 + 20) / 160][Stage 4:========================>                              (71 + 20) / 160][Stage 4:=========================>                             (75 + 20) / 160][Stage 4:==============================================>       (139 + 20) / 160][Stage 5:=====>                                                 (21 + 20) / 220][Stage 5:==========>                                            (41 + 21) / 220][Stage 5:==========================================>           (174 + 20) / 220]                                                                                Couldn't save Veracity files
+
+Finished saving Kronecker graph.
+	Total time elapsed: 4.964895253
+
