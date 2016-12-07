@@ -48,7 +48,7 @@ class kro_GraphGen {
           //we add an edge
           val srcId = i.toLong
           val dstId = j.toLong
-          val tempEdgeData = edgeData("","",0,0,"",0,0,0,0,"")
+          val tempEdgeData = edgeData("","",0, 0,0,"",0,0,0,0,"")
 
           probSum += prob
           edgeList = edgeList :+ Edge(srcId, dstId, tempEdgeData)
@@ -99,7 +99,7 @@ class kro_GraphGen {
       .map(record => (record._1, record._2.zipWithIndex.map(record=>(record._2, record._1))))
       .flatMap{record =>
         val edgesTo = record._2.filter(record => record._2!=0).map(record => record._1)
-        edgesTo.map(record2 => Edge(record._1, record2, edgeData("","",0,0,"",0,0,0,0,""))).collect()
+        edgesTo.map(record2 => Edge(record._1, record2, edgeData("","",0, 0,0,"",0,0,0,0,""))).collect()
       }
 
   }

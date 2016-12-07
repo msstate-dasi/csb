@@ -17,6 +17,7 @@
   */
 case class edgeData(TS: String,
                     PROTOCOL: String,
+                    DURATION: Double,
                     ORIG_BYTES: Long,
                     RESP_BYTES: Long,
                     CONN_STATE: String,

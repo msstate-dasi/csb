@@ -27,7 +27,7 @@ var respPackCntStr:       String = ""
 
   //constructor
   {
-    this.edgeCnt =              readFile("EdgeProbability")
+    this.edgeCnt =              readFile("Edge_distributions")
     this.originalBytesStr =     readFile("Original_byte_count")
     this.originalIPByteCntStr = readFile("Original_IP_byte_count")
     this.connectionStateStr =   readFile("Connection_state")
@@ -46,30 +46,56 @@ var respPackCntStr:       String = ""
   }
 
 
-    def edgeCount(): Int =
+    def getEdgeCount(): Int =
   {
     return generateRandNumFromFileDist(this.edgeCnt)
   }
-  def originalByteCount(): Long =
+
+  def getOriginalByteCount(): Long =
   {
     return generateRandNumFromFileDist(this.originalBytesStr)
   }
-  def originalIPByteCount(byteCnt: Long, sc: SparkContext): Long =
+
+  def getOriginalIPByteCount(byteCnt: Long, sc: SparkContext): Long =
   {
     return generateRandNumBasedBytes(this.originalIPByteCntStr, byteCnt, sc)
   }
-  def connectState(byteCnt: Long, sc:  SparkContext): String =
+
+  def getConnectState(byteCnt: Long, sc:  SparkContext): String =
   {
     return generateRandStrBasedBytes(this.connectionStateStr, byteCnt, sc)
   }
 
-//  val connectState = generateRandomFromFileConditionalString("Connection_state", Orig_byte_count, sc)
-//  val connectType = generateRandomFromFileConditionalString("Connection_type", Orig_byte_count, sc)
-//  val Duration = generateRandomFromFileConditional("Duration_of_connection", Orig_byte_count, sc)
-//  val OriginalPackCount = generateRandomFromFileConditional("Original_packet_count", Orig_byte_count, sc)
-//  val RespByteCount = generateRandomFromFileConditional("Resp_byte_count", Orig_byte_count, sc)
-//  val ResIPByteCount = generateRandomFromFileConditional("Resp_IP_byte_count", Orig_byte_count, sc)
-//  val RespPackCount = generateRandomFromFileConditional("Resp_packet_count", Orig_byte_count, sc)
+  def getConnectType(byteCnt: Long, sc: SparkContext): String =
+  {
+    return generateRandStrBasedBytes(this.connectionTypeStr, byteCnt, sc)
+  }
+
+  def getDuration(byteCnt: Long, sc: SparkContext): Double =
+  {
+    return generateRandDoubleWithinRange(generateRandStrBasedBytes(this.durationStr, byteCnt, sc).split("\t")(0))
+  }
+
+  def getOriginalPackCnt(byteCnt: Long, sc: SparkContext): Long =
+  {
+    return generateRandNumBasedBytes(this.originalPackCntStr, byteCnt, sc)
+  }
+
+  def getRespByteCnt(byteCnt: Long, sc: SparkContext): Long =
+  {
+    return generateRandNumBasedBytes(this.respByteCntStr, byteCnt, sc)
+  }
+
+  def getRespIPByteCnt(byteCnt: Long, sc: SparkContext): Long =
+  {
+    return generateRandNumBasedBytes(this.respIPByteCntStr, byteCnt, sc)
+  }
+
+  def getRespPackCnt(byteCnt: Long, sc: SparkContext): Long =
+  {
+    return generateRandNumBasedBytes(this.respPackCntStr, byteCnt, sc)
+  }
+
 
 
 
@@ -99,7 +125,7 @@ var respPackCntStr:       String = ""
     while(strIter.hasNext && num == 0)
     {
       val line = strIter.next()
-      val percentage = line.split("\t")(1).toFloat
+      val percentage = line.split("\\*")(1).split("\t")(1).toFloat
       chance = chance + percentage
       if(chance > numEdgesProb)
       {
@@ -161,18 +187,29 @@ var respPackCntStr:       String = ""
     return r.nextInt(end - begin) + begin
   }
 
-  def generateRandStrBasedBytes(filename: String, byteNum: Long, sc: SparkContext): String =
+  def generateRandDoubleWithinRange(range: String): Double =
+  {
+    val begin = range.split("-")(0).toInt
+    val end   = range.split("-")(1).toInt
+
+    val r = Random
+    val decimal = r.nextDouble()
+    val digit = r.nextInt(end - begin) + begin
+    return digit + decimal
+  }
+
+  def generateRandStrBasedBytes(fileContents: String, byteNum: Long, sc: SparkContext): String =
   {
     val r = new Random
     val numEdgesProb = r.nextFloat()
     var chance = 0.0
     var num = 0
-    var fileIter = Source.fromFile(filename).getLines()
+    var rdd = sc.parallelize(fileContents.split("\n"))
     //    fileIter.next() //we do the next here since the heading is always just text describeing the file
 
 
-    var file = sc.textFile(filename)
-    var text = file.filter(record => record.split("\\*")(0).split("-")(0).toLong <= byteNum && record.split("\\*")(0).split("-")(1).toLong >= byteNum)
+//    var file = sc.textFile(filename)
+    var text = rdd.filter(record => record.split("\\*")(0).split("-")(0).toLong <= byteNum && record.split("\\*")(0).split("-")(1).toLong >= byteNum)
 
 //
 //    var allStr = ""
@@ -190,7 +227,7 @@ var respPackCntStr:       String = ""
 
     val line = generateRandStrFromFileDist(text.toLocalIterator)
 
-    return line.split("\t").head.split("\\*")(1)
+    return line.split(" ").head.split("\\*")(1)
   }
 
   /***

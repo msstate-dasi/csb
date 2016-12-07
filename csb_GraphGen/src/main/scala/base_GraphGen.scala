@@ -99,4 +99,44 @@ class base_GraphGen {
   def outDegreesDist(theGraph: Graph[nodeData, edgeData]): RDD[(Int,Int)] = {
     theGraph.outDegrees.map(record => (record._2,1)).reduceByKey(_+_)
   }
+
+  def saveGraphAsConnFile(sc: SparkContext, theGraph: Graph[nodeData, edgeData], path: String): Unit = {
+    val eRDD = theGraph.edges
+    val vRDD = theGraph.vertices
+
+    val connRDD: RDD[String] = eRDD.sortBy(record => record.attr.TS.toDouble).map{ record =>
+      val srcNodeData = vRDD.lookup(record.srcId).head
+      val dstNodeData = vRDD.lookup(record.dstId).head
+      val edgeData = record.attr
+
+      edgeData.TS + "\t" +
+      "asdfasdfasdfasdf" + "\t" +
+      srcNodeData.data.split(":")(0) + "\t" +
+      srcNodeData.data.split(":")(1) + "\t" +
+      dstNodeData.data.split(":")(0) + "\t" +
+      dstNodeData.data.split(":")(1) + "\t" +
+      edgeData.PROTOCOL + "\t" +
+      "-" + "\t" +
+      edgeData.DURATION + "\t" +
+      edgeData.ORIG_BYTES + "\t" +
+      edgeData.RESP_BYTES + "\t" +
+      edgeData.CONN_STATE + "\t" +
+      "-" + "\t" +
+      "-" + "\t" +
+      "0" + "\t" +
+      "F" + "\t" +
+      edgeData.ORIG_PKTS + "\t" +
+      edgeData.ORIG_IP_BYTES + "\t" +
+      edgeData.RESP_PKTS + "\t" +
+      edgeData.RESP_IP_BYTES + "\t" +
+      "(empty)" + "\t" +
+      edgeData.DESC
+    }
+
+    try {
+      connRDD.repartition(1).saveAsTextFile(path)
+    } catch {
+      case e: Exception => println("Couldn't save file " + path)
+    }
+  }
 }
