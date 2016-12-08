@@ -1,7 +1,6 @@
-import java.io.FileWriter
+package edu.msstate.dasi
 
 import org.apache.spark.SparkContext
-import org.apache.spark.api.python.WriteInputFormatTestDataGenerator
 
 import scala.util.Random
 
@@ -11,18 +10,17 @@ import scala.util.Random
 
 import scala.io.Source
 
-object DataGenerator{
-
+class data_Generator {
   var edgeCnt:            String = ""
-var originalBytesStr:     String = ""
-var originalIPByteCntStr: String = ""
-var connectionStateStr:   String = ""
-var connectionTypeStr:    String = ""
-var durationStr:          String = ""
-var originalPackCntStr:   String = ""
-var respByteCntStr:       String = ""
-var respIPByteCntStr:     String = ""
-var respPackCntStr:       String = ""
+  var originalBytesStr:     String = ""
+  var originalIPByteCntStr: String = ""
+  var connectionStateStr:   String = ""
+  var connectionTypeStr:    String = ""
+  var durationStr:          String = ""
+  var originalPackCntStr:   String = ""
+  var respByteCntStr:       String = ""
+  var respIPByteCntStr:     String = ""
+  var respPackCntStr:       String = ""
 
 
   //constructor
@@ -42,11 +40,11 @@ var respPackCntStr:       String = ""
 
   def readFile(fileName: String): String=
   {
-   return Source.fromFile(fileName).mkString
+    return Source.fromFile(fileName).mkString
   }
 
 
-    def getEdgeCount(): Int =
+  def getEdgeCount(): Int =
   {
     return generateRandNumFromFileDist(this.edgeCnt)
   }
@@ -165,17 +163,17 @@ var respPackCntStr:       String = ""
     val splitFileContents = sc.parallelize(fileContents.split("\n"))
     var text = splitFileContents.filter(record => record.split("\\*")(0).split("-")(0).toLong <= byteNum && record.split("\\*")(0).split("-")(1).toLong >= byteNum)
 
-//    var allStr = ""
-//
-//    for (aStr <- text.collect())
-//    {
-//      allStr = allStr + aStr + "\n"
-//    }
+    //    var allStr = ""
+    //
+    //    for (aStr <- text.collect())
+    //    {
+    //      allStr = allStr + aStr + "\n"
+    //    }
 
-//    var temp = new FileWriter("temp")
-//
-//    temp.write(allStr)
-//    temp.close()
+    //    var temp = new FileWriter("temp")
+    //
+    //    temp.write(allStr)
+    //    temp.close()
 
     var line: String = generateRandStrFromFileDist(text.toLocalIterator)
 
@@ -208,22 +206,22 @@ var respPackCntStr:       String = ""
     //    fileIter.next() //we do the next here since the heading is always just text describeing the file
 
 
-//    var file = sc.textFile(filename)
+    //    var file = sc.textFile(filename)
     var text = rdd.filter(record => record.split("\\*")(0).split("-")(0).toLong <= byteNum && record.split("\\*")(0).split("-")(1).toLong >= byteNum)
 
-//
-//    var allStr = ""
-//
-//    for (aStr <- text.collect())
-//    {
-//      allStr = allStr + aStr + "\n"
-//    }
-//
-//
-//    var temp = new FileWriter("temp")
-//
-//    temp.write(allStr)
-//    temp.close()
+    //
+    //    var allStr = ""
+    //
+    //    for (aStr <- text.collect())
+    //    {
+    //      allStr = allStr + aStr + "\n"
+    //    }
+    //
+    //
+    //    var temp = new FileWriter("temp")
+    //
+    //    temp.write(allStr)
+    //    temp.close()
 
     val line = generateRandStrFromFileDist(text.toLocalIterator)
 
