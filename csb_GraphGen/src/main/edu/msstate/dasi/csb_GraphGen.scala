@@ -235,9 +235,9 @@ object csb_GraphGen{
 
 
     params.mode match {
-      case "gen_dist" => println("gen_dist")
+      case "gen_dist" => run_gendist(sc, params)
       case "ba" => run_ba(sc, params)
-      case "kro" => println("kro")
+      case "kro" => run_kro(sc, params)
       case _ => sys.exit(1)
     }
 
@@ -245,6 +245,9 @@ object csb_GraphGen{
   }
 
   def run_gendist(sc: SparkContext, params: Params): Boolean = {
+
+
+
     val distParser: multiEdgeDistribution = new multiEdgeDistribution()
     distParser.init(Array(params.augLog))
 
@@ -255,7 +258,6 @@ object csb_GraphGen{
     baGraph.run(sc, params.seedVertices, params.seedEdges, params.baIter)
 
     return true
-
   }
   def run_kro(sc: SparkContext, params: Params): Boolean = {
     val kroGraph = new kro_GraphGen()
