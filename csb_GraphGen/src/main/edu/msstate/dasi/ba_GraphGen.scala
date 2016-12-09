@@ -12,7 +12,7 @@ import scala.util.Random
   */
 class ba_GraphGen extends base_GraphGen with java.io.Serializable {
 
-  def run(sc: SparkContext, seedVertFile: String, seedEdgeFile: String, baIter: Int): Boolean = {
+  def run(sc: SparkContext, partitions: Int, seedVertFile: String, seedEdgeFile: String, baIter: Int, outputGraphPrefix: String, noPropFlag: Boolean, debugFlag: Boolean): Boolean = {
     println()
     println("Loading seed graph with vertices file: " + seedVertFile + " and edges file " + seedEdgeFile + " ...")
 
@@ -40,7 +40,7 @@ class ba_GraphGen extends base_GraphGen with java.io.Serializable {
 
     //Generate a BA Graph with iterations
     startTime = System.nanoTime()
-    theGraph = generateBAGraph(sc, inVertices, inEdges, baIter.toInt)
+    theGraph = generateBAGraph(sc, partitions, inVertices, inEdges, baIter.toInt, noPropFlag, debugFlag)
     timeSpan = (System.nanoTime() - startTime) / 1e9
     println()
     println("Finished generating BA graph.")
@@ -53,8 +53,8 @@ class ba_GraphGen extends base_GraphGen with java.io.Serializable {
 
     //Save the ba graph into a format to be read later
     startTime = System.nanoTime()
-    saveGraph(sc, "ba_" + baIter)
-    saveGraphVeracity(sc, "ba_" + baIter)
+    saveGraph(sc, outputGraphPrefix + "ba_" + baIter)
+    saveGraphVeracity(sc, outputGraphPrefix + "ba_" + baIter)
     timeSpan = (System.nanoTime() - startTime) / 1e9
 
     println()
@@ -73,12 +73,11 @@ class ba_GraphGen extends base_GraphGen with java.io.Serializable {
     * @param iter Number of iterations to perform BA
     * @return Graph containing vertices + edu.msstate.dasi.nodeData, edges + edu.msstate.dasi.edgeData
     */
-  def generateBAGraph(sc: SparkContext, inVertices: RDD[(VertexId, nodeData)], inEdges: RDD[Edge[edgeData]], iter: Int): Graph[nodeData,edgeData] = {
+  def generateBAGraph(sc: SparkContext, partitions: Int, inVertices: RDD[(VertexId, nodeData)], inEdges: RDD[Edge[edgeData]], iter: Int, noPropFlag: Boolean, debugFlag: Boolean): Graph[nodeData,edgeData] = {
     val r = Random
     val dataGen = new data_Generator()
 
-    var theGraph = Graph(inVertices, inEdges, nodeData(""))
-
+    theGraph = Graph(inVertices, inEdges, nodeData(""))
 
     var nodeIndices: mutable.HashMap[String, VertexId] = new mutable.HashMap[String, VertexId]()
     var degList: Array[(VertexId,Int)] = theGraph.degrees.sortBy(_._1).collect()
@@ -90,72 +89,81 @@ class ba_GraphGen extends base_GraphGen with java.io.Serializable {
     var edgesToAdd: Array[Edge[edgeData]] = Array.empty[Edge[edgeData]]
     var vertToAdd: Array[(VertexId, nodeData)] = Array.empty[(VertexId, nodeData)]
 
-    for(i <- 1 to iter) {
-      //String is IP:Port ex. "192.168.0.1:80"
-      val tempNodeProp: nodeData = nodeData(dataGen.generateNodeData())
+    var nodesPerIter = partitions
 
-      val srcId: VertexId =
-        if (nodeIndices.get(tempNodeProp.data).isDefined)
-          nodeIndices.get(tempNodeProp.data).head
-        else
-          degList.last._1 + 1
+    val iters: Int = if(iter > partitions) math.ceil(iter.toDouble / partitions).toInt else { nodesPerIter = iter; 1}
 
-       var srcIndex =
-        if (nodeIndices.get(tempNodeProp.data).isDefined)
-          nodeIndices.get(tempNodeProp.data).head.toInt
-        else
-          degList.length
-
-      if(degList.head._1 != 0L) {
-        srcIndex -= 1
-      }
-
-      vertToAdd = vertToAdd :+ (srcId, tempNodeProp)
-      degList = degList :+ (srcId, 0) //initial degree of 0
-
-      val numEdgesToAdd = dataGen.getEdgeCount()
-
-      for (i <- 1 to numEdgesToAdd) {
-        val attachTo: Long = (Math.abs(r.nextLong()) % (degSum-1)) + 1
-
-        var dstIndex: Int = 0
-        var tempDegSum: Long = 0
-        while (tempDegSum < attachTo) {
-          tempDegSum += degList(dstIndex)._2
-          dstIndex+=1
+    for(i <- 1 to iters) {
+      println(i + "/" + math.ceil(iter.toDouble / partitions).toInt)
+      for(n <- 1 to nodesPerIter) {
+        //String is IP:Port ex. "192.168.0.1:80"
+        val tempNodeProp: nodeData = if (noPropFlag) nodeData() else nodeData(dataGen.generateNodeData())
+        val srcId: VertexId =
+          if (nodeIndices.contains(tempNodeProp.data))
+            nodeIndices.get(tempNodeProp.data).head
+          else
+            degList.last._1.toLong + 1
+        var srcIndex =
+          if (nodeIndices.contains(tempNodeProp.data))
+            nodeIndices.get(tempNodeProp.data).head.toInt
+          else
+            degList.length
+        if (degList.head._1 != 0L) {
+          srcIndex -= 1
         }
 
-        dstIndex = dstIndex - 1
-        //now we know that the node must attach at index
-        val dstId: VertexId = degList(dstIndex)._1
+        vertToAdd = vertToAdd :+ (srcId, tempNodeProp)
+        degList = degList :+ (srcId, 0) //initial degree of 0
 
-        /*
+        val numEdgesToAdd = dataGen.getEdgeCount()
+
+        for (i <- 1 to numEdgesToAdd) {
+          val attachTo: Long = (Math.abs(r.nextLong()) % (degSum - 1)) + 1
+
+          var dstIndex: Int = 0
+          var tempDegSum: Long = 0
+          while (tempDegSum < attachTo) {
+            tempDegSum += degList(dstIndex)._2
+            dstIndex += 1
+          }
+
+          dstIndex = dstIndex - 1
+          //now we know that the node must attach at index
+          val dstId: VertexId = degList(dstIndex)._1
+
+          /*
         print("degSum = " + degSum.toString + " r = " + attachTo.toString + " degList = ")
         degList.sortBy(_._2).reverse.take(10).foreach(print)
         print(" Adding Edge from " + srcId + " to " + dstId)
         println()
         */
 
-        val ORIGBYTES     = dataGen.getOriginalByteCount()
-        val ORIGIPBYTE    = dataGen.getOriginalIPByteCount(ORIGBYTES, sc)
-        val CONNECTSTATE  = dataGen.getConnectState(ORIGBYTES, sc)
-        val CONNECTTYPE   = dataGen.getConnectType(ORIGBYTES, sc)
-        val DURATION      = dataGen.getDuration(ORIGBYTES, sc)
-        val ORIGPACKCNT   = dataGen.getOriginalPackCnt(ORIGBYTES, sc)
-        val RESPBYTECNT   = dataGen.getRespByteCnt(ORIGBYTES, sc)
-        val RESPIPBYTECNT = dataGen.getRespIPByteCnt(ORIGBYTES, sc)
-        val RESPPACKCNT   = dataGen.getRespPackCnt(ORIGBYTES, sc)
-        val tempEdgeProp: edgeData = edgeData("", CONNECTTYPE, DURATION, ORIGBYTES,RESPBYTECNT,CONNECTSTATE,ORIGPACKCNT,ORIGIPBYTE,RESPPACKCNT,RESPBYTECNT,"")
-        //val tempEdgeProp: edgeData = edgeData()
-        edgesToAdd = edgesToAdd :+ Edge(srcId, dstId, tempEdgeProp)
+          val tempEdgeProp = if (noPropFlag) {
+            edgeData()
+          } else {
+            val ORIGBYTES = dataGen.getOriginalByteCount()
+            val ORIGIPBYTE = dataGen.getOriginalIPByteCount(ORIGBYTES, sc)
+            val CONNECTSTATE = dataGen.getConnectState(ORIGBYTES, sc)
+            val CONNECTTYPE = dataGen.getConnectType(ORIGBYTES, sc)
+            val DURATION = dataGen.getDuration(ORIGBYTES, sc)
+            val ORIGPACKCNT = dataGen.getOriginalPackCnt(ORIGBYTES, sc)
+            val RESPBYTECNT = dataGen.getRespByteCnt(ORIGBYTES, sc)
+            val RESPIPBYTECNT = dataGen.getRespIPByteCnt(ORIGBYTES, sc)
+            val RESPPACKCNT = dataGen.getRespPackCnt(ORIGBYTES, sc)
+            edgeData("", CONNECTTYPE, DURATION, ORIGBYTES, RESPBYTECNT, CONNECTSTATE, ORIGPACKCNT, ORIGIPBYTE, RESPPACKCNT, RESPBYTECNT, "")
+            //val tempEdgeProp: edgeData = edgeData()
+          }
+          edgesToAdd = edgesToAdd :+ Edge(srcId, dstId, tempEdgeProp)
 
-        //This doesn't matter, but to be correct, this code updates the degList dstId's degree
-        degList(dstIndex) = (degList(dstIndex)._1, degList(dstIndex)._2+1)
-        degList(srcIndex) = (degList(srcIndex)._1, degList(srcIndex)._2+1)
+          //This doesn't matter, but to be correct, this code updates the degList dstId's degree
+          degList(dstIndex) = (degList(dstIndex)._1, degList(dstIndex)._2 + 1)
+          degList(srcIndex) = (degList(srcIndex)._1, degList(srcIndex)._2 + 1)
 
-        degSum += 2
+          degSum += 2
 
+        }
       }
+      Array(true)
     }
 
     theGraph = Graph(inVertices.union(sc.parallelize(vertToAdd)), inEdges.union(sc.parallelize(edgesToAdd)), nodeData(""))
@@ -170,9 +178,11 @@ class ba_GraphGen extends base_GraphGen with java.io.Serializable {
   private def parseNodeData(inData: Array[String]): (Boolean, (Long, nodeData)) = {
     val result: (Boolean, (VertexId, nodeData)) =
       try {
-        (true, (inData(0).toLong, nodeData(inData(1).stripPrefix("edu.msstate.dasi.nodeData(").stripSuffix(")"))))
+        (true, (inData(0).toLong, nodeData(inData(1).stripPrefix("nodeData(").stripSuffix(")"))))
       } catch {
-        case _: Throwable => (false, (0L, nodeData("")))
+        case _: Throwable =>
+          println("!!! THERE MAY BE ERRORS IN THE DATASET !!!")
+          (false, (0L, nodeData("")))
       }
 
     result
@@ -190,28 +200,28 @@ class ba_GraphGen extends base_GraphGen with java.io.Serializable {
         val dstNode = inData(1).toLong
 
         //Just a bunch of string formatting and splitting
-        val edgeStrs = inData(2).stripPrefix("edu.msstate.dasi.edgeData(").stripSuffix(")").split(',')
+        val edgeStrs = inData(2).stripPrefix("edgeData(").stripSuffix(")").split(',')
         //println(inData(2).stripPrefix("edu.msstate.dasi.edgeData(").stripSuffix(")"))
-
-        val TS: String = edgeStrs(0)
+        val dP = edgeData()
+        val TS: String = try { edgeStrs(0) } catch { case _: Throwable => dP.TS}
         //println("TS: \"" + TS + "\"")
-        val PROTOCOL: String = edgeStrs(1)
+        val PROTOCOL: String =try { edgeStrs(1) } catch { case _: Throwable => dP.PROTOCOL}
         //println("PROTOCOL: \"" + PROTOCOL + "\"")
-        val DURATION: Double = edgeStrs(2).toDouble
+        val DURATION: Double = try { edgeStrs(2).toDouble } catch { case _: Throwable => dP.DURATION}
         //println("DURATION: \"" + DURATION + "\"")
-        val ORIG_BYTES: Int = edgeStrs(3).toInt
+        val ORIG_BYTES: Long = try { edgeStrs(3).toLong } catch { case _: Throwable => dP.ORIG_BYTES}
         //println("ORIG_BYTES: \"" + ORIG_BYTES + "\"")
-        val RESP_BYTES: Int = edgeStrs(4).toInt
+        val RESP_BYTES: Long = try { edgeStrs(4).toLong } catch { case _: Throwable => dP.RESP_BYTES}
         //println("RESP_BYTES: \"" + RESP_BYTES + "\"")
-        val CONN_STATE: String = edgeStrs(5)
+        val CONN_STATE: String = try { edgeStrs(5) } catch { case _: Throwable => dP.CONN_STATE}
         //println("CONN_STATE: \"" + CONN_STATE + "\"")
-        val ORIG_PKTS: Int = edgeStrs(6).toInt
+        val ORIG_PKTS: Long = try { edgeStrs(6).toLong } catch { case _: Throwable => dP.ORIG_PKTS}
         //println("ORIG_PKTS: \"" + ORIG_PKTS + "\"")
-        val ORIG_IP_BYTES: Int = edgeStrs(7).toInt
+        val ORIG_IP_BYTES: Long = try { edgeStrs(7).toLong } catch { case _: Throwable => dP.ORIG_IP_BYTES}
         //println("ORIG_IP_BYTES: \"" + ORIG_IP_BYTES + "\"")
-        val RESP_PKTS: Int = edgeStrs(8).toInt
+        val RESP_PKTS: Long = try { edgeStrs(8).toLong } catch { case _: Throwable => dP.RESP_PKTS}
         //println("RESP_PKTS: \"" + RESP_PKTS + "\"")
-        val RESP_IP_BYTES: Int = edgeStrs(9).toInt
+        val RESP_IP_BYTES: Long = try { edgeStrs(9).toLong } catch { case _: Throwable => dP.RESP_IP_BYTES}
         //println("RESP_IP_BYTES: \"" + RESP_IP_BYTES + "\"")
 
         val DESC: String = if (edgeStrs.length > 9) edgeStrs(0) else ""
@@ -221,7 +231,9 @@ class ba_GraphGen extends base_GraphGen with java.io.Serializable {
 
         (true, Edge(srcNode, dstNode, edgeData(TS, PROTOCOL, DURATION, ORIG_BYTES, RESP_BYTES, CONN_STATE, ORIG_PKTS, ORIG_IP_BYTES, RESP_PKTS, RESP_IP_BYTES, DESC)))
       } catch {
-        case _: Throwable => (false, Edge(0L, 0L, edgeData("", "", 0, 0, 0, "", 0, 0, 0, 0, "")))
+        case _: Throwable =>
+          println("!!! THERE MAY BE ERRORS IN THE DATASET !!!")
+          (false, Edge(0L, 0L, edgeData("", "", 0, 0, 0, "", 0, 0, 0, 0, "")))
       }
 
     //return

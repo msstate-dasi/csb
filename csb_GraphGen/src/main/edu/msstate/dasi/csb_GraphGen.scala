@@ -14,6 +14,8 @@ import java.text.BreakIterator
 
 object csb_GraphGen{
 
+  val versionString = "0.1-DEV"
+
   /**
     * Abstract class for parameter case classes.
     * This overrides the [[toString]] method to print all case class fields by name and value.
@@ -64,6 +66,7 @@ object csb_GraphGen{
                                  /**
                                    * BA Arguments
                                    */
+                                 noProp_desc: String = "Specify whether to generate random properties during generation or not.",
                                  seedVertices_desc: String = "Comma-separated vertices file to use as a seed for BA Graph Generation.",
                                  seedEdges_desc: String = "Comma-separated edges file to use as a seed for BA Graph Generation.",
                                  JSONDist_desc: String = "JSON Distribution file to use for generating random properties.",
@@ -82,11 +85,11 @@ object csb_GraphGen{
                              /**
                                * Any Arguments
                                */
-                             outputGraphPrefix: String = "out",
+                             outputGraphPrefix: String = "",
                              partitions: Int = 120,
                              checkpointDir: Option[String] = None,
                              checkpointInterval: Int = 10,
-                             debug: String = "false",
+                             debug: Boolean = false,
 
                              /**
                                * GenDist Arguments
@@ -99,6 +102,7 @@ object csb_GraphGen{
                              /**
                                * BA Arguments
                                */
+                             noProp: Boolean = false,
                              seedVertices: String = "seed_vert",
                              seedEdges: String = "seed_edges",
                              baIter: Int = 1000,
@@ -116,7 +120,7 @@ object csb_GraphGen{
     val h = ParamsHelp()
 
     val parser = new OptionParser[Params]("csb_GraphGen") {
-      head("csb_GraphGen: a synthetic Graph Generator for the busy scientist.")
+      head(s"csb_GraphGen ${versionString}: a synthetic Graph Generator for the busy scientist.")
       /**
         * All Arguments:
         */
@@ -136,7 +140,7 @@ object csb_GraphGen{
         .action((x, c) => c.copy(checkpointInterval = x))
       opt[Unit]("debug")
         .hidden()
-        .action( (x, c) => c.copy(debug = "true"))
+        .action( (x, c) => c.copy(debug = true))
         .text(s"Debug mode, prints all log output to terminal. default: ${dP.debug}")
 
       /**
@@ -148,12 +152,15 @@ object csb_GraphGen{
         .children(
           arg[String]("bro_log")
             .text(s"${h.connLog_desc} default: ${dP.connLog}")
+            .required()
             .action((x,c) => c.copy(connLog = x)),
           arg[String]("alert_log")
             .text(s"${h.alertLog_desc} default: ${dP.alertLog}")
+            .required()
             .action((x,c) => c.copy(alertLog = x)),
           arg[String]("aug_log")
             .text(s"${h.augLog_desc} default: ${dP.augLog}")
+            .required()
             .action((x,c) => c.copy(augLog = x)),
           arg[String]("dist_out")
             .text(s"Path to save ${h.JSONDist_desc} default: ${dP.JSONDist}")
@@ -167,6 +174,9 @@ object csb_GraphGen{
       cmd("ba").action((_, c) => c.copy(mode = "ba"))
         .text(s"Generate synthetic graph using the Barabasi–Albert model.")
         .children(
+          opt[Unit]("no-prop")
+              .text(s"${h.noProp_desc} default ${dP.noProp}")
+              .action((_,c) => c.copy(noProp = true)),
           arg[String]("seed_vert")
             .text(s"${h.seedVertices_desc} default: ${dP.seedVertices}")
             .required()
@@ -193,6 +203,9 @@ object csb_GraphGen{
       cmd("kro").action((_, c) => c.copy(mode = "kro"))
         .text(s"Generate synthetic graph using the Probabilistic Kronecker model.")
         .children(
+          opt[Unit]("no-prop")
+            .text(s"${h.noProp_desc} default ${dP.noProp}")
+            .action((_,c) => c.copy(noProp = true)),
           arg[String]("seed-mtx")
             .text(s"${h.seedMtx_desc} default: ${dP.seedMtx}")
             .required()
@@ -205,7 +218,7 @@ object csb_GraphGen{
             .text(s"${h.kroIter_desc} default: ${dP.baIter}")
             .validate(x => if (x>0) success
             else failure("Iteration count must be greater than 0."))
-            .action((x,c) => c.copy(baIter = x))
+            .action((x,c) => c.copy(kroIter = x))
         )
       note("\n")
 
@@ -222,7 +235,7 @@ object csb_GraphGen{
     * @param params Parameters for the function to run.
     */
   def run(params: Params): Boolean = {
-    if (params.debug == "false") {
+    if (params.debug == false) {
       //turn off annoying log messages
       Logger.getLogger("org").setLevel(Level.OFF)
       Logger.getLogger("akka").setLevel(Level.OFF)
@@ -230,9 +243,10 @@ object csb_GraphGen{
 
     }
     //every spark application needs a configuration and sparkcontext
-    val conf = new SparkConf().setAppName("csb_GraphGen")
+    val conf = new SparkConf()
+    conf.setAppName(s"csb_GraphGen ${versionString}")
     val sc = new SparkContext(conf)
-
+    sc.setJobDescription(params.toString)
 
     params.mode match {
       case "gen_dist" => run_gendist(sc, params)
@@ -245,28 +259,22 @@ object csb_GraphGen{
   }
 
   def run_gendist(sc: SparkContext, params: Params): Boolean = {
-
-
-
-    val distParser: multiEdgeDistribution = new multiEdgeDistribution()
+    val distParser: multiEdgeDistributionJustin = new multiEdgeDistributionJustin()
     distParser.init(Array(params.augLog))
 
     return true
   }
   def run_ba(sc: SparkContext, params: Params): Boolean = {
     val baGraph = new ba_GraphGen()
-    baGraph.run(sc, params.seedVertices, params.seedEdges, params.baIter)
+    baGraph.run(sc, params.partitions, params.seedVertices, params.seedEdges, params.baIter, params.outputGraphPrefix, params.noProp, params.debug)
 
     return true
   }
   def run_kro(sc: SparkContext, params: Params): Boolean = {
     val kroGraph = new kro_GraphGen()
-    kroGraph.run(sc, params.seedMtx, params.kroIter)
+    kroGraph.run(sc, params.partitions, params.seedMtx, params.kroIter, params.outputGraphPrefix, params.noProp, params.debug)
 
     return true
   }
-
-
-
 
 }

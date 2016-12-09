@@ -1,6 +1,7 @@
 package edu.msstate.dasi
 
 import org.apache.spark.SparkContext
+import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.graphx.{Edge, Graph, VertexId}
 import org.apache.spark.rdd.RDD
 
@@ -13,7 +14,7 @@ import scala.util.Random
   * edu.msstate.dasi.kro_GraphGen: Kronecker based Graph generation given seed matrix.
   */
 class kro_GraphGen extends base_GraphGen with data_Parser {
-  def run(sc: SparkContext, mtxFile: String, genIter: Int): Boolean = {
+  def run(sc: SparkContext, partitions: Int, mtxFile: String, genIter: Int, outputGraphPrefix: String, noPropFlag: Boolean, debugFlag: Boolean): Boolean = {
     //val probMtx: Array[Array[Float]] = Array(Array(0.1f, 0.9f), Array(0.9f, 0.5f))
     val probMtx: Array[Array[Double]] = parseMtxDataFromFile(sc, mtxFile)
 
@@ -29,7 +30,7 @@ class kro_GraphGen extends base_GraphGen with data_Parser {
 
     //Run Kronecker with the adjacency matrix
     var startTime = System.nanoTime()
-    theGraph = generateKroGraph(sc, probMtx, genIter.toInt)
+    theGraph = generateKroGraph(sc, partitions, probMtx, genIter.toInt)
     var timeSpan = (System.nanoTime() - startTime) / 1e9
     println()
     println("Finished generating Kronecker graph.")
@@ -42,8 +43,8 @@ class kro_GraphGen extends base_GraphGen with data_Parser {
 
     //Save the ba graph into a format to be read later
     startTime = System.nanoTime()
-    saveGraph(sc, "kro_" + genIter)
-    saveGraphVeracity(sc, "kro_" + genIter)
+    saveGraph(sc, outputGraphPrefix + "kro_" + genIter)
+    saveGraphVeracity(sc, outputGraphPrefix + "kro_" + genIter)
     timeSpan = (System.nanoTime() - startTime) / 1e9
 
     println()
@@ -54,40 +55,8 @@ class kro_GraphGen extends base_GraphGen with data_Parser {
     return true
   }
 
-  /*** Function to generate and return a kronecker graph
-    *
-    * @param sc Current Sparkcontext
-    * @param probMtx Probability Matrix used to generate Kronecker Graph
-    * @param iter Number of iterations to perform kronecker
-    * @return Graph containing vertices + edu.msstate.dasi.nodeData, edges + edu.msstate.dasi.edgeData
-    */
-  def generateKroGraph(sc: SparkContext, probMtx: Array[Array[Double]], iter: Int): Graph[nodeData, edgeData] = {
+  def getKroRDD(sc: SparkContext, partitions: Int, nVerts: Int, nEdges: Int, n1: Int, iter: Int, probToRCPosV_Broadcast: Broadcast[Array[(Double, Int, Int)]] ): RDD[Edge[edgeData]] = {
     val r = Random
-
-    val n1 = probMtx.length
-    println("n1 = " + n1)
-
-    var mtxSum: Double = probMtx.map(record => record.sum).sum
-    val nVerts = Math.pow(n1, iter).toInt
-    val nEdges = Math.pow(mtxSum, iter).toInt
-    println("Total # of Vertices: " + nVerts)
-    println("Total # of Edges: " + nEdges)
-
-    var cumProb: Double = 0f
-    var probToRCPosV_Private: Array[(Double, Int, Int)] = Array.empty
-
-    for(i <- 0 to n1 - 1)
-      for(j <- 0 to n1 - 1) {
-        val prob = probMtx(i)(j)
-        cumProb+=prob
-
-        //println((cumProb/mtxSum, i, j))
-
-        probToRCPosV_Private = probToRCPosV_Private :+ (cumProb/mtxSum, i, j)
-    }
-
-    val probToRCPosV_Broadcast = sc.broadcast(probToRCPosV_Private)
-
     val i: RDD[Int] = sc.parallelize(for (i <- 1 to nEdges - 1) yield i)
 
     val edgeList: RDD[Edge[edgeData]] = i.flatMap { record =>
@@ -119,6 +88,53 @@ class kro_GraphGen extends base_GraphGen with data_Parser {
       Array(((srcId, dstId), Edge(srcId, dstId, tempEdgeData)))
 
     }.reduceByKey((left,right) => left).map(record => record._2)
+
+    edgeList
+  }
+
+  /*** Function to generate and return a kronecker graph
+    *
+    * @param sc Current Sparkcontext
+    * @param probMtx Probability Matrix used to generate Kronecker Graph
+    * @param iter Number of iterations to perform kronecker
+    * @return Graph containing vertices + edu.msstate.dasi.nodeData, edges + edu.msstate.dasi.edgeData
+    */
+  def generateKroGraph(sc: SparkContext, partitions: Integer, probMtx: Array[Array[Double]], iter: Int): Graph[nodeData, edgeData] = {
+
+    val n1 = probMtx.length
+    println("n1 = " + n1)
+
+    var mtxSum: Double = probMtx.map(record => record.sum).sum
+    val nVerts = Math.pow(n1, iter).toInt
+    val nEdges = Math.pow(mtxSum, iter).toInt
+    println("Total # of Vertices: " + nVerts)
+    println("Total # of Edges: " + nEdges)
+
+    var cumProb: Double = 0f
+    var probToRCPosV_Private: Array[(Double, Int, Int)] = Array.empty
+
+    for(i <- 0 to n1 - 1)
+      for(j <- 0 to n1 - 1) {
+        val prob = probMtx(i)(j)
+        cumProb+=prob
+
+        //println((cumProb/mtxSum, i, j))
+
+        probToRCPosV_Private = probToRCPosV_Private :+ (cumProb/mtxSum, i, j)
+    }
+
+    val probToRCPosV_Broadcast = sc.broadcast(probToRCPosV_Private)
+
+    val i: RDD[Int] = sc.parallelize(for (i <- 1 to nEdges - 1) yield i)
+
+    var edgeList: RDD[Edge[edgeData]] = getKroRDD(sc, partitions, nVerts, nEdges, n1, iter, probToRCPosV_Broadcast)
+
+    var curEdges = edgeList.count().toInt
+
+    while (curEdges<nEdges) {
+      edgeList = edgeList.union(getKroRDD(sc, partitions, nVerts, nEdges - curEdges, n1, iter, probToRCPosV_Broadcast))
+      curEdges = edgeList.count().toInt
+    }
 
     val vertList: RDD[(VertexId, nodeData)] = edgeList.flatMap{record =>
       val srcId: VertexId = record.srcId

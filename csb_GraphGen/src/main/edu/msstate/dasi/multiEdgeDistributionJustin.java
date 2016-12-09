@@ -60,12 +60,21 @@ public class multiEdgeDistributionJustin
 
     public static boolean isDouble(String str)
     {
-        return str.matches("-?\\d+(\\.\\d+)+");  //match a number with optional '-' and decimal.
+        //http://stackoverflow.com/questions/3133770/how-to-find-out-if-the-value-contained-in-a-string-is-double-or-not
+        try {
+            Double.parseDouble(str);
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+        //below was arindam's approach
+        //I added the above code to incorporate scientific notation
+//        return str.matches("-?\\d+(\\.\\d+)+");  //match a number with optional '-' and decimal.
     }
 
     private static final String computeRange(String value, int interval)
     {
-        long valueInt = (isDouble(value)) ? (long) Double.parseDouble(value) : Long.parseLong(value);
+        long valueInt = (isDouble(value)) ? (long) Double.valueOf(value).doubleValue() : Long.parseLong(value);
         //first obtain the left interval
         int t = 10;
         while(interval / t > 0)
@@ -128,9 +137,11 @@ public class multiEdgeDistributionJustin
 
 //		bw.write("Sorted " + propertyName + " (probability) Distribution below:" + "\n");
 
+
+        double percentSum = 0.0;
         for(String key : distribution.keySet())
         {
-            bw.write(propertyName + "*" + key + "\t " + (double)distribution.get(key) / (double)total  + "\n");
+            bw.write(propertyName + "*" + key + "\t " + ((double)distribution.get(key) / (double)total)  + "\n");
         }
 
 //		bw.write("\n\n");

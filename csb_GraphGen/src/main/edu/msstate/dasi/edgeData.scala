@@ -15,7 +15,7 @@ package edu.msstate.dasi
   */
 case class edgeData(TS: String = "",
                     PROTOCOL: String = "",
-                    DURATION: Double,
+                    DURATION: Double = 0,
                     ORIG_BYTES: Long = 0,
                     RESP_BYTES: Long = 0,
                     CONN_STATE: String = "",

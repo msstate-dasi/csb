@@ -94,18 +94,11 @@ class data_Generator {
     return generateRandNumBasedBytes(this.respPackCntStr, byteCnt, sc)
   }
 
-
-
-
-
-
-
   def generateNodeData(): String = {
     val r = Random
 
     r.nextInt(255)+"."+r.nextInt(255)+"."+r.nextInt(255)+"."+r.nextInt(255)+":"+r.nextInt(65536)
   }
-
 
   /***
     * This function reads a distrobution that is not based on Original Bytes (independent of anything)
