@@ -12,7 +12,7 @@ import scala.util.Random
   */
 class ba_GraphGen extends base_GraphGen with java.io.Serializable {
 
-  def run(sc: SparkContext, partitions: Int, seedVertFile: String, seedEdgeFile: String, baIter: Int, outputGraphPrefix: String, noPropFlag: Boolean, debugFlag: Boolean): Boolean = {
+  def run(sc: SparkContext, partitions: Int, seedVertFile: String, seedEdgeFile: String, baIter: Int, outputGraphPrefix: String, nodesPerIter: Int, noPropFlag: Boolean, debugFlag: Boolean): Boolean = {
     println()
     println("Loading seed graph with vertices file: " + seedVertFile + " and edges file " + seedEdgeFile + " ...")
 
@@ -40,7 +40,7 @@ class ba_GraphGen extends base_GraphGen with java.io.Serializable {
 
     //Generate a BA Graph with iterations
     startTime = System.nanoTime()
-    theGraph = generateBAGraph(sc, partitions, inVertices, inEdges, baIter.toInt, noPropFlag, debugFlag)
+    theGraph = generateBAGraph(sc, partitions, inVertices, inEdges, baIter.toInt, nodesPerIter, noPropFlag, debugFlag)
     timeSpan = (System.nanoTime() - startTime) / 1e9
     println()
     println("Finished generating BA graph.")
@@ -53,8 +53,8 @@ class ba_GraphGen extends base_GraphGen with java.io.Serializable {
 
     //Save the ba graph into a format to be read later
     startTime = System.nanoTime()
-    saveGraph(sc, outputGraphPrefix + "ba_" + baIter)
-    saveGraphVeracity(sc, outputGraphPrefix + "ba_" + baIter)
+    saveGraph(sc, outputGraphPrefix + "_ba_" + baIter)
+    saveGraphVeracity(sc, outputGraphPrefix + "_ba_" + baIter)
     timeSpan = (System.nanoTime() - startTime) / 1e9
 
     println()
@@ -73,7 +73,7 @@ class ba_GraphGen extends base_GraphGen with java.io.Serializable {
     * @param iter Number of iterations to perform BA
     * @return Graph containing vertices + edu.msstate.dasi.nodeData, edges + edu.msstate.dasi.edgeData
     */
-  def generateBAGraph(sc: SparkContext, partitions: Int, inVertices: RDD[(VertexId, nodeData)], inEdges: RDD[Edge[edgeData]], iter: Int, noPropFlag: Boolean, debugFlag: Boolean): Graph[nodeData,edgeData] = {
+  def generateBAGraph(sc: SparkContext, partitions: Int, inVertices: RDD[(VertexId, nodeData)], inEdges: RDD[Edge[edgeData]], iter: Int, nodesPerIter: Int, noPropFlag: Boolean, debugFlag: Boolean): Graph[nodeData,edgeData] = {
     val r = Random
     val dataGen = new data_Generator()
 
@@ -89,13 +89,13 @@ class ba_GraphGen extends base_GraphGen with java.io.Serializable {
     var edgesToAdd: Array[Edge[edgeData]] = Array.empty[Edge[edgeData]]
     var vertToAdd: Array[(VertexId, nodeData)] = Array.empty[(VertexId, nodeData)]
 
-    var nodesPerIter = partitions
+    var nPI = nodesPerIter
 
-    val iters: Int = if(iter > partitions) math.ceil(iter.toDouble / partitions).toInt else { nodesPerIter = iter; 1}
+    val iters: Int = if(iter > nodesPerIter) math.ceil(iter.toDouble / nodesPerIter).toInt else { nPI = iter; 1}
 
     for(i <- 1 to iters) {
       println(i + "/" + math.ceil(iter.toDouble / partitions).toInt)
-      for(n <- 1 to nodesPerIter) {
+      for(n <- 1 to nPI) {
         //String is IP:Port ex. "192.168.0.1:80"
         val tempNodeProp: nodeData = if (noPropFlag) nodeData() else nodeData(dataGen.generateNodeData())
         val srcId: VertexId =

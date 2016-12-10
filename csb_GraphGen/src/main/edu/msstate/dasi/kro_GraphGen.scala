@@ -43,8 +43,8 @@ class kro_GraphGen extends base_GraphGen with data_Parser {
 
     //Save the ba graph into a format to be read later
     startTime = System.nanoTime()
-    saveGraph(sc, outputGraphPrefix + "kro_" + genIter)
-    saveGraphVeracity(sc, outputGraphPrefix + "kro_" + genIter)
+    saveGraph(sc, outputGraphPrefix + "_kro_" + genIter)
+    saveGraphVeracity(sc, outputGraphPrefix + "_kro_" + genIter)
     timeSpan = (System.nanoTime() - startTime) / 1e9
 
     println()
@@ -55,9 +55,10 @@ class kro_GraphGen extends base_GraphGen with data_Parser {
     return true
   }
 
-  def getKroRDD(sc: SparkContext, partitions: Int, nVerts: Int, nEdges: Int, n1: Int, iter: Int, probToRCPosV_Broadcast: Broadcast[Array[(Double, Int, Int)]] ): RDD[Edge[edgeData]] = {
+  def getKroRDD(sc: SparkContext, partitions: Int, nVerts: Int, nEdges: Int, n1: Int, iter: Int, probToRCPosV_Broadcast: Broadcast[Array[(Double, Int, Int)]] ): RDD[Edge[edgeData]] =
+  {
     val r = Random
-    val i: RDD[Int] = sc.parallelize(for (i <- 1 to nEdges - 1) yield i)
+    val i: RDD[Int] = sc.parallelize(for (i <- 0 to nEdges) yield i)
 
     val edgeList: RDD[Edge[edgeData]] = i.flatMap { record =>
 
@@ -127,13 +128,18 @@ class kro_GraphGen extends base_GraphGen with data_Parser {
 
     val i: RDD[Int] = sc.parallelize(for (i <- 1 to nEdges - 1) yield i)
 
-    var edgeList: RDD[Edge[edgeData]] = getKroRDD(sc, partitions, nVerts, nEdges, n1, iter, probToRCPosV_Broadcast)
+    var edgeList: RDD[Edge[edgeData]] = getKroRDD(sc, partitions, nVerts, nEdges, n1, iter, probToRCPosV_Broadcast).cache()
 
     var curEdges = edgeList.count().toInt
 
-    while (curEdges<nEdges) {
-      edgeList = edgeList.union(getKroRDD(sc, partitions, nVerts, nEdges - curEdges, n1, iter, probToRCPosV_Broadcast))
+    while (nEdges > curEdges) {
+      val oldRDD = edgeList
+      val newRDD = getKroRDD(sc, partitions, nVerts, nEdges - curEdges - 1, n1, iter, probToRCPosV_Broadcast)
+
+      println(s"getKroRDD(sc, $partitions, $nVerts, $nEdges - $curEdges, $n1, $iter, probToRCPosV_Broadcast)")
+      edgeList = oldRDD.union(newRDD).cache()
       curEdges = edgeList.count().toInt
+      println(curEdges)
     }
 
     val vertList: RDD[(VertexId, nodeData)] = edgeList.flatMap{record =>

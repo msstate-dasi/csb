@@ -1,6 +1,8 @@
 package edu.msstate.dasi
 
 import org.apache.spark.SparkContext
+import org.apache.spark.graphx.{Edge, VertexId}
+import org.apache.spark.rdd.RDD
 
 import scala.util.Random
 
@@ -10,7 +12,7 @@ import scala.util.Random
 
 import scala.io.Source
 
-class data_Generator {
+class data_Generator extends Serializable {
   var edgeCnt:            String = ""
   var originalBytesStr:     String = ""
   var originalIPByteCntStr: String = ""
@@ -247,6 +249,44 @@ class data_Generator {
       }
     }
     return null
+  }
+
+  def generateNodeProperties(sc: SparkContext, vRDD: RDD[(VertexId, nodeData)], noPropFlag: Boolean): RDD[(VertexId, nodeData)] = {
+
+    val gen_vRDD = vRDD.map(record => (record._1, generateNode(noPropFlag)))
+
+    gen_vRDD
+  }
+  private def generateNode(noPropFlag: Boolean): nodeData = {
+    if (noPropFlag)
+      nodeData()
+    else
+      nodeData(generateNodeData())
+  }
+
+  def generateEdgeProperties(sc: SparkContext, eRDD: RDD[Edge[edgeData]], noPropFlag: Boolean): RDD[Edge[edgeData]] = {
+    val gen_eRDD = eRDD.map(record => Edge(record.srcId, record.dstId, generateEdge(noPropFlag)))
+
+    gen_eRDD
+  }
+
+  private def generateEdge(noPropFlag: Boolean): edgeData = {
+    val sc: SparkContext = new SparkContext()
+    if (noPropFlag) {
+      edgeData()
+    } else {
+      val ORIGBYTES = getOriginalByteCount()
+      val ORIGIPBYTE = getOriginalIPByteCount(ORIGBYTES, sc)
+      val CONNECTSTATE = getConnectState(ORIGBYTES, sc)
+      val CONNECTTYPE = getConnectType(ORIGBYTES, sc)
+      val DURATION = getDuration(ORIGBYTES, sc)
+      val ORIGPACKCNT = getOriginalPackCnt(ORIGBYTES, sc)
+      val RESPBYTECNT = getRespByteCnt(ORIGBYTES, sc)
+      val RESPIPBYTECNT = getRespIPByteCnt(ORIGBYTES, sc)
+      val RESPPACKCNT = getRespPackCnt(ORIGBYTES, sc)
+      edgeData("", CONNECTTYPE, DURATION, ORIGBYTES, RESPBYTECNT, CONNECTSTATE, ORIGPACKCNT, ORIGIPBYTE, RESPPACKCNT, RESPBYTECNT, "")
+      //val tempEdgeProp: edgeData = edgeData()
+    }
   }
 }
 

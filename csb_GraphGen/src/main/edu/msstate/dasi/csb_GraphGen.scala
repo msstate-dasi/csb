@@ -67,6 +67,7 @@ object csb_GraphGen{
                                    * BA Arguments
                                    */
                                  noProp_desc: String = "Specify whether to generate random properties during generation or not.",
+                                 numNodesPerIter_desc: String = "The number of nodes to add to the graph per iteration.",
                                  seedVertices_desc: String = "Comma-separated vertices file to use as a seed for BA Graph Generation.",
                                  seedEdges_desc: String = "Comma-separated edges file to use as a seed for BA Graph Generation.",
                                  JSONDist_desc: String = "JSON Distribution file to use for generating random properties.",
@@ -103,6 +104,7 @@ object csb_GraphGen{
                                * BA Arguments
                                */
                              noProp: Boolean = false,
+                             numNodesPerIter: Int = 120,
                              seedVertices: String = "seed_vert",
                              seedEdges: String = "seed_edges",
                              baIter: Int = 1000,
@@ -120,7 +122,7 @@ object csb_GraphGen{
     val h = ParamsHelp()
 
     val parser = new OptionParser[Params]("csb_GraphGen") {
-      head(s"csb_GraphGen ${versionString}: a synthetic Graph Generator for the busy scientist.")
+      head(s"csb_GraphGen $versionString: a synthetic Graph Generator for the busy scientist.")
       /**
         * All Arguments:
         */
@@ -175,8 +177,11 @@ object csb_GraphGen{
         .text(s"Generate synthetic graph using the Barabasi–Albert model.")
         .children(
           opt[Unit]("no-prop")
-              .text(s"${h.noProp_desc} default ${dP.noProp}")
+              .text(s"${h.noProp_desc} default: ${dP.noProp}")
               .action((_,c) => c.copy(noProp = true)),
+          opt[Int]("nodes-per-iter")
+              .text(s"${h.numNodesPerIter_desc} default: ${dP.numNodesPerIter}")
+              .action((x,c) => c.copy(numNodesPerIter = x)),
           arg[String]("seed_vert")
             .text(s"${h.seedVertices_desc} default: ${dP.seedVertices}")
             .required()
@@ -255,6 +260,7 @@ object csb_GraphGen{
       case _ => sys.exit(1)
     }
 
+    sys.exit()
     return true
   }
 
@@ -265,8 +271,12 @@ object csb_GraphGen{
     return true
   }
   def run_ba(sc: SparkContext, params: Params): Boolean = {
+    //TODO: REMOVE THIS
+    val distParser: multiEdgeDistributionJustin = new multiEdgeDistributionJustin()
+    distParser.init(Array("conn.log"))
+
     val baGraph = new ba_GraphGen()
-    baGraph.run(sc, params.partitions, params.seedVertices, params.seedEdges, params.baIter, params.outputGraphPrefix, params.noProp, params.debug)
+    baGraph.run(sc, params.partitions, params.seedVertices, params.seedEdges, params.baIter, params.outputGraphPrefix, params.numNodesPerIter, params.noProp, params.debug)
 
     return true
   }
