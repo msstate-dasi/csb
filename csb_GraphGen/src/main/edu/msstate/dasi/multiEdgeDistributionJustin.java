@@ -6,6 +6,8 @@ package edu.msstate.dasi;
  * @version: 0.1
  * @since 2016-11-14
  */
+import org.json.JSONObject;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.FileNotFoundException;
@@ -16,31 +18,33 @@ import java.util.*;
 import java.util.regex.Pattern;
 import static java.lang.Math.pow;
 
+
 ///dasi/projects/idaho-bailiff/G6/2016-2017/Temp/2011-10-11/connSortedTime.log /dasi/projects/idaho-bailiff/G6/2016-2017/Temp/2011-10-11/dist.txt
 // /dasi/projects/idaho-bailiff/G6/2016-2017/Temp/2011-10-11/connSortedTime.log /dasi/projects/idaho-bailiff/G6/2016-2017/Temp/2011-10-11/testFieldDist.txt
-public class multiEdgeDistributionJustin
+//public class multiEdgeDistributionJustin
+class multiEdgeDistributionJustin
 {
-    public multiEdgeDistributionJustin() {
+//    public multiEdgeDistributionJustin() {
+//
+//    }
 
-    }
-
-    public void init(String args[]) throws IOException {
-        multiEdgeDistributionJustin torun = new multiEdgeDistributionJustin();
-        String inFile = args[0];
-//        String statFile = args[1] + "_stat.txt";
-//        String countFile = args[1] + "_count.txt";;
-        torun.propertyDistributionConditional(inFile);
-        //torun.outputValuesOfField_Range(inFile, outFile, 17, 80, 89);
-    }
+//    public void init(String args[]) throws IOException {
+//        multiEdgeDistributionJustin torun = new multiEdgeDistributionJustin();
+//        String inFile = args[0];
+////        String statFile = args[1] + "_stat.txt";
+////        String countFile = args[1] + "_count.txt";;
+//        torun.propertyDistributionConditional(inFile);
+//        //torun.outputValuesOfField_Range(inFile, outFile, 17, 80, 89);
+//    }
 
     public static void main(String args[]) throws IOException
     {
-
-        multiEdgeDistributionJustin torun = new multiEdgeDistributionJustin();
+        new JSONObject();
+//        multiEdgeDistributionJustin torun = new multiEdgeDistributionJustin();
         String inFile = args[0];
-        String statFile = args[1] + "_stat.txt";
-        String countFile = args[1] + "_count.txt";;
-        torun.propertyDistributionConditional(inFile);
+//        String statFile = args[1] + "_stat.txt";
+//        String countFile = args[1] + "_count.txt";;
+        propertyDistributionConditional(inFile);
         //torun.outputValuesOfField_Range(inFile, outFile, 17, 80, 89);
 
     }
@@ -226,7 +230,7 @@ public class multiEdgeDistributionJustin
 	 * @param statFile The name of the file containing distribution results
 	 */
 
-    void propertyDistributionConditional(final String inFile) throws IOException
+    static void propertyDistributionConditional(final String inFile) throws IOException
     {
         String line = "";
         FileReader fr = new FileReader(inFile);
@@ -422,6 +426,7 @@ public class multiEdgeDistributionJustin
         origByteCount = (HashMap<String, Integer>) sortByValueDescending(origByteCount);
 
 
+
         writeStatsToFileDist(bw3, "Resp byte count", respByteCount, origByteCount, tcp_udp_count);
         writeStatsToFileDist(bw4, "Connection type", connType, origByteCount, tcp_udp_count);
         writeStatsToFileDist(bw5, "Connection state", connState, origByteCount, tcp_udp_count);
@@ -455,6 +460,29 @@ public class multiEdgeDistributionJustin
         fw10.close();
     }
 
+
+    void writeToJSON(HashMap<String, Integer> originalByteCnt,
+                     HashMap<String, HashMap<String, Integer> > responseByteCnt,
+                     HashMap<String, HashMap<String, Integer> > connectType,
+                     HashMap<String, HashMap<String, Integer> > connectState,
+                     HashMap<String, HashMap<String, Integer> > originalPackCnt,
+                     HashMap<String, HashMap<String, Integer> > responsePacketCnt,
+                     HashMap<String, HashMap<String, Integer> > originalIpByteCnt,
+                     HashMap<String, HashMap<String, Integer> > responseIPByteCnt,
+                     HashMap<String, HashMap<String, Integer> > duration) throws IOException {
+
+        BufferedWriter bw = new BufferedWriter(new FileWriter("ConditionalDistro.json"));
+        bw.write("{\n\"OriginalByteCountDistro\":{\n");
+
+        for(String key : originalByteCnt.keySet())
+        {
+            bw.write("\"Original_Bytes\":[\n{");
+            bw.write("\"" + key + "\":{\n");
+
+            bw.write("\"DIST:\"" + originalByteCnt.get(key) + "}");
+
+        }
+    }
 
 
     /*
@@ -518,6 +546,7 @@ public class multiEdgeDistributionJustin
             }
             else
             {
+
                 nodeCount++;
                 tNode = nodeCount;
                 nodes.put(to, nodeCount);

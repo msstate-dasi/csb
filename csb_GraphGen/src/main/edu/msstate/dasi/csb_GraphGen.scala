@@ -265,14 +265,14 @@ object csb_GraphGen{
   }
 
   def run_gendist(sc: SparkContext, params: Params): Boolean = {
-    val distParser: multiEdgeDistributionJustin = new multiEdgeDistributionJustin()
-    distParser.init(Array(params.augLog))
+    val distParser: multiEdgeDistribution = new multiEdgeDistribution()
+    distParser.init(Array(params.connLog))
 
     return true
   }
   def run_ba(sc: SparkContext, params: Params): Boolean = {
     //TODO: REMOVE THIS
-    val distParser: multiEdgeDistributionJustin = new multiEdgeDistributionJustin()
+    val distParser: multiEdgeDistribution = new multiEdgeDistribution()
     distParser.init(Array("conn.log"))
 
     val baGraph = new ba_GraphGen()

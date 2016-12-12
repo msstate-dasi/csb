@@ -180,12 +180,17 @@ public class multiEdgeDistribution
         }
 
         System.out.println("Finishes reading");
-        HashMap <String, Integer> edgeDistribution = new HashMap<>();
+//        HashMap <String, Integer> edgeDistribution = new HashMap<>();
+//        HashMap <Integer, Integer> edgeDistribution = new HashMap();
+        //Spencer...please keep both of these.  I finally traced everything back here.
+        HashMap <Integer, Integer> edgeDistribution = new HashMap();
+        HashMap <String, Integer> edgeDistributionStr = new HashMap();
         System.out.println("Total records: " + totalRecords);
         System.out.println("Number of bad records: " + badRecords);
         System.out.println("Total tcp/udp connections: " + tcp_udp_count);
         System.out.println("Edge (count) Distribution below:");
         int totalMultiedges = 0;
+
 
         for(String key : edgeCount.keySet())
         {
@@ -194,15 +199,22 @@ public class multiEdgeDistribution
 
             int newCount = 1;
             if(edgeDistribution.containsKey(count))
+            {
                 newCount += edgeDistribution.get(count);
+            }
+
             totalMultiedges++;
 
-            edgeDistribution.put(Integer.toString(count), newCount);
+            edgeDistribution.put(count, newCount);
+            edgeDistributionStr.put(Integer.toString(count), newCount);
         }
 
         System.out.println("Total edges: " + totalMultiedges);
 
-        outputObj.put("EDGE_DIST", new JSONObject(calculateEntriesFromHashMap(edgeDistribution, totalMultiedges)));
+
+
+
+        outputObj.put("EDGE_DIST", new JSONObject(calculateEntriesFromHashMap(edgeDistributionStr, totalMultiedges)));
         JSONObject json_origByteCount = new JSONObject();
 
         HashMap<String, Double> temp = calculateEntriesFromHashMap(origByteCount, tcp_udp_count);
@@ -212,14 +224,14 @@ public class multiEdgeDistribution
             json_origByteCount.put(entry.getKey(), temp2);
         }
 
-        updateJsonObject(json_origByteCount, "RESP_BYTES", respByteCount, tcp_udp_count);
-        updateJsonObject(json_origByteCount, "PROTOCOL", connType, tcp_udp_count);
-        updateJsonObject(json_origByteCount, "CONN_STATE", connState, tcp_udp_count);
-        updateJsonObject(json_origByteCount, "ORIG_PKTS", origPktsCount, tcp_udp_count);
-        updateJsonObject(json_origByteCount, "RESP_PKTS", respPktsCount, tcp_udp_count);
-        updateJsonObject(json_origByteCount, "ORIG_IP_BYTES", origIPByteCount, tcp_udp_count);
-        updateJsonObject(json_origByteCount, "RESP_IP_BYTES", respIPByteCount, tcp_udp_count);
-        updateJsonObject(json_origByteCount, "DURATION", durationDist, tcp_udp_count);
+        updateJsonObject(json_origByteCount, "RESP_BYTES", respByteCount, origByteCount);
+        updateJsonObject(json_origByteCount, "PROTOCOL", connType, origByteCount);
+        updateJsonObject(json_origByteCount, "CONN_STATE", connState, origByteCount);
+        updateJsonObject(json_origByteCount, "ORIG_PKTS", origPktsCount, origByteCount);
+        updateJsonObject(json_origByteCount, "RESP_PKTS", respPktsCount, origByteCount);
+        updateJsonObject(json_origByteCount, "ORIG_IP_BYTES", origIPByteCount, origByteCount);
+        updateJsonObject(json_origByteCount, "RESP_IP_BYTES", respIPByteCount, origByteCount);
+        updateJsonObject(json_origByteCount, "DURATION", durationDist, origByteCount);
 
         outputObj.put("ORIG_BYTES", json_origByteCount);
 
@@ -238,29 +250,34 @@ public class multiEdgeDistribution
         return outputObj;
     }
 
-    private static void updateJsonObject(JSONObject theObj, String prop, HashMap<String,HashMap<String, Integer>> in, long total) {
+    private static void updateJsonObject(JSONObject theObj, String prop, HashMap<String,HashMap<String, Integer>> in, HashMap<String,Integer> OriginalByteCount) {
         for(Map.Entry<String, HashMap<String, Integer>> entry: in.entrySet()) {
             JSONObject temp;
+
             try {
                 temp = (JSONObject) theObj.get(entry.getKey());
             } catch (Exception e) {
                 temp = new JSONObject();
             }
 
-            temp.put(prop, new JSONObject(calculateEntriesFromHashMap(entry.getValue(), total)));
+
+            temp.put(prop, new JSONObject(calculateEntriesFromHashMap(entry.getValue(), OriginalByteCount.get(entry.getKey()))));
             theObj.put(entry.getKey(), temp);
         }
     }
 
     private static HashMap<String, Double> calculateEntriesFromHashMap(HashMap<String, Integer> in, long total) {
+
         HashMap<String, Double> calculatedValues = new HashMap<>();
 
-        for(Map.Entry<String,Integer> entry : in.entrySet()) {
-            calculatedValues.put(entry.getKey(), (double) entry.getValue() / total);
+        for(String key : in.keySet())
+        {
+            calculatedValues.put(key, ((double)in.get(key)) / (double)total);
         }
 
         return calculatedValues;
     }
+
 
     //http://stackoverflow.com/questions/5667371/validate-ipv4-address-in-java
     private static final Pattern PATTERN = Pattern.compile(
@@ -278,7 +295,16 @@ public class multiEdgeDistribution
 
     public static boolean isDouble(String str)
     {
-        return str.matches("-?\\d+(\\.\\d+)+");  //match a number with optional '-' and decimal.
+        //http://stackoverflow.com/questions/3133770/how-to-find-out-if-the-value-contained-in-a-string-is-double-or-not
+        try {
+            Double.parseDouble(str);
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+        //below was arindam's approach
+        //I added the above code to incorporate scientific notation
+//        return str.matches("-?\\d+(\\.\\d+)+");  //match a number with optional '-' and decimal.
     }
 
     private static final String computeRange(String value, int interval)
