@@ -6,7 +6,57 @@ import org.apache.spark.rdd.RDD
 
 trait data_Parser {
 
-  def readFromConnFile(sc: SparkContext, seedVertFile: String,seedEdgeFile: String): (RDD[(VertexId,nodeData)], RDD[Edge[edgeData]]) = {
+  def readFromConnFile(sc: SparkContext, connFile: String): (RDD[(VertexId,nodeData)], RDD[Edge[edgeData]]) = {
+    //If we are opening a conn.log file
+    val filename = "conn.log"
+    val file = sc.textFile(filename)
+
+    //I get a list of all the lines of the conn.log file in a way for easy parsing
+    val lines = file.map(line => line.split("\n")).filter(line => !line(0).contains("#")).map(line => line(0).replaceAll("-","0"))
+
+
+    //Next I get each line in a list of the edge that line in conn.log represents and the vertices that make that edge up
+    //NOTE: There will be many copies of the vertices which will be reduced later
+    var connPLUSnodes = lines.map(line => (edgeData(
+              line.split("\t")(0),
+              line.split("\t")(6),
+              line.split("\t")(9).toDouble,
+              line.split("\t")(9).toLong,
+              line.split("\t")(10).toLong,
+              line.split("\t")(11),
+              line.split("\t")(12).toLong,
+              line.split("\t")(17).toLong,
+              line.split("\t")(18).toLong,
+              line.split("\t")(19).toLong,
+      ""),
+      nodeData(line.split("\t")(2) + ":" + line.split("\t")(3)),
+      nodeData(line.split("\t")(4) + ":" + line.split("\t")(5))))
+
+
+    //from connPLUSnodes lets grab all the DISTINCT nodes
+    var ALLNODES : RDD[nodeData] = connPLUSnodes.map(record => record._2).union(connPLUSnodes.map(record => record._3)).distinct()
+
+    //next lets give them numbers and let that number be the "key"(basically index for my use)
+    var vertices: RDD[(VertexId, nodeData)] = ALLNODES.zipWithIndex().map(record => (record._2, record._1))
+
+
+    //next I make a hashtable of the nodes with it's given index.
+    //I have to do this since RDD transformations cannot happen within
+    //other RDD's and hashtables have O(1)
+    var verticesList = ALLNODES.collect()
+    var hashTable = new scala.collection.mutable.HashMap[nodeData, VertexId]
+    for( x<-0 to verticesList.length - 1)
+    {
+      hashTable.put(verticesList(x), x.toLong)
+    }
+
+
+
+    //Next I generate the edge list with the vertices represented by indexes(as it wants it)
+    var Edges: RDD[Edge[edgeData]] = connPLUSnodes.map(record => Edge[edgeData](hashTable.get(record._2).head, hashTable.get(record._3).head, record._1))
+  }
+
+  def readFromSeedGraph(sc: SparkContext, seedVertFile: String,seedEdgeFile: String): (RDD[(VertexId,nodeData)], RDD[Edge[edgeData]]) = {
     val inVertices: RDD[(VertexId,nodeData)] = sc.textFile(seedVertFile).map(line => line.stripPrefix("(").stripSuffix(")").split(',')).map { record =>
       parseNodeData(record)
     }.filter(_._1 != false).map(record => record._2)

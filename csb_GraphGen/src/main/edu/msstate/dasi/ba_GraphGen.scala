@@ -20,7 +20,7 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
 
     //read in and parse vertices and edges
     var startTime = System.nanoTime()
-    val (inVertices, inEdges) = readFromConnFile(sc, seedVertFile,seedEdgeFile)
+    val (inVertices, inEdges) = readFromSeedGraph(sc, seedVertFile, seedEdgeFile)
     var timeSpan = (System.nanoTime() - startTime) / 1e9
     println()
     println("Finished loading seed graph.")
