@@ -271,6 +271,7 @@ object csb_GraphGen{
     return true
   }
   def run_ba(sc: SparkContext, params: Params): Boolean = {
+
     //TODO: REMOVE THIS
     val distParser: multiEdgeDistribution = new multiEdgeDistribution()
     distParser.init(Array("conn.log"))

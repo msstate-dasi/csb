@@ -15,6 +15,7 @@ import scala.util.Random
   */
 class kro_GraphGen extends base_GraphGen with data_Parser {
   def run(sc: SparkContext, partitions: Int, mtxFile: String, genIter: Int, outputGraphPrefix: String, noPropFlag: Boolean, debugFlag: Boolean): Boolean = {
+    val dataGen = new data_Generator()
     //val probMtx: Array[Array[Float]] = Array(Array(0.1f, 0.9f), Array(0.9f, 0.5f))
     val probMtx: Array[Array[Double]] = parseMtxDataFromFile(sc, mtxFile)
 
@@ -34,6 +35,20 @@ class kro_GraphGen extends base_GraphGen with data_Parser {
     var timeSpan = (System.nanoTime() - startTime) / 1e9
     println()
     println("Finished generating Kronecker graph.")
+    println("\tTotal time elapsed: " + timeSpan.toString)
+    println()
+
+
+    if(!noPropFlag)
+    println()
+    println("Generating Edge and Node properties")
+    startTime = System.nanoTime()
+    val eRDD: RDD[Edge[edgeData]] = dataGen.generateEdgeProperties(sc, theGraph.edges)
+    val vRDD: RDD[(VertexId, nodeData)] = dataGen.generateNodeProperties(sc, theGraph.vertices)
+    theGraph = Graph(vRDD, eRDD, nodeData())
+    timeSpan = (System.nanoTime() - startTime) / 1e9
+    println()
+    println("Finished generating Edge and Node Properties.")
     println("\tTotal time elapsed: " + timeSpan.toString)
     println()
 
