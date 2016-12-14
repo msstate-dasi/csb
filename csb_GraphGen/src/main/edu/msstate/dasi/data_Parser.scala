@@ -8,12 +8,10 @@ trait data_Parser {
 
   def readFromConnFile(sc: SparkContext, connFile: String): (RDD[(VertexId,nodeData)], RDD[Edge[edgeData]]) = {
     //If we are opening a conn.log file
-    val filename = "conn.log"
-    val file = sc.textFile(filename)
+    val file = sc.textFile(connFile)
 
     //I get a list of all the lines of the conn.log file in a way for easy parsing
     val lines = file.map(line => line.split("\n")).filter(line => !line(0).contains("#")).map(line => line(0).replaceAll("-","0"))
-
 
     //Next I get each line in a list of the edge that line in conn.log represents and the vertices that make that edge up
     //NOTE: There will be many copies of the vertices which will be reduced later

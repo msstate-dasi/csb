@@ -100,7 +100,6 @@ class kro_GraphGen extends base_GraphGen with data_Parser {
         //println("Row " + srcId + ", Col " + dstId)
       }
 
-      //TODO: Generate Random Edge data
       val tempEdgeData = edgeData("", "", 0, 0, 0, "", 0, 0, 0, 0, "")
       Array(((srcId, dstId), Edge(srcId, dstId, tempEdgeData)))
 
@@ -164,7 +163,6 @@ class kro_GraphGen extends base_GraphGen with data_Parser {
       Array(srcId, dstId)
     }
       .distinct().map{record: VertexId =>
-      //TODO: Generate Random Node Data
       val tempNodeData: nodeData = nodeData("")
       (record, tempNodeData)
     }
