@@ -239,7 +239,7 @@ public class multiEdgeDistribution
         if(jsonFile.createNewFile()) {
             FileWriter jsonFW = new FileWriter(jsonFile);
 
-            jsonFW.write(outputObj.toString(4));
+            jsonFW.write(outputObj.toString(4).replace("\n","")); //I remove newlines as spark cannot automatically read json files spanning more than 1 line
 
             jsonFW.flush();
             jsonFW.close();

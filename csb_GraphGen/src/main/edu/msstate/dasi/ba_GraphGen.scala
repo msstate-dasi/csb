@@ -3,7 +3,7 @@ package edu.msstate.dasi
 import org.apache.spark.SparkContext
 import org.apache.spark.graphx.{Graph, _}
 import org.apache.spark.rdd.RDD
-
+import org.apache.spark.sql.SparkSession
 import scala.collection.mutable
 import scala.util.Random
 
@@ -12,15 +12,15 @@ import scala.util.Random
   */
 class ba_GraphGen extends base_GraphGen with data_Parser {
 
-  def run(sc: SparkContext, partitions: Int, seedVertFile: String, seedEdgeFile: String, baIter: Int, outputGraphPrefix: String, nodesPerIter: Int, noPropFlag: Boolean, debugFlag: Boolean): Boolean = {
-    val dataGen = new data_Generator()
+  def run(sc: SparkContext, partitions: Int, seedVertFile: String, seedEdgeFile: String, baIter: Int, outputGraphPrefix: String, nodesPerIter: Int, noPropFlag: Boolean, debugFlag: Boolean, sparkSession: SparkSession): Boolean = {
+    val dataGen = new data_Generator(sparkSession)
 
     println()
     println("Loading seed graph with vertices file: " + seedVertFile + " and edges file " + seedEdgeFile + " ...")
 
-    //read in and parse vertices and edges
     var startTime = System.nanoTime()
-    val (inVertices, inEdges) = readFromSeedGraph(sc, seedVertFile, seedEdgeFile)
+    //read in and parse vertices and edges
+    val (inVertices, inEdges) = readFromSeedGraph(sc, seedVertFile,seedEdgeFile)
     var timeSpan = (System.nanoTime() - startTime) / 1e9
     println()
     println("Finished loading seed graph.")
@@ -34,7 +34,7 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
 
     //Generate a BA Graph with iterations
     startTime = System.nanoTime()
-    theGraph = generateBAGraph(sc, partitions, inVertices, inEdges, baIter.toInt, nodesPerIter, noPropFlag, debugFlag)
+    theGraph = generateBAGraph(sc, partitions, inVertices, inEdges, baIter.toInt, nodesPerIter, noPropFlag, debugFlag, sparkSession)
     timeSpan = (System.nanoTime() - startTime) / 1e9
     println()
     println("Finished generating BA graph.")
@@ -82,9 +82,9 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
     * @param iter Number of iterations to perform BA
     * @return Graph containing vertices + edu.msstate.dasi.nodeData, edges + edu.msstate.dasi.edgeData
     */
-  def generateBAGraph(sc: SparkContext, partitions: Int, inVertices: RDD[(VertexId, nodeData)], inEdges: RDD[Edge[edgeData]], iter: Int, nodesPerIter: Int, noPropFlag: Boolean, debugFlag: Boolean): Graph[nodeData,edgeData] = {
+  def generateBAGraph(sc: SparkContext, partitions: Int, inVertices: RDD[(VertexId, nodeData)], inEdges: RDD[Edge[edgeData]], iter: Int, nodesPerIter: Int, noPropFlag: Boolean, debugFlag: Boolean, sparkSession: SparkSession): Graph[nodeData,edgeData] = {
     val r = Random
-    val dataGen = new data_Generator()
+    val dataGen = new data_Generator(sparkSession)
 
     theGraph = Graph(inVertices, inEdges, nodeData(""))
 
@@ -151,14 +151,14 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
             edgeData()
           } else {
             val ORIGBYTES = dataGen.getOriginalByteCount()
-            val ORIGIPBYTE = dataGen.getOriginalIPByteCount(ORIGBYTES, sc)
-            val CONNECTSTATE = dataGen.getConnectState(ORIGBYTES, sc)
-            val CONNECTTYPE = dataGen.getConnectType(ORIGBYTES, sc)
-            val DURATION = dataGen.getDuration(ORIGBYTES, sc)
-            val ORIGPACKCNT = dataGen.getOriginalPackCnt(ORIGBYTES, sc)
-            val RESPBYTECNT = dataGen.getRespByteCnt(ORIGBYTES, sc)
-            val RESPIPBYTECNT = dataGen.getRespIPByteCnt(ORIGBYTES, sc)
-            val RESPPACKCNT = dataGen.getRespPackCnt(ORIGBYTES, sc)
+            val ORIGIPBYTE = dataGen.getOriginalIPByteCount(ORIGBYTES)
+            val CONNECTSTATE = dataGen.getConnectState(ORIGBYTES)
+            val CONNECTTYPE = dataGen.getConnectType(ORIGBYTES)
+            val DURATION = dataGen.getDuration(ORIGBYTES)
+            val ORIGPACKCNT = dataGen.getOriginalPackCnt(ORIGBYTES)
+            val RESPBYTECNT = dataGen.getRespByteCnt(ORIGBYTES)
+            val RESPIPBYTECNT = dataGen.getRespIPByteCnt(ORIGBYTES)
+            val RESPPACKCNT = dataGen.getRespPackCnt(ORIGBYTES)
             edgeData("", CONNECTTYPE, DURATION, ORIGBYTES, RESPBYTECNT, CONNECTSTATE, ORIGPACKCNT, ORIGIPBYTE, RESPPACKCNT, RESPBYTECNT, "")
             //val tempEdgeProp: edgeData = edgeData()
           }
@@ -178,9 +178,6 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
     theGraph = Graph(inVertices.union(sc.parallelize(vertToAdd)), inEdges.union(sc.parallelize(edgesToAdd)), nodeData(""))
     theGraph
   }
-
-
-
 
 
   /*

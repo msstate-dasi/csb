@@ -18,16 +18,16 @@ trait data_Parser {
     //Next I get each line in a list of the edge that line in conn.log represents and the vertices that make that edge up
     //NOTE: There will be many copies of the vertices which will be reduced later
     var connPLUSnodes = lines.map(line => (edgeData(
-              line.split("\t")(0),
-              line.split("\t")(6),
-              line.split("\t")(9).toDouble,
-              line.split("\t")(9).toLong,
-              line.split("\t")(10).toLong,
-              line.split("\t")(11),
-              line.split("\t")(12).toLong,
-              line.split("\t")(17).toLong,
-              line.split("\t")(18).toLong,
-              line.split("\t")(19).toLong,
+      line.split("\t")(0),
+      line.split("\t")(6),
+      line.split("\t")(9).toDouble,
+      line.split("\t")(9).toLong,
+      line.split("\t")(10).toLong,
+      line.split("\t")(11),
+      line.split("\t")(12).toLong,
+      line.split("\t")(17).toLong,
+      line.split("\t")(18).toLong,
+      line.split("\t")(19).toLong,
       ""),
       nodeData(line.split("\t")(2) + ":" + line.split("\t")(3)),
       nodeData(line.split("\t")(4) + ":" + line.split("\t")(5))))
@@ -54,6 +54,9 @@ trait data_Parser {
 
     //Next I generate the edge list with the vertices represented by indexes(as it wants it)
     var Edges: RDD[Edge[edgeData]] = connPLUSnodes.map(record => Edge[edgeData](hashTable.get(record._2).head, hashTable.get(record._3).head, record._1))
+
+
+    return (vertices, Edges)
   }
 
   def readFromSeedGraph(sc: SparkContext, seedVertFile: String,seedEdgeFile: String): (RDD[(VertexId,nodeData)], RDD[Edge[edgeData]]) = {

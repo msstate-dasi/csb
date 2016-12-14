@@ -1,12 +1,16 @@
 package edu.msstate.dasi
 
 import org.apache.log4j.{Level, Logger}
-import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.{SparkConf, SparkContext, graphx}
 import scopt.OptionParser
 
 import scala.collection.mutable
 import scala.reflect.runtime.universe._
 import java.text.BreakIterator
+
+import org.apache.spark.graphx._
+import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.{SQLContext, SparkSession}
 
 /**
   * Created by spencer on 11/3/16.
@@ -248,15 +252,51 @@ object csb_GraphGen{
 
     }
     //every spark application needs a configuration and sparkcontext
-    val conf = new SparkConf()
-    conf.setAppName(s"csb_GraphGen ${versionString}")
-    val sc = new SparkContext(conf)
-    sc.setJobDescription(params.toString)
+//    val conf = new SparkConf()
+////    conf.setAppName(s"csb_GraphGen ${versionString}")
+////    val spark = SparkSession.builder().config(conf).getOrCreate()   //SparkSession(conf).read.json("file")
+//val spark = SparkSession
+//  .builder()
+//  .appName("Spark SQL basic example")
+//  .config(conf)
+//  .getOrCreate()
+//    val sc = spark.sparkContext
+//    sc.setJobDescription(params.toString)
+
+
+
+    // Create a SparkSession. No need to create SparkContext
+    // You automatically get it as part of the SparkSession
+    val warehouseLocation = "spark-warehouse"
+    val spark = SparkSession
+      .builder()
+      .appName("SparkSession")
+      .config("spark.sql.warehouse.dir", warehouseLocation)
+      .getOrCreate()
+    val sc = spark.sparkContext
+
+
+
+
+
+
+
+//    val df = spark.read.json("seed_distributions.json")
+//    df.printSchema()
+
+
+
+
+
+
+
+
+
 
     params.mode match {
       case "gen_dist" => run_gendist(sc, params)
-      case "ba" => run_ba(sc, params)
-      case "kro" => run_kro(sc, params)
+      case "ba" => run_ba(sc, params, spark)
+      case "kro" => run_kro(sc, params, spark)
       case _ => sys.exit(1)
     }
 
@@ -267,25 +307,79 @@ object csb_GraphGen{
   def run_gendist(sc: SparkContext, params: Params): Boolean = {
     val distParser: multiEdgeDistribution = new multiEdgeDistribution()
     distParser.init(Array(params.connLog))
-
+    //I DIDNT HAVE ENOUGH TIME TO FIGURE OUT HOW TO USE DATA_PARSER
+    //TODO change to use data_Parser
+    connToVertEdge(sc)
     return true
   }
-  def run_ba(sc: SparkContext, params: Params): Boolean = {
+  def run_ba(sc: SparkContext, params: Params, sparkSession: SparkSession): Boolean = {
+
 
     //TODO: REMOVE THIS
-    val distParser: multiEdgeDistribution = new multiEdgeDistribution()
-    distParser.init(Array("conn.log"))
+//    val distParser: multiEdgeDistribution = new multiEdgeDistribution()
+//    distParser.init(Array("conn.log"))
 
     val baGraph = new ba_GraphGen()
-    baGraph.run(sc, params.partitions, params.seedVertices, params.seedEdges, params.baIter, params.outputGraphPrefix, params.numNodesPerIter, params.noProp, params.debug)
+    baGraph.run(sc, params.partitions, params.seedVertices, params.seedEdges, params.baIter, params.outputGraphPrefix, params.numNodesPerIter, params.noProp, params.debug, sparkSession)
 
     return true
   }
-  def run_kro(sc: SparkContext, params: Params): Boolean = {
+  def run_kro(sc: SparkContext, params: Params, sparkSession: SparkSession): Boolean = {
     val kroGraph = new kro_GraphGen()
-    kroGraph.run(sc, params.partitions, params.seedMtx, params.kroIter, params.outputGraphPrefix, params.noProp, params.debug)
+    kroGraph.run(sc, params.partitions, params.seedMtx, params.kroIter, params.outputGraphPrefix, params.noProp, params.debug, sparkSession)
 
     return true
+  }
+
+
+
+  //TODO get rid of this function as it is taken care of in data_Parser
+  def connToVertEdge(sc: SparkContext): Unit =
+  {
+    val filename = "conn.log"
+    val file = sc.textFile(filename)
+
+    //I get a list of all the lines of the conn.log file in a way for easy parsing
+    val lines = file.map(line => line.split("\n")).filter(line => !line(0).contains("#")).map(line => line(0).replaceAll("-","0"))
+
+
+    //Next I get each line in a list of the dedge that line in conn.log represents and the vertices that make that edge up
+    //NOTE: There will be many copies of the vertices which will be reduced later
+    var connPLUSnodes = lines.map(line => (new edgeData(line.split("\t")(0), line.split("\t")(6), line.split("\t")(8).toDouble,  line.split("\t")(9).toLong, line.split("\t")(10).toInt,
+      line.split("\t")(11), line.split("\t")(12).toInt, line.split("\t")(17).toInt, line.split("\t")(18).toInt, line.split("\t")(19).toInt,
+      ""),
+      new nodeData(line.split("\t")(2) + ":" + line.split("\t")(3)),
+      new nodeData(line.split("\t")(4) + ":" + line.split("\t")(5))))
+
+
+    //from connPLUSnodes lets grab all the DISTINCT nodes
+    var ALLNODES : RDD[nodeData] = connPLUSnodes.map(record => record._2).union(connPLUSnodes.map(record => record._3)).distinct()
+
+    //next lets give them numbers and let that number be the "key"(basically index for my use)
+    var vertices: RDD[(VertexId, nodeData)] = ALLNODES.zipWithIndex().map(record => (record._2, record._1))
+
+
+    //next I make a hashtable of the nodes with it's given index.
+    //I have to do this since RDD transformations cannot happen within
+    //other RDD's and hashtables have O(1)
+    var verticesList = ALLNODES.collect()
+    var hashTable = new scala.collection.mutable.HashMap[nodeData, graphx.VertexId]
+    for( x<-0 to verticesList.length - 1)
+    {
+      hashTable.put(verticesList(x), x.toLong)
+    }
+
+
+
+    //Next I generate the edge list with the vertices represented by indexes(as it wants it)
+    var Edges: RDD[Edge[edgeData]] = connPLUSnodes.map(record => Edge[edgeData](hashTable.get(record._2).head, hashTable.get(record._3).head, record._1))
+
+
+    vertices.coalesce(1, true).saveAsTextFile("seed_verts")
+    Edges.coalesce(1, true).saveAsTextFile("seed_edges");
+//    vertices.saveAsTextFile("seed_verts")
+//    Edges.saveAsTextFile("seed_edges")
+
   }
 
 }
