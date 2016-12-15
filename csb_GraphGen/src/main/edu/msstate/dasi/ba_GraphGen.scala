@@ -13,7 +13,8 @@ import scala.util.Random
 class ba_GraphGen extends base_GraphGen with data_Parser {
 
   def run(sc: SparkContext, partitions: Int, seedVertFile: String, seedEdgeFile: String, baIter: Int, outputGraphPrefix: String, nodesPerIter: Int, noPropFlag: Boolean, debugFlag: Boolean, sparkSession: SparkSession): Boolean = {
-    val dataGen = new data_Generator(sparkSession)
+    val dataGen = data_Generator
+    dataGen.init(sparkSession)
 
     println()
     println("Loading seed graph with vertices file: " + seedVertFile + " and edges file " + seedEdgeFile + " ...")
@@ -31,6 +32,7 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
     println()
     println("Running BA with " + baIter + " iterations.")
     println()
+
 
     //Generate a BA Graph with iterations
     startTime = System.nanoTime()
@@ -83,8 +85,11 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
     * @return Graph containing vertices + edu.msstate.dasi.nodeData, edges + edu.msstate.dasi.edgeData
     */
   def generateBAGraph(sc: SparkContext, partitions: Int, inVertices: RDD[(VertexId, nodeData)], inEdges: RDD[Edge[edgeData]], iter: Int, nodesPerIter: Int, noPropFlag: Boolean, debugFlag: Boolean, sparkSession: SparkSession): Graph[nodeData,edgeData] = {
+
     val r = Random
-    val dataGen = new data_Generator(sparkSession)
+    val dataGen = data_Generator
+    dataGen.init(sparkSession)
+
 
     theGraph = Graph(inVertices, inEdges, nodeData(""))
 
@@ -101,6 +106,8 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
     var nPI = nodesPerIter
 
     val iters: Int = if(iter > nodesPerIter) math.ceil(iter.toDouble / nodesPerIter).toInt else { nPI = iter; 1}
+
+
 
     for(i <- 1 to iters) {
       println(i + "/" + math.ceil(iter.toDouble / partitions).toInt)
@@ -121,6 +128,7 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
           srcIndex -= 1
         }
 
+
         vertToAdd = vertToAdd :+ (srcId, tempNodeProp)
         degList = degList :+ (srcId, 0) //initial degree of 0
 
@@ -136,6 +144,8 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
             dstIndex += 1
           }
 
+
+
           dstIndex = dstIndex - 1
           //now we know that the node must attach at index
           val dstId: VertexId = degList(dstIndex)._1
@@ -146,23 +156,27 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
         print(" Adding Edge from " + srcId + " to " + dstId)
         println()
         */
+//          println("ROAR")
+//          println("we generate data")
+//          wait(1000000000)
+//          val tempEdgeProp = if (noPropFlag) {
+//            edgeData()
+//          } else {
+//
+//            val ORIGBYTES = dataGen.getOriginalByteCount()
+//            val ORIGIPBYTE = dataGen.getOriginalIPByteCount(ORIGBYTES)
+//            val CONNECTSTATE = dataGen.getConnectState(ORIGBYTES)
+//            val CONNECTTYPE = dataGen.getConnectType(ORIGBYTES)
+//            val DURATION = dataGen.getDuration(ORIGBYTES)
+//            val ORIGPACKCNT = dataGen.getOriginalPackCnt(ORIGBYTES)
+//            val RESPBYTECNT = dataGen.getRespByteCnt(ORIGBYTES)
+//            val RESPIPBYTECNT = dataGen.getRespIPByteCnt(ORIGBYTES)
+//            val RESPPACKCNT = dataGen.getRespPackCnt(ORIGBYTES)
+//            edgeData("", CONNECTTYPE, DURATION, ORIGBYTES, RESPBYTECNT, CONNECTSTATE, ORIGPACKCNT, ORIGIPBYTE, RESPPACKCNT, RESPBYTECNT, "")
+//            //val tempEdgeProp: edgeData = edgeData()
+//          }
 
-          val tempEdgeProp = if (noPropFlag) {
-            edgeData()
-          } else {
-            val ORIGBYTES = dataGen.getOriginalByteCount()
-            val ORIGIPBYTE = dataGen.getOriginalIPByteCount(ORIGBYTES)
-            val CONNECTSTATE = dataGen.getConnectState(ORIGBYTES)
-            val CONNECTTYPE = dataGen.getConnectType(ORIGBYTES)
-            val DURATION = dataGen.getDuration(ORIGBYTES)
-            val ORIGPACKCNT = dataGen.getOriginalPackCnt(ORIGBYTES)
-            val RESPBYTECNT = dataGen.getRespByteCnt(ORIGBYTES)
-            val RESPIPBYTECNT = dataGen.getRespIPByteCnt(ORIGBYTES)
-            val RESPPACKCNT = dataGen.getRespPackCnt(ORIGBYTES)
-            edgeData("", CONNECTTYPE, DURATION, ORIGBYTES, RESPBYTECNT, CONNECTSTATE, ORIGPACKCNT, ORIGIPBYTE, RESPPACKCNT, RESPBYTECNT, "")
-            //val tempEdgeProp: edgeData = edgeData()
-          }
-          edgesToAdd = edgesToAdd :+ Edge(srcId, dstId, tempEdgeProp)
+          edgesToAdd = edgesToAdd :+ Edge(srcId, dstId, edgeData())
 
           //This doesn't matter, but to be correct, this code updates the degList dstId's degree
           degList(dstIndex) = (degList(dstIndex)._1, degList(dstIndex)._2 + 1)

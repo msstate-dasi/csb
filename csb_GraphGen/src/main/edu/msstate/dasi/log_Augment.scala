@@ -180,6 +180,5 @@ class log_Augment {
     augLogEntries.repartition(1).saveAsTextFile(augLog)
 
     mv(augLog+"\\part-00000", augLog)
-
   }
 }

@@ -4,7 +4,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.graphx.{Edge, VertexId}
 import org.apache.spark.rdd.RDD
 
-trait data_Parser {
+trait data_Parser extends java.io.Serializable {
 
   def readFromConnFile(sc: SparkContext, connFile: String): (RDD[(VertexId,nodeData)], RDD[Edge[edgeData]]) = {
     //If we are opening a conn.log file
@@ -58,6 +58,7 @@ trait data_Parser {
   }
 
   def readFromSeedGraph(sc: SparkContext, seedVertFile: String,seedEdgeFile: String): (RDD[(VertexId,nodeData)], RDD[Edge[edgeData]]) = {
+
     val inVertices: RDD[(VertexId,nodeData)] = sc.textFile(seedVertFile).map(line => line.stripPrefix("(").stripSuffix(")").split(',')).map { record =>
       parseNodeData(record)
     }.filter(_._1 != false).map(record => record._2)
@@ -66,7 +67,7 @@ trait data_Parser {
       parseEdgeData(record)
     }.filter(_._1 != false).map(record => record._2)
 
-    (inVertices,inEdges)
+    return (inVertices,inEdges)
   }
 
   /*** Parses Data for an edge out of an array of strings
@@ -127,7 +128,7 @@ trait data_Parser {
     * @param inData Array strings to parse as node data. First element is the ID of the node, second element is the description of the node
     * @return Tuple (bool whether the record was successfully parsed, record(VertexID, edu.msstate.dasi.nodeData))
     */
-  private def parseNodeData(inData: Array[String]): (Boolean, (Long, nodeData)) = {
+  private def parseNodeData(inData: Array[String]): (Boolean, (Long, nodeData))  = {
     val result: (Boolean, (VertexId, nodeData)) =
       try {
         (true, (inData(0).toLong, nodeData(inData(1).stripPrefix("nodeData(").stripSuffix(")"))))

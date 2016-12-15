@@ -13,55 +13,19 @@ import scala.util.Random
 
 import scala.io.Source
 
-class data_Generator(val spark: SparkSession) extends Serializable {
-  var edgeCnt: String = ""
-  var originalBytesStr: String = ""
-  var originalIPByteCntStr: String = ""
-  var connectionStateStr: String = ""
-  var connectionTypeStr: String = ""
-  var durationStr: String = ""
-  var originalPackCntStr: String = ""
-  var respByteCntStr: String = ""
-  var respIPByteCntStr: String = ""
-  var respPackCntStr: String = ""
-  var this.spark = spark
-  val df : sql.DataFrame = this.spark.read.json("seed_distributions.json")
+object data_Generator extends Serializable {
 
+
+var spark: SparkSession = null
+var df: sql.DataFrame = null
 
   //constructor
+  //THIS MUST BE CALLED FOR THE OBJECT TO FUNCTION PROPERLY
+  def init(sparkSession: SparkSession)
   {
+    spark = sparkSession
+    df = this.spark.read.json("seed_distributions.json")
     df.persist()
-    val originalBytes = df.select("ORIG_BYTES").createOrReplaceTempView("originalBytes")
-    val edgeDist = df.select("EDGE_DIST").createOrReplaceTempView("EDGE_DIST")
-
-//    println(df.select("ORIG_BYTES.*").columns(1))
-
-
-
-
-
-
-
-
-
-
-
-
-//    this.edgeCnt =              readFile("Edge_distributions")
-//    this.originalBytesStr =     readFile("Original_byte_count")
-//    this.originalIPByteCntStr = readFile("Original_IP_byte_count")
-//    this.connectionStateStr =   readFile("Connection_state")
-//    this.connectionTypeStr =    readFile("Connection_type")
-//    this.durationStr =          readFile("Duration_of_connection")
-//    this.originalPackCntStr =   readFile("Original_packet_count")
-//    this.respByteCntStr =       readFile("Resp_byte_count")
-//    this.respIPByteCntStr =     readFile("Resp_IP_byte_count")
-//    this.respPackCntStr =       readFile("Resp_packet_count")
-  }
-
-
-  def readFile(fileName: String): String = {
-    return Source.fromFile(fileName).mkString
   }
 
   def getBucket(str : String, OriginalByteCnt: Long): String =
@@ -95,8 +59,25 @@ class data_Generator(val spark: SparkSession) extends Serializable {
     var sum: Double = 0
     for( i <- 0 to strings.length - 1)
     {
-      if(subStr.length > 0) sum = sum + df.select(root + "." + strings(i) + "." + subStr).head().getDouble(0)
-      else sum = sum + df.select(root + "." + strings(i)).head().getDouble(0)
+      var selectStr: String = ""
+
+      if(subStr.length > 0)
+      {
+        selectStr = root + "." + strings(i) + "." + subStr
+      }
+      else
+        {
+          selectStr = root + "." + strings(i)
+        }
+
+      try
+      {
+        sum = sum + df.select(selectStr).head().getDouble(0)
+      }
+      catch
+        {
+          case cce: ClassCastException => sum = 1
+        }
       if(sum >= randNum)
       {
         //EDGE DISTRIBUTION LOOKUP
@@ -174,46 +155,55 @@ class data_Generator(val spark: SparkSession) extends Serializable {
   }
 
   def getOriginalByteCount(): Long = {
+
     return getIndependentVariable("ORIG_BYTES","DIST")
   }
 
   def getOriginalIPByteCount(byteCnt: Long): Long =
   {
+
     return getDependentVariable(byteCnt.toInt, "ORIG_BYTES", "ORIG_IP_BYTES").toLong
   }
 
   def getConnectState(byteCnt: Long): String =
   {
+
     return getDependentVariable(byteCnt.toInt, "ORIG_BYTES", "CONN_STATE")
   }
 
   def getConnectType(byteCnt: Long): String =
   {
+
     return getDependentVariable(byteCnt.toInt, "ORIG_BYTES", "PROTOCOL")
   }
 
   def getDuration(byteCnt: Long): Double =
   {
+
     return getDependentVariable(byteCnt.toInt, "ORIG_BYTES", "DURATION").toDouble
   }
 
   def getOriginalPackCnt(byteCnt: Long): Long =
   {
+
     return getDependentVariable(byteCnt.toInt, "ORIG_BYTES", "ORIG_PKTS").toLong
   }
 
   def getRespByteCnt(byteCnt: Long): Long =
   {
+
     return getDependentVariable(byteCnt.toInt, "ORIG_BYTES", "RESP_BYTES").toLong
   }
 
   def getRespIPByteCnt(byteCnt: Long): Long =
   {
+
     return getDependentVariable(byteCnt.toInt, "ORIG_BYTES", "RESP_IP_BYTES").toLong
   }
 
   def getRespPackCnt(byteCnt: Long): Long =
   {
+
     return getDependentVariable(byteCnt.toInt, "ORIG_BYTES", "RESP_PKTS").toLong
   }
 
@@ -382,7 +372,6 @@ class data_Generator(val spark: SparkSession) extends Serializable {
   }
 
   private def generateEdge(): edgeData = {
-    val sc: SparkContext = new SparkContext()
     val ORIGBYTES = getOriginalByteCount()
     val ORIGIPBYTE = getOriginalIPByteCount(ORIGBYTES)
     val CONNECTSTATE = getConnectState(ORIGBYTES)

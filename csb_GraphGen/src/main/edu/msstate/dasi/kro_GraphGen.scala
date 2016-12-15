@@ -16,7 +16,8 @@ import scala.util.Random
   */
 class kro_GraphGen extends base_GraphGen with data_Parser {
   def run(sc: SparkContext, partitions: Int, mtxFile: String, genIter: Int, outputGraphPrefix: String, noPropFlag: Boolean, debugFlag: Boolean, sparkSession: SparkSession): Boolean = {
-    val dataGen = new data_Generator(sparkSession)
+    val dataGen = data_Generator
+    dataGen.init(sparkSession)
     //val probMtx: Array[Array[Float]] = Array(Array(0.1f, 0.9f), Array(0.9f, 0.5f))
     val probMtx: Array[Array[Double]] = parseMtxDataFromFile(sc, mtxFile)
 
