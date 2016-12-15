@@ -15,7 +15,11 @@ import scala.io.Source
 
 object data_Generator extends Serializable {
 
-
+//I keep the spark variable here in case we want to change how we select from the database
+  //ie. I use df like so df.select("blablabla")
+  //whereas you could do this:
+  // spark.read.json("file.json").createOrReplaceTempView("df")
+  //spark.sql("ENTER SQL COMMAND HERE")
 var spark: SparkSession = null
 var df: sql.DataFrame = null
 
@@ -28,6 +32,16 @@ var df: sql.DataFrame = null
     df.persist()
   }
 
+  /***
+    * This function returns the bucket that a particular number is in.
+    * Example: If we pass in 15 and we have buckets of length 10(0-9, 10-19, ...)
+    * then this function will return the string "10-19" and we use that string in
+    * looking up things in the dataframe.
+    * NOTE: this function grabs the buckets from the database so no need to specify
+    * @param str The root directory of the dataframe Ex. : ORIG_BYTES
+    * @param OriginalByteCnt The original byte count whose bucket you wanna know it fits in.
+    * @return
+    */
   def getBucket(str : String, OriginalByteCnt: Long): String =
   {
     val headers = df.select(str + ".*").columns
@@ -43,7 +57,8 @@ var df: sql.DataFrame = null
 
   /***
     * This function returns a randomized int based on the probabilities given
-    * in the json file.
+    * in the json file.  It is independent because it does not matter what
+    * Original_Bytes is.
     * @param root This is the root directory of the JSON Example EDGE_DIST
     * @param subStr This is to take care in case the directory you go to has another directory inside it for the actual distribution
     *               Example ORIG_BYTES.0-9.DIST
@@ -61,15 +76,23 @@ var df: sql.DataFrame = null
     {
       var selectStr: String = ""
 
+
+      //the following if/else statement if for sql syntax
+      //if subStr is "" we dont want a trailing period
       if(subStr.length > 0)
       {
         selectStr = root + "." + strings(i) + "." + subStr
       }
       else
-        {
+      {
           selectStr = root + "." + strings(i)
-        }
+      }
 
+
+      //The try catch lines has to do with a weird java runtime exception
+      //on the off chance the percentage for a particular thing is 1
+      //meaning that it is the only option, java won't convert that to a double
+      //enter the catch...it just sets sum to 1 which is expected behavior
       try
       {
         sum = sum + df.select(selectStr).head().getDouble(0)
@@ -78,9 +101,18 @@ var df: sql.DataFrame = null
         {
           case cce: ClassCastException => sum = 1
         }
+
+      //This if is when we have found the value we are going with "randomly generated" value
       if(sum >= randNum)
       {
-        //EDGE DISTRIBUTION LOOKUP
+
+        //This function is called for Original_bytes and Edge_DIST
+        //which has different outputs
+        //EX: EDGE_DIST => 2
+        //EX: ORIG_BYTES => 10-19
+        //These try catch statements take care of that
+        //try gets edge_dist
+        //catch gets ORIG_BYTES
         try
         {
           return strings(i).toInt
@@ -97,6 +129,12 @@ var df: sql.DataFrame = null
     return 1
   }
 
+
+  /***
+    * This function returns a random number given a range
+    * @param str string in the format "a-b" where a and b are integers
+    * @return
+    */
   def randNumFromRange(str: String): Int =
   {
     val first = str.split("-")(0).toInt
@@ -107,6 +145,14 @@ var df: sql.DataFrame = null
   }
 
 
+  /***
+    * This function is responsible for searching the database and picking
+    * a random value for all the properties that are dependent on original bytes
+    * @param byteNum the original byte count that acts as the variable this function is dependent on
+    * @param root the root of the database
+    * @param subStr
+    * @return
+    */
   def getDependentVariable(byteNum: Int, root: String, subStr: String): String =
   {
     val r : Random = Random
@@ -118,7 +164,12 @@ var df: sql.DataFrame = null
     var sum = 0.0
     for(i <- 0 to columns.length)
       {
-        println(root + "." + bucket + "." + subStr + "." + columns(i))
+
+        //this try and catch is because if we can't convert the value that
+        //is found in the dataframe to a double IF it is a 1.
+        //In other words the chance for that particular value was 100%
+        //but java can't convert a Long 1 (Thats what java thinks it is)
+        //to a double 1.0
         try {
           sum = sum + df.select(root + "." + bucket + "." + subStr + "." + columns(i)).head().getDouble(0)
         }
@@ -126,13 +177,18 @@ var df: sql.DataFrame = null
           {
             case cce: ClassCastException =>
             {
-//              println("THE NEXT THING BETTER BE A 1 " + df.select(root + "." + bucket + "." + subStr + "." + columns(i)).head())
               sum = 1
             }
           }
 
+        //when this is true we have picked out our random value
         if(sum >= randNum)
           {
+            //given the way our data is stored for our dependent values
+            //we will either get something in the format
+            // "a-b" where a and b are integers
+            //or just a string like "tcp"
+            //this try and catch handles both cases.
             try
             {
               return randNumFromRange(columns(i)).toString
@@ -148,222 +204,151 @@ var df: sql.DataFrame = null
   }
 
 
-
+  /***
+    * get random edge count
+    * @return random edge count
+    */
   def getEdgeCount(): Int =
   {
     return getIndependentVariable("EDGE_DIST", "")
   }
 
+  /***
+    * get random original byte count
+    * @return random original byte count
+    */
   def getOriginalByteCount(): Long = {
 
     return getIndependentVariable("ORIG_BYTES","DIST")
   }
 
+  /***
+    * return randome originalIPByteCount
+    * @param byteCnt original byte count
+    * @return random original ip byte count
+    */
   def getOriginalIPByteCount(byteCnt: Long): Long =
   {
 
     return getDependentVariable(byteCnt.toInt, "ORIG_BYTES", "ORIG_IP_BYTES").toLong
   }
 
+  /***
+    *
+    * @param byteCnt original byte count
+    * @return random connection state
+    */
   def getConnectState(byteCnt: Long): String =
   {
 
     return getDependentVariable(byteCnt.toInt, "ORIG_BYTES", "CONN_STATE")
   }
 
+  /***
+    *
+    * @param byteCnt original byte count
+    * @return random protocol
+    */
   def getConnectType(byteCnt: Long): String =
   {
 
     return getDependentVariable(byteCnt.toInt, "ORIG_BYTES", "PROTOCOL")
   }
 
+  /***
+    *
+    * @param byteCnt original byte count
+    * @return random duration
+    */
   def getDuration(byteCnt: Long): Double =
   {
 
     return getDependentVariable(byteCnt.toInt, "ORIG_BYTES", "DURATION").toDouble
   }
 
+  /***
+    *
+    * @param byteCnt original byte count
+    * @return random original packet count
+    */
   def getOriginalPackCnt(byteCnt: Long): Long =
   {
 
     return getDependentVariable(byteCnt.toInt, "ORIG_BYTES", "ORIG_PKTS").toLong
   }
 
+  /***
+    *
+    * @param byteCnt original byte count
+    * @return random response byte count
+    */
   def getRespByteCnt(byteCnt: Long): Long =
   {
 
     return getDependentVariable(byteCnt.toInt, "ORIG_BYTES", "RESP_BYTES").toLong
   }
 
+  /***
+    *
+    * @param byteCnt original byte count
+    * @return random response IP byte count
+    */
   def getRespIPByteCnt(byteCnt: Long): Long =
   {
 
     return getDependentVariable(byteCnt.toInt, "ORIG_BYTES", "RESP_IP_BYTES").toLong
   }
 
+  /***
+    *
+    * @param byteCnt original byte count
+    * @return random response packet count
+    */
   def getRespPackCnt(byteCnt: Long): Long =
   {
 
     return getDependentVariable(byteCnt.toInt, "ORIG_BYTES", "RESP_PKTS").toLong
   }
 
+  /***
+    * generates random node data (basically ip and port)
+    * @return String in the format x.x.x.x:port
+    */
   def generateNodeData(): String = {
     val r = Random
 
     r.nextInt(255) + "." + r.nextInt(255) + "." + r.nextInt(255) + "." + r.nextInt(255) + ":" + r.nextInt(65536)
   }
 
-  /** *
-    * This function reads a distrobution that is not based on Original Bytes (independent of anything)
-    * and picks a number based on the distribution.
-    *
-    * @param fileContents the contents of one of the files is generated by examining a conn.log file.
-    * @return a random number based on a distrobution
+
+  /***
+    * wrapper function to  generate node data
+    * @return a random nodeData object
     */
-  def generateRandNumFromFileDist(fileContents: String): Int = {
-    val r = new Random
-    val numEdgesProb = r.nextFloat()
-    var chance = 0.0
-    var num = 0
-    var strIter = fileContents.split("\n").toIterator
-    while (strIter.hasNext && num == 0) {
-      val line = strIter.next()
-      val percentage = line.split("\\*")(1).split("\t")(1).toFloat
-      chance = chance + percentage
-      if (chance > numEdgesProb) {
-        if (!line.split("\t")(0).contains("-")) {
-          num = line.split("\t")(0).split("\\*")(1).toInt //split is a reg expression function so i escape the *
-        }
-        else {
-          val firstTabLine = line.split("\t")(0)
-          val begin: Int = firstTabLine.split("\\*")(1).split("-")(0).toInt
-          val end: Int = firstTabLine.split("\\*")(1).split("-")(1).toInt
-          num = r.nextInt(end - begin) + begin
-        }
-      }
-    }
-    num
-  }
-
-  /** *
-    * This function returns a random number but with respect to the number of Original Bytes the connection had.
-    * This is to prevent randomly generating bad data such as:
-    * Original Bytes: 2GB
-    * NumPackets: 2
-    *
-    * @param fileContents the contents of one of the files is generated by examining a conn.log file.
-    * @param byteNum      The number of bytes this connection had.
-    * @param sc           A spark context
-    * @return
-    */
-  def generateRandNumBasedBytes(fileContents: String, byteNum: Long, sc: SparkContext): Long = {
-    val r = new Random
-    val numEdgesProb = r.nextFloat()
-    var chance = 0.0
-    var num = 0
-
-    val splitFileContents = sc.parallelize(fileContents.split("\n"))
-    var text = splitFileContents.filter(record => record.split("\\*")(0).split("-")(0).toLong <= byteNum && record.split("\\*")(0).split("-")(1).toLong >= byteNum)
-
-    //    var allStr = ""
-    //
-    //    for (aStr <- text.collect())
-    //    {
-    //      allStr = allStr + aStr + "\n"
-    //    }
-
-    //    var temp = new FileWriter("temp")
-    //
-    //    temp.write(allStr)
-    //    temp.close()
-
-    var line: String = generateRandStrFromFileDist(text.toLocalIterator)
-
-    val range: String = line.split("\t").head.split("\\*")(1)
-
-    val begin: Int = range.split("-").head.toInt
-    val end: Int = range.split("-")(1).toInt
-
-    return r.nextInt(end - begin) + begin
-  }
-
-  def generateRandDoubleWithinRange(range: String): Double = {
-    val begin = range.split("-")(0).toInt
-    val end = range.split("-")(1).toInt
-
-    val r = Random
-    val decimal = r.nextDouble()
-    val digit = r.nextInt(end - begin) + begin
-    return digit + decimal
-  }
-
-  def generateRandStrBasedBytes(fileContents: String, byteNum: Long, sc: SparkContext): String = {
-    val r = new Random
-    val numEdgesProb = r.nextFloat()
-    var chance = 0.0
-    var num = 0
-    var rdd = sc.parallelize(fileContents.split("\n"))
-    //    fileIter.next() //we do the next here since the heading is always just text describeing the file
-
-
-    //    var file = sc.textFile(filename)
-    var text = rdd.filter(record => record.split("\\*")(0).split("-")(0).toLong <= byteNum && record.split("\\*")(0).split("-")(1).toLong >= byteNum)
-
-    //
-    //    var allStr = ""
-    //
-    //    for (aStr <- text.collect())
-    //    {
-    //      allStr = allStr + aStr + "\n"
-    //    }
-    //
-    //
-    //    var temp = new FileWriter("temp")
-    //
-    //    temp.write(allStr)
-    //    temp.close()
-
-    val line = generateRandStrFromFileDist(text.toLocalIterator)
-
-    return line.split(" ").head.split("\\*")(1)
-  }
-
-  /** *
-    * Given a set of of lines pick one at random
-    * This function is very similar to generateRandNumFromFileDist
-    * but instead of getting a number this function returns the line that it picks
-    *
-    * @param fileIter : The contents of the file in a string iter
-    * @return a weighted random line
-    */
-  def generateRandStrFromFileDist(fileIter: Iterator[String]): String = {
-    val r = new Random
-    val numEdgesProb = r.nextFloat()
-    var chance = 0.0
-    var num = 0
-
-
-    while (fileIter.hasNext && num == 0) {
-      val line = fileIter.next()
-      val percentage = line.split("\t")(1).toFloat
-      chance = chance + percentage
-      if (chance > numEdgesProb) {
-        return line
-      }
-    }
-    return null
-  }
-
   private def generateNode(): nodeData = {
       nodeData(generateNodeData())
   }
 
+  /***
+    * This function generates random data given an edgelist.
+    * It is completely parrallel so it should be fast.
+    * @param sc the current spark context
+    * @param eRDD the edge RDD that you want to generate random data for
+    * @return the edge RDD that now has random data
+    */
   def generateEdgeProperties(sc: SparkContext, eRDD: RDD[Edge[edgeData]]): RDD[Edge[edgeData]] = {
     val gen_eRDD = eRDD.map(record => Edge(record.srcId, record.dstId, generateEdge()))
 
     gen_eRDD
   }
 
+  /***
+    * This function generates random data given a vertices list.
+    * It is completely parralell so it should be fast.
+    * @param sc the current spark context
+    * @param vRDD the vert RDD that you want to generate random data for
+    * @return the vert RDD that now has random data
+    */
   def generateNodeProperties(sc: SparkContext, vRDD: RDD[(VertexId, nodeData)]): RDD[(VertexId, nodeData)] = {
 
     val gen_vRDD = vRDD.map(record => (record._1, generateNode()))
@@ -371,6 +356,10 @@ var df: sql.DataFrame = null
     gen_vRDD
   }
 
+  /***
+    * This acts as a wrapper function to call every function that gerates random data
+    * @return a random edgeData object that you can attach to an edge
+    */
   private def generateEdge(): edgeData = {
     val ORIGBYTES = getOriginalByteCount()
     val ORIGIPBYTE = getOriginalIPByteCount(ORIGBYTES)
@@ -382,7 +371,6 @@ var df: sql.DataFrame = null
     val RESPIPBYTECNT = getRespIPByteCnt(ORIGBYTES)
     val RESPPACKCNT = getRespPackCnt(ORIGBYTES)
     edgeData("", CONNECTTYPE, DURATION, ORIGBYTES, RESPBYTECNT, CONNECTSTATE, ORIGPACKCNT, ORIGIPBYTE, RESPPACKCNT, RESPBYTECNT, "")
-    //val tempEdgeProp: edgeData = edgeData()
   }
 
 }

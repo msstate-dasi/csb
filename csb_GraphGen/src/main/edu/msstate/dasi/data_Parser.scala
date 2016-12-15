@@ -18,11 +18,11 @@ trait data_Parser extends java.io.Serializable {
     var connPLUSnodes = lines.map(line => (edgeData(
       line.split("\t")(0),
       line.split("\t")(6),
-      line.split("\t")(9).toDouble,
+      line.split("\t")(8).toDouble,
       line.split("\t")(9).toLong,
       line.split("\t")(10).toLong,
       line.split("\t")(11),
-      line.split("\t")(12).toLong,
+      line.split("\t")(16).toLong,
       line.split("\t")(17).toLong,
       line.split("\t")(18).toLong,
       line.split("\t")(19).toLong,
