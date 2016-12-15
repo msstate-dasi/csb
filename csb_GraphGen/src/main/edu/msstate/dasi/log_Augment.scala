@@ -1,6 +1,6 @@
 package edu.msstate.dasi
 
-import java.io.File
+import java.io.{BufferedWriter, File, FileWriter}
 import java.nio.file.{Files, StandardCopyOption}
 import java.text.{DateFormat, SimpleDateFormat}
 import java.util.Date
@@ -11,47 +11,57 @@ import org.apache.spark.rdd.RDD
 /**
   * Created by B1nary on 12/8/2016.
   */
-case class alertBlock (
-                                attackName: String = "",
-                                srcIP: String = "",
-                                srcPort: Int = 0,
-                                dstIP: String = "",
-                                dstPort: Int = 0,
-                                timeStamp: String = ""
-                              )
+case class alertBlock(
+                       attackName: String = "",
+                       srcIP: String = "",
+                       srcPort: Int = 0,
+                       dstIP: String = "",
+                       dstPort: Int = 0,
+                       timeStamp: String = ""
+                     )
 
 case class connLogEntry(TS: String = "",
-                                UID: String = "",
-                                SRCADDR: String = "",
-                                SRCPORT: Int = 0,
-                                DESTADDR: String = "",
-                                DESTPORT: Int = 0,
-                                PROTOCOL: String = "",
-                                SERVICE: String = "-",
-                                DURATION: Double = 0,
-                                ORIG_BYTES: Long = 0,
-                                RESP_BYTES: Long = 0,
-                                CONN_STATE: String = "",
-                                LOCAL_ORIG: String = "-",
-                                LOCAL_RESP: String = "-",
-                                MISSED_BYTES: Long = 0,
-                                HISTORY: String = "",
-                                ORIG_PKTS: Long = 0,
-                                ORIG_IP_BYTES: Long = 0,
-                                RESP_PKTS: Long = 0,
-                                RESP_IP_BYTES: Long = 0,
-                                TUNNEL_PARENT: String = "(empty)",
-                                DESC: String = ""
-                               )
+                        UID: String = "",
+                        SRCADDR: String = "",
+                        SRCPORT: Int = 0,
+                        DESTADDR: String = "",
+                        DESTPORT: Int = 0,
+                        PROTOCOL: String = "",
+                        SERVICE: String = "-",
+                        DURATION: Double = 0,
+                        ORIG_BYTES: Long = 0,
+                        RESP_BYTES: Long = 0,
+                        CONN_STATE: String = "",
+                        LOCAL_ORIG: String = "-",
+                        LOCAL_RESP: String = "-",
+                        MISSED_BYTES: Long = 0,
+                        HISTORY: String = "",
+                        ORIG_PKTS: Long = 0,
+                        ORIG_IP_BYTES: Long = 0,
+                        RESP_PKTS: Long = 0,
+                        RESP_IP_BYTES: Long = 0,
+                        TUNNEL_PARENT: String = "(empty)",
+                        DESC: String = ""
+                       )
 
-class log_Augment {
+class log_Augment extends Serializable {
+
+
+  def getDate(in: Array[String]): String = {
+    in.foreach(println)
+    val pattern = "%M/%d/%y-%H:%m:%s"
+    val dateFormatter = new SimpleDateFormat(pattern)
+    val dateTime = dateFormatter.parse(in(2).split(" ")(0).split(".")(0))
+    dateTime.getTime.toString
+  }
 
   def getSnortAlertInfo(sc: SparkContext, alertLog: String): RDD[alertBlock] = {
-    val pattern = "%m/%d/%Y-%H:%M:%S"
-    val dateFormatter = new SimpleDateFormat(pattern)
 
-    val result = sc.wholeTextFiles(alertLog).flatMap(x => x._2.split("\n\n")).map { block =>
-      try {
+
+    println(sc.wholeTextFiles(alertLog).flatMap(x => x._2.split("\n\n")).count())
+
+    sc.wholeTextFiles(alertLog).flatMap(x => x._2.split("\n\n")).map { block =>
+      //try {
         val blockList = block.split("\n")
         val attackName = blockList(0) + "\n" + blockList(1)
 
@@ -65,14 +75,13 @@ class log_Augment {
         if (blockList(2).split(" ")(3).split(":").length > 1)
           dstPort = blockList(2).split(" ")(3).split(":")(1).toInt
 
-        val dateTime = dateFormatter.parse(blockList(2).split(" ")(0))
-        val timeStamp = dateTime.getTime.toString
+        val timeStamp = getDate(blockList)
 
         alertBlock(attackName, srcIP, srcPort, dstIP, dstPort, timeStamp)
-      } catch {case _ => alertBlock()}
+      //} catch {
+        //case _ => alertBlock()
+      //}
     }.filter(_.timeStamp != "")
-
-    result
   }
 
   def getBroLogInfo(sc: SparkContext, connLog: String): RDD[connLogEntry] = {
@@ -106,16 +115,19 @@ class log_Augment {
         connLogEntry(TS, UID, SRCADDR, SRCPORT, DESTADDR, DESTPORT, PROTOCOL, SERVICE, DURATION, ORIG_BYTES, RESP_BYTES,
           CONN_STATE, LOCAL_ORIG, LOCAL_RESP, MISSED_BYTES, HISTORY, ORIG_PKTS, ORIG_IP_BYTES, RESP_PKTS, RESP_IP_BYTES,
           TUNNEL_PARENT)
-      } catch { case _ => connLogEntry() }
+      } catch {
+        case _ => connLogEntry()
+      }
     ).filter(_.TS != "")
   }
 
-  def getAugLogInfo(sc: SparkContext, snortEntries: RDD[alertBlock], broEntries: RDD[connLogEntry], augLog: String): RDD[connLogEntry] = {
-    val sn2bro = snortEntries.map(alert => connLogEntry(TS = alert.timeStamp, SRCADDR = alert.srcIP, SRCPORT=alert.srcPort,
+  def getAugLogInfo(sc: SparkContext, snortEntries: RDD[alertBlock], broEntries: RDD[connLogEntry], augLog: String): Unit = {
+    println(snortEntries.count())
+    val sn2bro = snortEntries.map(alert => connLogEntry(TS = alert.timeStamp, SRCADDR = alert.srcIP, SRCPORT = alert.srcPort,
       DESTADDR = alert.dstIP, DESTPORT = alert.dstPort, DESC = alert.attackName))
       .map(entry => (entry.SRCADDR + entry.SRCPORT + entry.DESTADDR + entry.DESTPORT, entry)).collect()
 
-    val keyedBroEntries = broEntries.map(entry => (entry.SRCADDR+entry.SRCPORT+entry.DESTADDR+entry.DESTPORT, entry))
+    val keyedBroEntries = broEntries.map(entry => (entry.SRCADDR + entry.SRCPORT + entry.DESTADDR + entry.DESTPORT, entry))
 
     /*
     sn2bro.join(keyedBroEntries).map(p => connLogEntry(p._2._1.TS, p._2._1.UID, p._2._1.SRCADDR, p._2._1.SRCPORT,
@@ -127,26 +139,26 @@ class log_Augment {
 
     var augEntries: Array[connLogEntry] = Array.empty[connLogEntry]
 
-    for(entry <- sn2bro) {
+    for (entry <- sn2bro) {
       var matches = keyedBroEntries.filter(x => x._1.matches(entry._1))
 
       var results: Array[connLogEntry] = null
 
       if (matches.isEmpty) {
-        matches = keyedBroEntries.filter(x => x._1.matches(".*" +  entry._2.SRCADDR + ".*" + entry._2.DESTADDR + ".*") ||
-                                              x._1.matches(".*" +  entry._2.DESTADDR + ".*" + entry._2.SRCADDR + ".*"))
+        matches = keyedBroEntries.filter(x => x._1.matches(".*" + entry._2.SRCADDR + ".*" + entry._2.DESTADDR + ".*") ||
+          x._1.matches(".*" + entry._2.DESTADDR + ".*" + entry._2.SRCADDR + ".*"))
       }
 
-      if(!matches.isEmpty()) {
-        for(m <- matches) {
+      if (!matches.isEmpty()) {
+        for (m <- matches) {
           if (entry._2.TS.toDouble >= m._2.TS.toDouble - 5 &&
             entry._2.TS.toDouble <= m._2.TS.toDouble + m._2.DURATION.toDouble + 5) {
             results = results :+ m._2
           }
         }
-        
+
         if (results != null) {
-          for(result <- results) {
+          for (result <- results) {
             augEntries = augEntries :+ connLogEntry(result.TS, result.UID, result.SRCADDR, result.SRCPORT,
               result.DESTADDR, result.DESTPORT, result.PROTOCOL, result.SERVICE, result.DURATION, result.ORIG_BYTES,
               result.RESP_BYTES, result.CONN_STATE, result.LOCAL_ORIG, result.LOCAL_RESP, result.MISSED_BYTES,
@@ -157,28 +169,59 @@ class log_Augment {
       }
     }
 
-    val augRDD = sc.parallelize(augEntries)
 
     try {
-      augRDD.repartition(1).saveAsTextFile(augLog)
-      val sparkOutput = new File(augLog+"\\part-00000").toPath()
-      Files.move(sparkOutput, new File(augLog).toPath(), StandardCopyOption.ATOMIC_MOVE)
-    }
 
-    augRDD
+      val augRDD = sc.parallelize(Array(
+        "#separator \\x09",
+        "#set_separator  ,",
+        "#empty_field    (empty)",
+        "#unset_field    -",
+        "#path   conn",
+        "#open   2016-09-15-15-59-01",
+        "#fields ts      uid     id.orig_h       id.orig_p       id.resp_h       id.resp_p       proto   service duration        orig_bytes      resp_bytes      conn_state      local_orig      local_resp      missed_bytes    history orig_pkts      orig_ip_bytes    resp_pkts       resp_ip_bytes   tunnel_parents",
+        "#types  time    string  addr    port    addr    port    enum    string  intervalcount   count   string  bool    bool    count   string  count   count   count  count    set[string]"
+      )).union(sc.parallelize(augEntries).map(entry =>
+        entry.TS + "\t" +
+          entry.UID + "\t" +
+          entry.SRCADDR + "\t" +
+          entry.SRCPORT + "\t" +
+          entry.DESTADDR + "\t" +
+          entry.DESTPORT + "\t" +
+          entry.PROTOCOL + "\t" +
+          entry.SERVICE + "\t" +
+          entry.DURATION.toString + "\t" +
+          entry.ORIG_BYTES.toString + "\t" +
+          entry.RESP_BYTES.toString + "\t" +
+          entry.CONN_STATE + "\t" +
+          entry.LOCAL_ORIG + "\t" +
+          entry.LOCAL_RESP + "\t" +
+          entry.MISSED_BYTES.toString + "\t" +
+          entry.HISTORY + "\t" +
+          entry.ORIG_PKTS.toString + "\t" +
+          entry.ORIG_IP_BYTES.toString + "\t" +
+          entry.RESP_PKTS.toString + "\t" +
+          entry.RESP_IP_BYTES.toString + "\t" +
+          entry.TUNNEL_PARENT + "\t" +
+          entry.DESC))
+
+    }
   }
 
+
   def mv(oldName: String, newName: String) =
-    try { new File(oldName).renameTo(new File(newName)); true } catch {case _: Throwable => false}
+    try {
+      new File(oldName).renameTo(new File(newName));
+      true
+    } catch {
+      case _: Throwable => false
+    }
 
   def run(sc: SparkContext, alertLog: String, connLog: String, augLog: String): Unit = {
-    val snortEntries = getSnortAlertInfo(sc, alertLog)
-    val broEntries = getBroLogInfo(sc, connLog)
+    val snortEntries = getSnortAlertInfo(sc, alertLog).cache()
+    val broEntries = getBroLogInfo(sc, connLog).cache()
 
-    val augLogEntries = getAugLogInfo(sc: SparkContext, snortEntries, broEntries, augLog)
+    getAugLogInfo(sc: SparkContext, snortEntries, broEntries, augLog)
 
-    augLogEntries.repartition(1).saveAsTextFile(augLog)
-
-    mv(augLog+"\\part-00000", augLog)
   }
 }

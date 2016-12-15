@@ -57,7 +57,6 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
       println()
     }
 
-
     println()
     println("Saving BA Graph and Veracity measurements.....")
     println()
@@ -90,11 +89,10 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
     val dataGen = data_Generator
     dataGen.init(sparkSession)
 
-
     theGraph = Graph(inVertices, inEdges, nodeData(""))
 
     var nodeIndices: mutable.HashMap[String, VertexId] = new mutable.HashMap[String, VertexId]()
-    var degList: Array[(VertexId,Int)] = theGraph.degrees.sortBy(_._1).collect()
+    var degList: Array[(VertexId, Int)] = theGraph.degrees.sortBy(_._1).collect()
 
     inVertices.foreach(record => nodeIndices += record._2.data -> record._1)
 
@@ -105,13 +103,14 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
 
     var nPI = nodesPerIter
 
-    val iters: Int = if(iter > nodesPerIter) math.ceil(iter.toDouble / nodesPerIter).toInt else { nPI = iter; 1}
+    val iters: Int = if (iter > nodesPerIter) math.ceil(iter.toDouble / nodesPerIter).toInt
+    else {
+      nPI = iter; 1
+    }
 
-
-
-    for(i <- 1 to iters) {
+    for (i <- 1 to iters) {
       println(i + "/" + math.ceil(iter.toDouble / partitions).toInt)
-      for(n <- 1 to nPI) {
+      for (n <- 1 to nPI) {
         //String is IP:Port ex. "192.168.0.1:80"
         val tempNodeProp: nodeData = if (noPropFlag) nodeData() else nodeData(dataGen.generateNodeData())
         val srcId: VertexId =
@@ -144,37 +143,9 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
             dstIndex += 1
           }
 
-
-
           dstIndex = dstIndex - 1
           //now we know that the node must attach at index
           val dstId: VertexId = degList(dstIndex)._1
-
-          /*
-        print("degSum = " + degSum.toString + " r = " + attachTo.toString + " degList = ")
-        degList.sortBy(_._2).reverse.take(10).foreach(print)
-        print(" Adding Edge from " + srcId + " to " + dstId)
-        println()
-        */
-//          println("ROAR")
-//          println("we generate data")
-//          wait(1000000000)
-//          val tempEdgeProp = if (noPropFlag) {
-//            edgeData()
-//          } else {
-//
-//            val ORIGBYTES = dataGen.getOriginalByteCount()
-//            val ORIGIPBYTE = dataGen.getOriginalIPByteCount(ORIGBYTES)
-//            val CONNECTSTATE = dataGen.getConnectState(ORIGBYTES)
-//            val CONNECTTYPE = dataGen.getConnectType(ORIGBYTES)
-//            val DURATION = dataGen.getDuration(ORIGBYTES)
-//            val ORIGPACKCNT = dataGen.getOriginalPackCnt(ORIGBYTES)
-//            val RESPBYTECNT = dataGen.getRespByteCnt(ORIGBYTES)
-//            val RESPIPBYTECNT = dataGen.getRespIPByteCnt(ORIGBYTES)
-//            val RESPPACKCNT = dataGen.getRespPackCnt(ORIGBYTES)
-//            edgeData("", CONNECTTYPE, DURATION, ORIGBYTES, RESPBYTECNT, CONNECTSTATE, ORIGPACKCNT, ORIGIPBYTE, RESPPACKCNT, RESPBYTECNT, "")
-//            //val tempEdgeProp: edgeData = edgeData()
-//          }
 
           edgesToAdd = edgesToAdd :+ Edge(srcId, dstId, edgeData())
 
@@ -192,19 +163,5 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
     theGraph = Graph(inVertices.union(sc.parallelize(vertToAdd)), inEdges.union(sc.parallelize(edgesToAdd)), nodeData(""))
     theGraph
   }
-
-
-  /*
-  def runGen(sc: SparkContext): Unit = {
-    val inVertices: RDD[(VertexId, edu.msstate.dasi.nodeData)] = sc.parallelize(Array((1L, edu.msstate.dasi.nodeData("")), (2L, edu.msstate.dasi.nodeData("")), (3L, edu.msstate.dasi.nodeData(""))))
-    val inEdges: RDD[Edge[edu.msstate.dasi.edgeData]] = sc.parallelize(Array(
-      Edge(1L, 2L, edu.msstate.dasi.edgeData("","",0,0,"",0,0,0,0,"")),
-      Edge(1L, 3L, edu.msstate.dasi.edgeData("","",0,0,"",0,0,0,0,""))
-    ))
-
-    generateBAGraph(sc, inVertices, inEdges, 500)
-  }
-  */
-
 
 }
