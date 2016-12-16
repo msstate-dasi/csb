@@ -1,5 +1,7 @@
 package edu.msstate.dasi
 
+import java.io.{BufferedWriter, File, FileWriter}
+
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.{SparkConf, SparkContext, graphx}
 import scopt.OptionParser
@@ -176,7 +178,15 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
             .action((x, c) => c.copy(augLog = x)),
           arg[String]("dist_out")
             .text(s"Path to save ${h.JSONDist_desc} default: ${dP.JSONDist}")
-            .action((x, c) => c.copy(JSONDist = x))
+            .action((x, c) => c.copy(JSONDist = x)),
+          arg[String]("seed_vert")
+            .text(s"Output file for ${h.seedVertices_desc} default: ${dP.seedVertices}")
+            .required()
+            .action((x, c) => c.copy(seedVertices = x)),
+          arg[String]("seed_edges")
+            .text(s"Output file for ${h.seedEdges_desc} default: ${dP.seedEdges}")
+            .required()
+            .action((x, c) => c.copy(seedEdges = x))
         )
 
       /**
@@ -242,7 +252,8 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
     parser.parse(args, dP) match {
       case Some(params) => if (params.mode != "") run(params)
       else {
-        println("Error: Must specify command"); parser.showUsageAsError()
+        println("Error: Must specify command");
+        parser.showUsageAsError()
       }
       case _ => sys.exit(1)
     }
@@ -295,15 +306,32 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
     //TODO change to use data_Parser
     //connToVertEdge(sc)
 
-    val (vRDD, eRDD): (RDD[(VertexId,nodeData)], RDD[Edge[edgeData]]) = readFromConnFile(sc, params.connLog)
+    val (vRDD, eRDD): (RDD[(VertexId, nodeData)], RDD[Edge[edgeData]]) = readFromConnFile(sc, params.augLog)
 
     theGraph = Graph(vRDD, eRDD, nodeData())
 
-    theGraph.vertices.coalesce(1, true).saveAsTextFile("seed_verts")
-    theGraph.edges.coalesce(1, true).saveAsTextFile("seed_edges")
+    val seed_vert = theGraph.vertices.coalesce(1, true).collect()
+    val seed_vert_file = new File(params.seedVertices)
 
-//    saveGraphEdges(sc, params.seedEdges)
-//    saveGraphVerts(sc, params.seedVertices)
+    var bw = new BufferedWriter(new FileWriter(seed_vert_file))
+    bw.write("ID,Desc\n")
+    for (entry <- seed_vert) {
+      bw.write(entry._1 + "," + entry._2 + "\n")
+    }
+    bw.flush()
+
+    val seed_edges = theGraph.edges.coalesce(1, true).collect()
+    val seed_edge_file = new File(params.seedEdges)
+
+    bw = new BufferedWriter(new FileWriter(seed_edge_file))
+    bw.write("Source,Target,Weight\n")
+    for (entry <- seed_edges) {
+      bw.write(entry.srcId + "," + entry.dstId + "," + entry.attr + "\n")
+    }
+    bw.close()
+
+    //    saveGraphEdges(sc, params.seedEdges)
+    //    saveGraphVerts(sc, params.seedVertices)
 
 
     return true

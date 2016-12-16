@@ -41,19 +41,18 @@ class kro_GraphGen extends base_GraphGen with data_Parser {
     println()
 
 
-    if ( ! noPropFlag ) {
-      println()
-      println("Generating Edge and Node properties")
-      startTime = System.nanoTime()
-      val eRDD: RDD[Edge[edgeData]] = dataGen.generateEdgeProperties(sc, theGraph.edges)
-      val vRDD: RDD[(VertexId, nodeData)] = dataGen.generateNodeProperties(sc, theGraph.vertices)
-      theGraph = Graph(vRDD, eRDD, nodeData())
-      timeSpan = (System.nanoTime() - startTime) / 1e9
-      println()
-      println("Finished generating Edge and Node Properties.")
-      println("\tTotal time elapsed: " + timeSpan.toString)
-      println()
-    }
+    if(!noPropFlag)
+    println()
+    println("Generating Edge and Node properties")
+    startTime = System.nanoTime()
+    val eRDD: RDD[Edge[edgeData]] = dataGen.generateEdgeProperties(sc, theGraph.edges)
+    val vRDD: RDD[(VertexId, nodeData)] = dataGen.generateNodeProperties(sc, theGraph.vertices)
+    theGraph = Graph(vRDD, eRDD, nodeData())
+    timeSpan = (System.nanoTime() - startTime) / 1e9
+    println()
+    println("Finished generating Edge and Node Properties.")
+    println("\tTotal time elapsed: " + timeSpan.toString)
+    println()
 
     println()
     println("Saving Kronecker Graph and Veracity measurements.....")

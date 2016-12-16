@@ -15,7 +15,7 @@ trait data_Parser extends java.io.Serializable {
 
     //Next I get each line in a list of the edge that line in conn.log represents and the vertices that make that edge up
     //NOTE: There will be many copies of the vertices which will be reduced later
-    var connPLUSnodes = lines.map(line => (edgeData(
+    val connPLUSnodes = lines.map(line => (edgeData(
       line.split("\t")(0),
       line.split("\t")(6),
       line.split("\t")(8).toDouble,
@@ -26,17 +26,16 @@ trait data_Parser extends java.io.Serializable {
       line.split("\t")(17).toLong,
       line.split("\t")(18).toLong,
       line.split("\t")(19).toLong,
-      ""),
+      try { line.split("\t")(21) } catch {case _: Throwable => ""}
+      ),
       nodeData(line.split("\t")(2) + ":" + line.split("\t")(3)),
       nodeData(line.split("\t")(4) + ":" + line.split("\t")(5))))
-
 
     //from connPLUSnodes lets grab all the DISTINCT nodes
     var ALLNODES : RDD[nodeData] = connPLUSnodes.map(record => record._2).union(connPLUSnodes.map(record => record._3)).distinct()
 
     //next lets give them numbers and let that number be the "key"(basically index for my use)
     var vertices: RDD[(VertexId, nodeData)] = ALLNODES.zipWithIndex().map(record => (record._2, record._1))
-
 
     //next I make a hashtable of the nodes with it's given index.
     //I have to do this since RDD transformations cannot happen within

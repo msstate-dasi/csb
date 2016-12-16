@@ -34,7 +34,6 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
     println()
 
 
-
     //Generate a BA Graph with iterations
     startTime = System.nanoTime()
     theGraph = generateBAGraph(sc, partitions, inVertices, inEdges, baIter.toInt, nodesPerIter, noPropFlag, debugFlag, sparkSession)

@@ -48,46 +48,46 @@ class log_Augment extends Serializable {
 
 
   def getDate(in: Array[String]): String = {
-    in.foreach(println)
+    //in.foreach(println)
     val pattern = "MM/dd/yy-HH:mm:ss"
     val dateFormatter = new SimpleDateFormat(pattern)
-    //TODO Verify why "." does not work in split()
-    val dateTime = dateFormatter.parse(in(2).split(" ")(0).split('.')(0))
+    val dateTime = dateFormatter.parse(in(2).split(" ")(0).split('.').head)
     dateTime.getTime.toString
   }
 
   def getSnortAlertInfo(sc: SparkContext, alertLog: String): RDD[alertBlock] = {
-
-
     println(sc.wholeTextFiles(alertLog).flatMap(x => x._2.split("\n\n")).count())
 
     sc.wholeTextFiles(alertLog).flatMap(x => x._2.split("\n\n")).map { block =>
       //try {
-        val blockList = block.split("\n")
-        val attackName = blockList(0) + "\n" + blockList(1)
+      val blockList = block.split("\n")
+      val attackName = blockList(0) + " " + blockList(1)
 
-        val srcIP = blockList(2).split(" ")(1).split(":")(0)
-        var srcPort = 0
-        if (blockList(2).split(" ")(1).split(":").length > 1)
-          srcPort = blockList(2).split(" ")(1).split(":")(1).toInt
+      val srcIP = blockList(2).split(" ")(1).split(":")(0)
+      var srcPort = 0
+      if (blockList(2).split(" ")(1).split(":").length > 1)
+        srcPort = blockList(2).split(" ")(1).split(":")(1).toInt
 
-        val dstIP = blockList(2).split(" ")(3).split(":")(0)
-        var dstPort = 0
-        if (blockList(2).split(" ")(3).split(":").length > 1)
-          dstPort = blockList(2).split(" ")(3).split(":")(1).toInt
+      val dstIP = blockList(2).split(" ")(3).split(":")(0)
+      var dstPort = 0
+      if (blockList(2).split(" ")(3).split(":").length > 1)
+        dstPort = blockList(2).split(" ")(3).split(":")(1).toInt
 
-        val timeStamp = getDate(blockList)
+      //println(blockList(2).split(" ")(0))
+      val timeStamp = getDate(blockList)
 
-        alertBlock(attackName, srcIP, srcPort, dstIP, dstPort, timeStamp)
+      alertBlock(attackName, srcIP, srcPort, dstIP, dstPort, timeStamp)
       //} catch {
-        //case _ => alertBlock()
+      //case _ => alertBlock()
       //}
     }.filter(_.timeStamp != "")
   }
 
   def getBroLogInfo(sc: SparkContext, connLog: String): RDD[connLogEntry] = {
-    sc.textFile(connLog).map(line =>
+    sc.textFile(connLog).map { line =>
       try {
+        if (line.contains("#")) connLogEntry()
+
         val fields = line.split("\t")
 
         val TS: String = fields(0)
@@ -103,32 +103,88 @@ class log_Augment extends Serializable {
         val RESP_BYTES: Long = fields(10).toLong
         val CONN_STATE: String = fields(11)
         val LOCAL_ORIG: String = fields(12)
-        val lOCAL_ORIG: String = fields(13)
-        val LOCAL_RESP: String = fields(14)
-        val MISSED_BYTES: Long = fields(15).toLong
-        val HISTORY: String = fields(16)
-        val ORIG_PKTS: Long = fields(17).toLong
-        val ORIG_IP_BYTES: Long = fields(18).toLong
-        val RESP_PKTS: Long = fields(19).toLong
-        val RESP_IP_BYTES: Long = fields(20).toLong
-        val TUNNEL_PARENT: String = fields(21)
+        val LOCAL_RESP: String = fields(13)
+        val MISSED_BYTES: Long = fields(14).toLong
+        val HISTORY: String = fields(15)
+        val ORIG_PKTS: Long = fields(16).toLong
+        val ORIG_IP_BYTES: Long = fields(17).toLong
+        val RESP_PKTS: Long = fields(18).toLong
+        val RESP_IP_BYTES: Long = fields(19).toLong
+        val TUNNEL_PARENT: String = fields(20)
 
         connLogEntry(TS, UID, SRCADDR, SRCPORT, DESTADDR, DESTPORT, PROTOCOL, SERVICE, DURATION, ORIG_BYTES, RESP_BYTES,
           CONN_STATE, LOCAL_ORIG, LOCAL_RESP, MISSED_BYTES, HISTORY, ORIG_PKTS, ORIG_IP_BYTES, RESP_PKTS, RESP_IP_BYTES,
           TUNNEL_PARENT)
       } catch {
-        case _ => connLogEntry()
+        case _: Throwable => connLogEntry()
       }
-    ).filter(_.TS != "")
+    }.filter(_.TS != "")
+  }
+
+  def mergeEntries(left: connLogEntry, right: connLogEntry): connLogEntry = {
+    val v = if (left.DESC != "") {
+      connLogEntry(
+        right.TS,
+        right.UID,
+        right.SRCADDR,
+        right.SRCPORT,
+        right.DESTADDR,
+        right.DESTPORT,
+        right.PROTOCOL,
+        right.SERVICE,
+        right.DURATION,
+        right.ORIG_BYTES,
+        right.RESP_BYTES,
+        right.CONN_STATE,
+        right.LOCAL_ORIG,
+        right.LOCAL_RESP,
+        right.MISSED_BYTES,
+        right.HISTORY,
+        right.ORIG_PKTS,
+        right.ORIG_IP_BYTES,
+        right.RESP_PKTS,
+        right.RESP_IP_BYTES,
+        right.TUNNEL_PARENT,
+        left.DESC
+      )
+    } else {
+      connLogEntry(
+        left.TS,
+        left.UID,
+        left.SRCADDR,
+        left.SRCPORT,
+        left.DESTADDR,
+        left.DESTPORT,
+        left.PROTOCOL,
+        left.SERVICE,
+        left.DURATION,
+        left.ORIG_BYTES,
+        left.RESP_BYTES,
+        left.CONN_STATE,
+        left.LOCAL_ORIG,
+        left.LOCAL_RESP,
+        left.MISSED_BYTES,
+        left.HISTORY,
+        left.ORIG_PKTS,
+        left.ORIG_IP_BYTES,
+        left.RESP_PKTS,
+        left.RESP_IP_BYTES,
+        left.TUNNEL_PARENT,
+        right.DESC
+      )
+    }
+    v
   }
 
   def getAugLogInfo(sc: SparkContext, snortEntries: RDD[alertBlock], broEntries: RDD[connLogEntry], augLog: String): Unit = {
-    println(snortEntries.count())
-    val sn2bro = snortEntries.map(alert => connLogEntry(TS = alert.timeStamp, SRCADDR = alert.srcIP, SRCPORT = alert.srcPort,
-      DESTADDR = alert.dstIP, DESTPORT = alert.dstPort, DESC = alert.attackName))
-      .map(entry => (entry.SRCADDR + entry.SRCPORT + entry.DESTADDR + entry.DESTPORT, entry)).collect()
+    //println(snortEntries.count())
 
-    val keyedBroEntries = broEntries.map(entry => (entry.SRCADDR + entry.SRCPORT + entry.DESTADDR + entry.DESTPORT, entry))
+    broEntries.count()
+
+    val sn2bro: RDD[((String, Int, String, Int), connLogEntry)] = snortEntries.map(alert => connLogEntry(TS = alert.timeStamp, SRCADDR = alert.srcIP, SRCPORT = alert.srcPort,
+      DESTADDR = alert.dstIP, DESTPORT = alert.dstPort, DESC = alert.attackName)).map(entry => ((entry.SRCADDR, entry.SRCPORT, entry.DESTADDR, +entry.DESTPORT), entry))
+
+    val keyedBroEntries = broEntries.map(entry => ((entry.SRCADDR, entry.SRCPORT, entry.DESTADDR, entry.DESTPORT), entry))
 
     /*
     sn2bro.join(keyedBroEntries).map(p => connLogEntry(p._2._1.TS, p._2._1.UID, p._2._1.SRCADDR, p._2._1.SRCPORT,
@@ -138,42 +194,23 @@ class log_Augment extends Serializable {
       p._2._1.TUNNEL_PARENT))
     */
 
-    var augEntries: Array[connLogEntry] = Array.empty[connLogEntry]
+    val augEntriesWithoutPortscans = sn2bro.leftOuterJoin(keyedBroEntries)
+      .filter(record => record._2._2.isDefined)
+      .flatMap(record => Array((record._1, record._2._1)) ++ (for (entry <- record._2._2.toSeq) yield (record._1, entry)))
+      .reduceByKey(mergeEntries)
 
-    for (entry <- sn2bro) {
-      var matches = keyedBroEntries.filter(x => x._1.matches(entry._1))
+    val augEntriesPortScans = sn2bro.map(entry => ((entry._1._1, entry._1._3), entry._2))
+      .leftOuterJoin(keyedBroEntries.map(entry => ((entry._1._1, entry._1._3), entry._2)))
+      .filter(record => record._2._2.isDefined)
+      .flatMap(record => Array((record._1, record._2._1)) ++ (for (entry <- record._2._2.toSeq) yield (record._1, entry)))
+      .reduceByKey(mergeEntries)
 
-      var results: Array[connLogEntry] = null
-
-      if (matches.isEmpty) {
-        matches = keyedBroEntries.filter(x => x._1.matches(".*" + entry._2.SRCADDR + ".*" + entry._2.DESTADDR + ".*") ||
-          x._1.matches(".*" + entry._2.DESTADDR + ".*" + entry._2.SRCADDR + ".*"))
-      }
-
-      if (!matches.isEmpty()) {
-        for (m <- matches) {
-          if (entry._2.TS.toDouble >= m._2.TS.toDouble - 5 &&
-            entry._2.TS.toDouble <= m._2.TS.toDouble + m._2.DURATION.toDouble + 5) {
-            results = results :+ m._2
-          }
-        }
-
-        if (results != null) {
-          for (result <- results) {
-            augEntries = augEntries :+ connLogEntry(result.TS, result.UID, result.SRCADDR, result.SRCPORT,
-              result.DESTADDR, result.DESTPORT, result.PROTOCOL, result.SERVICE, result.DURATION, result.ORIG_BYTES,
-              result.RESP_BYTES, result.CONN_STATE, result.LOCAL_ORIG, result.LOCAL_RESP, result.MISSED_BYTES,
-              result.HISTORY, result.ORIG_PKTS, result.ORIG_IP_BYTES, result.RESP_PKTS, result.RESP_IP_BYTES,
-              result.TUNNEL_PARENT, entry._2.DESC)
-          }
-        }
-      }
-    }
-
+    val augEntries = augEntriesWithoutPortscans.map(entry => ((entry._1._1, entry._1._3), entry._2)).union(augEntriesPortScans).reduceByKey(mergeEntries).map(entry => entry._2)
+    val totalEntries = broEntries.map(entry => (entry.TS, entry)).union(augEntries.map(entry => (entry.TS, entry))).reduceByKey((left, right) => right).map(entry => entry._2)
 
     try {
 
-      val augRDD = sc.parallelize(Array(
+      val augOut = Array(
         "#separator \\x09",
         "#set_separator  ,",
         "#empty_field    (empty)",
@@ -182,7 +219,7 @@ class log_Augment extends Serializable {
         "#open   2016-09-15-15-59-01",
         "#fields ts      uid     id.orig_h       id.orig_p       id.resp_h       id.resp_p       proto   service duration        orig_bytes      resp_bytes      conn_state      local_orig      local_resp      missed_bytes    history orig_pkts      orig_ip_bytes    resp_pkts       resp_ip_bytes   tunnel_parents",
         "#types  time    string  addr    port    addr    port    enum    string  intervalcount   count   string  bool    bool    count   string  count   count   count  count    set[string]"
-      )).union(sc.parallelize(augEntries).map(entry =>
+      ) ++ totalEntries.map(entry =>
         entry.TS + "\t" +
           entry.UID + "\t" +
           entry.SRCADDR + "\t" +
@@ -204,8 +241,17 @@ class log_Augment extends Serializable {
           entry.RESP_PKTS.toString + "\t" +
           entry.RESP_IP_BYTES.toString + "\t" +
           entry.TUNNEL_PARENT + "\t" +
-          entry.DESC))
+          entry.DESC).collect()
 
+      val file = new File(augLog)
+      val bw = new BufferedWriter(new FileWriter(file))
+      for (entry <- augOut) {
+        bw.write(entry + "\n")
+      }
+      bw.close()
+
+    } catch {
+      case _: Throwable => return
     }
   }
 
