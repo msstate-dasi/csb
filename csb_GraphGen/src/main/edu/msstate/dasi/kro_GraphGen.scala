@@ -75,10 +75,11 @@ class kro_GraphGen extends base_GraphGen with data_Parser {
 
   def getKroRDD(sc: SparkContext, partitions: Int, nVerts: Int, nEdges: Int, n1: Int, iter: Int, probToRCPosV_Broadcast: Broadcast[Array[(Double, Int, Int)]] ): RDD[Edge[edgeData]] =
   {
+    //TODO the algorithm must be commented and meaningful variable names must be used
     val r = Random
     val i: RDD[Int] = sc.parallelize(for (i <- 0 to nEdges) yield i)
 
-    val edgeList: RDD[Edge[edgeData]] = i.flatMap { record =>
+    val edgeList: RDD[Edge[edgeData]] = i.flatMap { _ =>
 
       var range: Long = nVerts
       var srcId: VertexId = 0
@@ -86,7 +87,7 @@ class kro_GraphGen extends base_GraphGen with data_Parser {
 
       for(i <- 1 to iter) {
         val probToRCPosV: Array[(Double, Int, Int)] = probToRCPosV_Broadcast.value
-        var prob = r.nextFloat()
+        val prob = r.nextFloat()
         var n = 0
         while (prob > probToRCPosV(n)._1) {
           n += 1
@@ -143,8 +144,6 @@ class kro_GraphGen extends base_GraphGen with data_Parser {
 
     val probToRCPosV_Broadcast = sc.broadcast(probToRCPosV_Private)
 
-    val i: RDD[Int] = sc.parallelize(for (i <- 1 to nEdges - 1) yield i)
-
     var edgeList: RDD[Edge[edgeData]] = getKroRDD(sc, partitions, nVerts, nEdges, n1, iter, probToRCPosV_Broadcast).cache()
 
     var curEdges = edgeList.count().toInt
@@ -163,8 +162,7 @@ class kro_GraphGen extends base_GraphGen with data_Parser {
       val srcId: VertexId = record.srcId
       val dstId: VertexId = record.dstId
       Array(srcId, dstId)
-    }
-      .distinct().map{record: VertexId =>
+    }.distinct().map{record: VertexId =>
       val tempNodeData: nodeData = nodeData("")
       (record, tempNodeData)
     }
