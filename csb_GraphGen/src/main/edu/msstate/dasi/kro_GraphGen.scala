@@ -154,7 +154,7 @@ class kro_GraphGen extends base_GraphGen with data_Parser {
       val newRDD = getKroRDD(sc, partitions, nVerts, nEdges - curEdges - 1, n1, iter, probToRCPosV_Broadcast)
 
       println(s"getKroRDD(sc, $partitions, $nVerts, $nEdges - $curEdges, $n1, $iter, probToRCPosV_Broadcast)")
-      edgeList = oldRDD.union(newRDD).cache()
+      edgeList = oldRDD.union(newRDD).map(entry => ((entry.srcId, entry.dstId), entry)).reduceByKey((left,right) => left).map(record => record._2).cache()
       curEdges = edgeList.count().toInt
       println(curEdges)
     }
