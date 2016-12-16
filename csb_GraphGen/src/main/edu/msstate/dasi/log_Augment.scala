@@ -49,9 +49,10 @@ class log_Augment extends Serializable {
 
   def getDate(in: Array[String]): String = {
     in.foreach(println)
-    val pattern = "%M/%d/%y-%H:%m:%s"
+    val pattern = "MM/dd/yy-HH:mm:ss"
     val dateFormatter = new SimpleDateFormat(pattern)
-    val dateTime = dateFormatter.parse(in(2).split(" ")(0).split(".")(0))
+    //TODO Verify why "." does not work in split()
+    val dateTime = dateFormatter.parse(in(2).split(" ")(0).split('.')(0))
     dateTime.getTime.toString
   }
 
