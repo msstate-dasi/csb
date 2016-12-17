@@ -22,38 +22,7 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
 
   val versionString = "0.2-DEV"
 
-  /**
-    * Abstract class for parameter case classes.
-    * This overrides the [[toString]] method to print all case class fields by name and value.
-    *
-    * @tparam T Concrete parameter class.
-    */
-  abstract class AbstractParams[T: TypeTag] {
-    private def tag: TypeTag[T] = typeTag[T]
 
-    /**
-      * Finds all case class fields in concrete class instance, and outputs them in JSON-style format:
-      * {
-      * [field name]:\t[field value]\n
-      * [field name]:\t[field value]\n
-      * ...
-      * }
-      */
-    override def toString: String = {
-      val tpe = tag.tpe
-      val allAccessors = tpe.decls.collect {
-        case m: MethodSymbol if m.isCaseAccessor => m
-      }
-      val mirror = runtimeMirror(getClass.getClassLoader)
-      val instanceMirror = mirror.reflect(this)
-      allAccessors.map { f =>
-        val paramName = f.name.toString
-        val fieldMirror = instanceMirror.reflectField(f)
-        val paramValue = fieldMirror.get
-        s"  $paramName:\t$paramValue"
-      }.mkString("{\n", ",\n", "\n}")
-    }
-  }
 
   case class ParamsHelp(
                          /**
@@ -80,7 +49,6 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
                          numNodesPerIter_desc: String = "The number of nodes to add to the graph per iteration.",
                          seedVertices_desc: String = "Comma-separated vertices file to use as a seed for BA Graph Generation.",
                          seedEdges_desc: String = "Comma-separated edges file to use as a seed for BA Graph Generation.",
-                         JSONDist_desc: String = "JSON Distribution file to use for generating random properties.",
                          baIter_desc: String = "Number of iterations for Barabasi–Albert model.",
 
                          /**
@@ -89,7 +57,7 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
                          seedMtx_desc: String = "Space-separated matrix file to use as a seed for Kronecker.",
                          kroIter_desc: String = "Number of iterations for Kronecker model."
 
-                       ) extends AbstractParams[ParamsHelp]
+                       )
 
   case class Params(
                      mode: String = "",
@@ -109,7 +77,6 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
                      connLog: String = "conn.log",
                      alertLog: String = "alert",
                      augLog: String = "aug.log",
-                     JSONDist: String = "dist.json",
 
                      /**
                        * BA Arguments
@@ -126,7 +93,7 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
                      seedMtx: String = "seed.mtx",
                      kroIter: Int = 10
 
-                   ) extends AbstractParams[Params]
+                   )
 
   def main(args: Array[String]) {
     val dP = Params()
@@ -176,9 +143,6 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
             .text(s"${h.augLog_desc} default: ${dP.augLog}")
             .required()
             .action((x, c) => c.copy(augLog = x)),
-          arg[String]("dist_out")
-            .text(s"Path to save ${h.JSONDist_desc} default: ${dP.JSONDist}")
-            .action((x, c) => c.copy(JSONDist = x)),
           arg[String]("seed_vert")
             .text(s"Output file for ${h.seedVertices_desc} default: ${dP.seedVertices}")
             .required()
@@ -210,10 +174,6 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
             .text(s"${h.seedEdges_desc} default: ${dP.seedEdges}")
             .required()
             .action((x, c) => c.copy(seedEdges = x)),
-          arg[String]("dist")
-            .text(s"${h.JSONDist_desc} default: ${dP.JSONDist}")
-            .required()
-            .action((x, c) => c.copy(JSONDist = x)),
           arg[Int]("<# of Iterations>")
             .text(s"${h.baIter_desc} default: ${dP.baIter}")
             .validate(x => if (x > 0) success
@@ -235,10 +195,6 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
             .text(s"${h.seedMtx_desc} default: ${dP.seedMtx}")
             .required()
             .action((x, c) => c.copy(seedMtx = x)),
-          arg[String]("dist")
-            .text(s"${h.JSONDist_desc} default: ${dP.JSONDist}")
-            .required()
-            .action((x, c) => c.copy(JSONDist = x)),
           arg[Int]("<# of Iterations>")
             .text(s"${h.kroIter_desc} default: ${dP.baIter}")
             .validate(x => if (x > 0) success
