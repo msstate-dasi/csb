@@ -1,11 +1,14 @@
 package edu.msstate.dasi
 
+import java.io.{FileInputStream, ObjectInputStream}
+
 import org.apache.spark.{SparkContext, sql}
 import org.apache.spark.graphx.{Edge, VertexId}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{SQLContext, SparkSession}
 
 import scala.util.Random
+import collection.JavaConversions._
 
 /**
   * Created by justin on 12/5/2016.
@@ -16,195 +19,185 @@ import scala.io.Source
 object data_Generator extends Serializable {
 
 
-var spark: SparkSession = null
-var df: sql.DataFrame = null
+  var edgeDistro:       java.util.HashMap[String,Double] = null
+  var origBytes:        java.util.HashMap[String,Double] = null
+  var protocol:         java.util.HashMap[String, java.util.HashMap[String, Double]] = null
+  var connectionState:  java.util.HashMap[String, java.util.HashMap[String, Double]] = null
+  var Duration:         java.util.HashMap[String, java.util.HashMap[String, Double]] = null
+  var origIPBytesCount: java.util.HashMap[String, java.util.HashMap[String, Double]] = null
+  var origPacketCount:  java.util.HashMap[String, java.util.HashMap[String, Double]] = null
+  var respByteCount:    java.util.HashMap[String, java.util.HashMap[String, Double]] = null
+  var respIPByteCount:  java.util.HashMap[String, java.util.HashMap[String, Double]] = null
+  var respPacketCount:  java.util.HashMap[String, java.util.HashMap[String, Double]] = null
+  var spark: SparkSession = null
+  var df: sql.DataFrame = null
+
+
 
   //constructor
   //THIS MUST BE CALLED FOR THE OBJECT TO FUNCTION PROPERLY
   def init(sparkSession: SparkSession)
   {
-    spark = sparkSession
-    df = this.spark.read.json("seed_distributions.json")
-    df.persist()
+    var fis = new FileInputStream("edgeDistr.ser")
+    var ois = new ObjectInputStream(fis)
+    edgeDistro = ois.readObject().asInstanceOf[java.util.HashMap[String,Double]]
+
+    fis = new FileInputStream("OrigBytes.ser")
+    ois = new ObjectInputStream(fis)
+    origBytes = ois.readObject().asInstanceOf[java.util.HashMap[String,Double]]
+
+    fis = new FileInputStream("connState.ser")
+    ois = new ObjectInputStream(fis)
+    connectionState = ois.readObject().asInstanceOf[java.util.HashMap[String, java.util.HashMap[String, Double]]]
+
+    fis = new FileInputStream("connType.ser")
+    ois = new ObjectInputStream(fis)
+    protocol = ois.readObject().asInstanceOf[java.util.HashMap[String, java.util.HashMap[String, Double]]]
+
+    fis = new FileInputStream("durationDist.ser")
+    ois = new ObjectInputStream(fis)
+    Duration = ois.readObject().asInstanceOf[java.util.HashMap[String, java.util.HashMap[String, Double]]]
+
+    fis = new FileInputStream("origIPByteCount.ser")
+    ois = new ObjectInputStream(fis)
+    origIPBytesCount = ois.readObject().asInstanceOf[java.util.HashMap[String, java.util.HashMap[String, Double]]]
+
+    fis = new FileInputStream("origPacketCount.ser")
+    ois = new ObjectInputStream(fis)
+    origPacketCount = ois.readObject().asInstanceOf[java.util.HashMap[String, java.util.HashMap[String, Double]]]
+
+    fis = new FileInputStream("respByteCount.ser")
+    ois = new ObjectInputStream(fis)
+    respByteCount = ois.readObject().asInstanceOf[java.util.HashMap[String, java.util.HashMap[String, Double]]]
+
+    fis = new FileInputStream("respIPByteCount.ser")
+    ois = new ObjectInputStream(fis)
+    respIPByteCount = ois.readObject().asInstanceOf[java.util.HashMap[String, java.util.HashMap[String, Double]]]
+
+    fis = new FileInputStream("respPacketCount.ser")
+    ois = new ObjectInputStream(fis)
+    respPacketCount = ois.readObject().asInstanceOf[java.util.HashMap[String, java.util.HashMap[String, Double]]]
   }
 
-  def getBucket(str : String, OriginalByteCnt: Long): String =
+
+
+  def getBucket(byteCount: Long): String =
   {
-    val headers = df.select(str + ".*").columns
-    for( i <- 0 to headers.length - 1)
+    for(key: String <- origBytes.keySet())
       {
-        if(OriginalByteCnt >= headers(i).split("-")(0).toLong && OriginalByteCnt <= headers(i).split("-")(1).toLong)
-          {
-            return headers(i)
-          }
+        if(byteCount >= key.split("-")(0).toLong && byteCount <= key.split("-")(1).toLong) return key
       }
     return null
   }
 
-  /***
-    * This function returns a randomized int based on the probabilities given
-    * in the json file.
-    * @param root This is the root directory of the JSON Example EDGE_DIST
-    * @param subStr This is to take care in case the directory you go to has another directory inside it for the actual distribution
-    *               Example ORIG_BYTES.0-9.DIST
-    *               the 0-9 is a seperate original byte count range but to access the DIST you need the subStr to specify it.
-    * @return
-    */
-  def getIndependentVariable(root: String, subStr: String): Int =
+  def getIndependentVariable(hashTable : java.util.HashMap[String, Double]): Long =
   {
     val r : Random = Random
     val randNum = r.nextDouble()
 
-    val strings = df.select(root + ".*").columns
-    var sum: Double = 0
-    for( i <- 0 to strings.length - 1)
+    var sum = 0.0
+    for(key: String <- hashTable.keySet())
     {
-      var selectStr: String = ""
-
-      if(subStr.length > 0)
-      {
-        selectStr = root + "." + strings(i) + "." + subStr
-      }
-      else
-        {
-          selectStr = root + "." + strings(i)
-        }
-
-      try
-      {
-        sum = sum + df.select(selectStr).head().getDouble(0)
-      }
-      catch
-        {
-          case cce: ClassCastException => sum = 1
-        }
+      sum = sum + hashTable.get(key)
       if(sum >= randNum)
-      {
-        //EDGE DISTRIBUTION LOOKUP
-        try
         {
-          return strings(i).toInt
+          if(key.contains("-")) return randNumFromRange(key)
+          else return key.toInt
         }
-        catch
-          {
-            case nfe: NumberFormatException => return randNumFromRange(strings(i))
-          }
-
-      }
     }
-
-
     return 1
   }
 
-  def randNumFromRange(str: String): Int =
+  def randNumFromRange(str: String): Long =
   {
-    val first = str.split("-")(0).toInt
-    val last = str.split("0-")(1).toInt
-    val r = Random
+    val first = str.split("-")(0).toLong
+    val last = str.split("-")(1).toLong
+    val r = new Random()
 
-    return r.nextInt(last - first) + first
+    return r.nextInt(last.toInt - first.toInt) + first
   }
 
 
-  def getDependentVariable(byteNum: Int, root: String, subStr: String): String =
+  def getDependentVariable(byteNum: Long, hashTable : java.util.HashMap[String, java.util.HashMap[String, Double]], number: Boolean): String =
   {
     val r : Random = Random
     val randNum = r.nextDouble()
-    val bucket: String = getBucket("ORIG_BYTES", byteNum)
-
-    val columns = df.select(root + "." + bucket + "." + subStr + ".*").columns
-
     var sum = 0.0
-    for(i <- 0 to columns.length)
-      {
-        println(root + "." + bucket + "." + subStr + "." + columns(i))
-        try {
-          sum = sum + df.select(root + "." + bucket + "." + subStr + "." + columns(i)).head().getDouble(0)
-        }
-        catch
-          {
-            case cce: ClassCastException =>
-            {
-//              println("THE NEXT THING BETTER BE A 1 " + df.select(root + "." + bucket + "." + subStr + "." + columns(i)).head())
-              sum = 1
-            }
-          }
 
+
+    val bucket = getBucket(byteNum)
+    val subHashTable = hashTable.get(bucket)
+
+    for(key: String <- subHashTable.keySet())
+      {
+        sum = sum + subHashTable.get(key)
         if(sum >= randNum)
           {
-            try
-            {
-              return randNumFromRange(columns(i)).toString
-            }
-            catch
-              {
-                case nfe: NumberFormatException => return columns(i)
-              }
-
+            if(!number) return key
+            else return randNumFromRange(key).toString
           }
       }
-    return null
+  return null
   }
 
 
 
   def getEdgeCount(): Int =
   {
-    return getIndependentVariable("EDGE_DIST", "")
+    return getIndependentVariable(edgeDistro).toInt
   }
 
   def getOriginalByteCount(): Long = {
 
-    return getIndependentVariable("ORIG_BYTES","DIST")
+    return getIndependentVariable(origBytes)
   }
 
   def getOriginalIPByteCount(byteCnt: Long): Long =
   {
 
-    return getDependentVariable(byteCnt.toInt, "ORIG_BYTES", "ORIG_IP_BYTES").toLong
+    return getDependentVariable(byteCnt.toLong, origIPBytesCount, true).toLong
   }
 
   def getConnectState(byteCnt: Long): String =
   {
 
-    return getDependentVariable(byteCnt.toInt, "ORIG_BYTES", "CONN_STATE")
+    return getDependentVariable(byteCnt.toLong, connectionState, false)
   }
 
   def getConnectType(byteCnt: Long): String =
   {
 
-    return getDependentVariable(byteCnt.toInt, "ORIG_BYTES", "PROTOCOL")
+    return getDependentVariable(byteCnt.toLong, protocol, false)
   }
 
   def getDuration(byteCnt: Long): Double =
   {
 
-    return getDependentVariable(byteCnt.toInt, "ORIG_BYTES", "DURATION").toDouble
+    return getDependentVariable(byteCnt.toLong, Duration, true).toDouble
   }
 
   def getOriginalPackCnt(byteCnt: Long): Long =
   {
 
-    return getDependentVariable(byteCnt.toInt, "ORIG_BYTES", "ORIG_PKTS").toLong
+    return getDependentVariable(byteCnt.toLong, origPacketCount, true).toLong
   }
 
   def getRespByteCnt(byteCnt: Long): Long =
   {
 
-    return getDependentVariable(byteCnt.toInt, "ORIG_BYTES", "RESP_BYTES").toLong
+    return getDependentVariable(byteCnt.toLong, respByteCount, true).toLong
   }
 
   def getRespIPByteCnt(byteCnt: Long): Long =
   {
 
-    return getDependentVariable(byteCnt.toInt, "ORIG_BYTES", "RESP_IP_BYTES").toLong
+    return getDependentVariable(byteCnt.toLong, respIPByteCount, true).toLong
   }
 
   def getRespPackCnt(byteCnt: Long): Long =
   {
 
-    return getDependentVariable(byteCnt.toInt, "ORIG_BYTES", "RESP_PKTS").toLong
+    return getDependentVariable(byteCnt.toLong, respPacketCount, true).toLong
   }
 
   def generateNodeData(): String = {
@@ -213,146 +206,7 @@ var df: sql.DataFrame = null
     r.nextInt(255) + "." + r.nextInt(255) + "." + r.nextInt(255) + "." + r.nextInt(255) + ":" + r.nextInt(65536)
   }
 
-  /** *
-    * This function reads a distrobution that is not based on Original Bytes (independent of anything)
-    * and picks a number based on the distribution.
-    *
-    * @param fileContents the contents of one of the files is generated by examining a conn.log file.
-    * @return a random number based on a distrobution
-    */
-  def generateRandNumFromFileDist(fileContents: String): Int = {
-    val r = new Random
-    val numEdgesProb = r.nextFloat()
-    var chance = 0.0
-    var num = 0
-    var strIter = fileContents.split("\n").toIterator
-    while (strIter.hasNext && num == 0) {
-      val line = strIter.next()
-      val percentage = line.split("\\*")(1).split("\t")(1).toFloat
-      chance = chance + percentage
-      if (chance > numEdgesProb) {
-        if (!line.split("\t")(0).contains("-")) {
-          num = line.split("\t")(0).split("\\*")(1).toInt //split is a reg expression function so i escape the *
-        }
-        else {
-          val firstTabLine = line.split("\t")(0)
-          val begin: Int = firstTabLine.split("\\*")(1).split("-")(0).toInt
-          val end: Int = firstTabLine.split("\\*")(1).split("-")(1).toInt
-          num = r.nextInt(end - begin) + begin
-        }
-      }
-    }
-    num
-  }
 
-  /** *
-    * This function returns a random number but with respect to the number of Original Bytes the connection had.
-    * This is to prevent randomly generating bad data such as:
-    * Original Bytes: 2GB
-    * NumPackets: 2
-    *
-    * @param fileContents the contents of one of the files is generated by examining a conn.log file.
-    * @param byteNum      The number of bytes this connection had.
-    * @param sc           A spark context
-    * @return
-    */
-  def generateRandNumBasedBytes(fileContents: String, byteNum: Long, sc: SparkContext): Long = {
-    val r = new Random
-    val numEdgesProb = r.nextFloat()
-    var chance = 0.0
-    var num = 0
-
-    val splitFileContents = sc.parallelize(fileContents.split("\n"))
-    var text = splitFileContents.filter(record => record.split("\\*")(0).split("-")(0).toLong <= byteNum && record.split("\\*")(0).split("-")(1).toLong >= byteNum)
-
-    //    var allStr = ""
-    //
-    //    for (aStr <- text.collect())
-    //    {
-    //      allStr = allStr + aStr + "\n"
-    //    }
-
-    //    var temp = new FileWriter("temp")
-    //
-    //    temp.write(allStr)
-    //    temp.close()
-
-    var line: String = generateRandStrFromFileDist(text.toLocalIterator)
-
-    val range: String = line.split("\t").head.split("\\*")(1)
-
-    val begin: Int = range.split("-").head.toInt
-    val end: Int = range.split("-")(1).toInt
-
-    return r.nextInt(end - begin) + begin
-  }
-
-  def generateRandDoubleWithinRange(range: String): Double = {
-    val begin = range.split("-")(0).toInt
-    val end = range.split("-")(1).toInt
-
-    val r = Random
-    val decimal = r.nextDouble()
-    val digit = r.nextInt(end - begin) + begin
-    return digit + decimal
-  }
-
-  def generateRandStrBasedBytes(fileContents: String, byteNum: Long, sc: SparkContext): String = {
-    val r = new Random
-    val numEdgesProb = r.nextFloat()
-    var chance = 0.0
-    var num = 0
-    var rdd = sc.parallelize(fileContents.split("\n"))
-    //    fileIter.next() //we do the next here since the heading is always just text describeing the file
-
-
-    //    var file = sc.textFile(filename)
-    var text = rdd.filter(record => record.split("\\*")(0).split("-")(0).toLong <= byteNum && record.split("\\*")(0).split("-")(1).toLong >= byteNum)
-
-    //
-    //    var allStr = ""
-    //
-    //    for (aStr <- text.collect())
-    //    {
-    //      allStr = allStr + aStr + "\n"
-    //    }
-    //
-    //
-    //    var temp = new FileWriter("temp")
-    //
-    //    temp.write(allStr)
-    //    temp.close()
-
-    val line = generateRandStrFromFileDist(text.toLocalIterator)
-
-    return line.split(" ").head.split("\\*")(1)
-  }
-
-  /** *
-    * Given a set of of lines pick one at random
-    * This function is very similar to generateRandNumFromFileDist
-    * but instead of getting a number this function returns the line that it picks
-    *
-    * @param fileIter : The contents of the file in a string iter
-    * @return a weighted random line
-    */
-  def generateRandStrFromFileDist(fileIter: Iterator[String]): String = {
-    val r = new Random
-    val numEdgesProb = r.nextFloat()
-    var chance = 0.0
-    var num = 0
-
-
-    while (fileIter.hasNext && num == 0) {
-      val line = fileIter.next()
-      val percentage = line.split("\t")(1).toFloat
-      chance = chance + percentage
-      if (chance > numEdgesProb) {
-        return line
-      }
-    }
-    return null
-  }
 
   private def generateNode(): nodeData = {
       nodeData(generateNodeData())

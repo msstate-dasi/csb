@@ -214,57 +214,124 @@ public class multiEdgeDistribution
 
 
 
-        outputObj.put("EDGE_DIST", new JSONObject(calculateEntriesFromHashMap(edgeDistributionStr, totalMultiedges)));
-        JSONObject json_origByteCount = new JSONObject();
 
-        HashMap<String, Double> temp = calculateEntriesFromHashMap(origByteCount, tcp_udp_count);
-        for(Map.Entry<String, Double> entry: temp.entrySet()) {
-            JSONObject temp2 = new JSONObject();
-            temp2.put("DIST", entry.getValue());
-            json_origByteCount.put(entry.getKey(), temp2);
-        }
+        System.out.println("Writing the serilized file");
 
-        updateJsonObject(json_origByteCount, "RESP_BYTES", respByteCount, origByteCount);
-        updateJsonObject(json_origByteCount, "PROTOCOL", connType, origByteCount);
-        updateJsonObject(json_origByteCount, "CONN_STATE", connState, origByteCount);
-        updateJsonObject(json_origByteCount, "ORIG_PKTS", origPktsCount, origByteCount);
-        updateJsonObject(json_origByteCount, "RESP_PKTS", respPktsCount, origByteCount);
-        updateJsonObject(json_origByteCount, "ORIG_IP_BYTES", origIPByteCount, origByteCount);
-        updateJsonObject(json_origByteCount, "RESP_IP_BYTES", respIPByteCount, origByteCount);
-        updateJsonObject(json_origByteCount, "DURATION", durationDist, origByteCount);
+        FileOutputStream fos = new FileOutputStream("edgeDistr.ser");
+        ObjectOutputStream oos = new ObjectOutputStream(fos);
+        oos.writeObject(reduceHashMapstoPercents(edgeDistributionStr, totalMultiedges));
+        oos.close();
+        fos.close();
 
-        outputObj.put("ORIG_BYTES", json_origByteCount);
+        fos = new FileOutputStream("OrigBytes.ser");
+        oos = new ObjectOutputStream(fos);
+        oos.writeObject(reduceHashMapstoPercents(origByteCount, tcp_udp_count));
+        oos.close();
+        fos.close();
 
-        File jsonFile = new File("seed_distributions.json");
-        if(jsonFile.createNewFile()) {
-            FileWriter jsonFW = new FileWriter(jsonFile);
+        fos = new FileOutputStream("respByteCount.ser");
+        oos = new ObjectOutputStream(fos);
+        oos.writeObject(reduceHashMapstoPercents(respByteCount, origByteCount));
+        oos.close();
+        fos.close();
 
-            jsonFW.write(outputObj.toString(4).replace("\n","")); //I remove newlines as spark cannot automatically read json files spanning more than 1 line
+        fos = new FileOutputStream("connType.ser");
+        oos = new ObjectOutputStream(fos);
+        oos.writeObject(reduceHashMapstoPercents(connType, origByteCount));
+        oos.close();
+        fos.close();
 
-            jsonFW.flush();
-            jsonFW.close();
-        } else {
-            System.out.println("Could not create JSON file.");
-        }
+        fos = new FileOutputStream("connState.ser");
+        oos = new ObjectOutputStream(fos);
+        oos.writeObject(reduceHashMapstoPercents(connState, origByteCount));
+        oos.close();
+        fos.close();
 
-        return outputObj;
+        fos = new FileOutputStream("durationDist.ser");
+        oos = new ObjectOutputStream(fos);
+        oos.writeObject(reduceHashMapstoPercents(durationDist, origByteCount));
+        oos.close();
+        fos.close();
+
+        fos = new FileOutputStream("origPacketCount.ser");
+        oos = new ObjectOutputStream(fos);
+        oos.writeObject(reduceHashMapstoPercents(origPktsCount, origByteCount));
+        oos.close();
+        fos.close();
+
+        fos = new FileOutputStream("respPacketCount.ser");
+        oos = new ObjectOutputStream(fos);
+        oos.writeObject(reduceHashMapstoPercents(respPktsCount, origByteCount));
+        oos.close();
+        fos.close();
+
+        fos = new FileOutputStream("origIPByteCount.ser");
+        oos = new ObjectOutputStream(fos);
+        oos.writeObject(reduceHashMapstoPercents(origIPByteCount, origByteCount));
+        oos.close();
+        fos.close();
+
+        fos = new FileOutputStream("respIPByteCount.ser");
+        oos = new ObjectOutputStream(fos);
+        oos.writeObject(reduceHashMapstoPercents(respIPByteCount, origByteCount));
+        oos.close();
+        fos.close();
+
+        System.out.println("Done writing the serilized file");
+        return null;
+
+
+//        outputObj.put("EDGE_DIST", new JSONObject(calculateEntriesFromHashMap(edgeDistributionStr, totalMultiedges)));
+//        JSONObject json_origByteCount = new JSONObject();
+//
+//        HashMap<String, Double> temp = calculateEntriesFromHashMap(origByteCount, tcp_udp_count);
+//        for(Map.Entry<String, Double> entry: temp.entrySet()) {
+//            JSONObject temp2 = new JSONObject();
+//            temp2.put("DIST", entry.getValue());
+//            json_origByteCount.put(entry.getKey(), temp2);
+//        }
+//
+//        updateJsonObject(json_origByteCount, "RESP_BYTES", respByteCount, origByteCount);
+//        updateJsonObject(json_origByteCount, "PROTOCOL", connType, origByteCount);
+//        updateJsonObject(json_origByteCount, "CONN_STATE", connState, origByteCount);
+//        updateJsonObject(json_origByteCount, "ORIG_PKTS", origPktsCount, origByteCount);
+//        updateJsonObject(json_origByteCount, "RESP_PKTS", respPktsCount, origByteCount);
+//        updateJsonObject(json_origByteCount, "ORIG_IP_BYTES", origIPByteCount, origByteCount);
+//        updateJsonObject(json_origByteCount, "RESP_IP_BYTES", respIPByteCount, origByteCount);
+//        updateJsonObject(json_origByteCount, "DURATION", durationDist, origByteCount);
+
+//        outputObj.put("ORIG_BYTES", json_origByteCount);
+
+//        File jsonFile = new File("seed_distributions.json");
+//        if(jsonFile.createNewFile()) {
+//            FileWriter jsonFW = new FileWriter(jsonFile);
+//
+//            jsonFW.write(outputObj.toString(4).replace("\n","")); //I remove newlines as spark cannot automatically read json files spanning more than 1 line
+//
+//            jsonFW.flush();
+//            jsonFW.close();
+//        } else {
+//            System.out.println("Could not create JSON file.");
+//        }
+//
+//        return outputObj;
     }
 
-    private static void updateJsonObject(JSONObject theObj, String prop, HashMap<String,HashMap<String, Integer>> in, HashMap<String,Integer> OriginalByteCount) {
-        for(Map.Entry<String, HashMap<String, Integer>> entry: in.entrySet()) {
-            JSONObject temp;
-
-            try {
-                temp = (JSONObject) theObj.get(entry.getKey());
-            } catch (Exception e) {
-                temp = new JSONObject();
-            }
-
-
-            temp.put(prop, new JSONObject(calculateEntriesFromHashMap(entry.getValue(), OriginalByteCount.get(entry.getKey()))));
-            theObj.put(entry.getKey(), temp);
-        }
-    }
+//    private static void updateJsonObject(JSONObject theObj, String prop, HashMap<String,HashMap<String, Integer>> in, HashMap<String,Integer> OriginalByteCount) {
+//        for(Map.Entry<String, HashMap<String, Integer>> entry: in.entrySet()) {
+//            JSONObject temp;
+//
+//            try {
+//                temp = (JSONObject) theObj.get(entry.getKey());
+//            } catch (Exception e) {
+//                temp = new JSONObject();
+//            }
+//
+//
+//            temp.put(prop, new JSONObject(calculateEntriesFromHashMap(entry.getValue(), OriginalByteCount.get(entry.getKey()))));
+//            theObj.put(entry.getKey(), temp);
+//        }
+//    }
 
     private static HashMap<String, Double> calculateEntriesFromHashMap(HashMap<String, Integer> in, long total) {
 
@@ -272,6 +339,7 @@ public class multiEdgeDistribution
 
         for(String key : in.keySet())
         {
+
             calculatedValues.put(key, ((double)in.get(key)) / (double)total);
         }
 
@@ -363,29 +431,38 @@ public class multiEdgeDistribution
 
         distribution = (HashMap<String, Integer>) sortByValueDescending(distribution);
 
-//		bwc.write("Sorted " + propertyName + " (count) Distribution below:" +"\n");
-//
-//		for(String key : distribution.keySet())
-//		{
-//			bwc.write(key + "\t " + distribution.get(key) + "\n");
-//		}
-
-//		bw.write("Sorted " + propertyName + " (probability) Distribution below:" + "\n");
-
         for(String key : distribution.keySet())
         {
             bw.write(propertyName + "*" + key + "\t " + (double)distribution.get(key) / (double)total  + "\n");
         }
+    }
 
-//		bw.write("\n\n");
-//		bwc.write("\n\n");
+    private static final HashMap<String, Double> reduceHashMapstoPercents(HashMap<String, Integer> distribution, long total)
+    {
+        distribution = (HashMap<String, Integer>) sortByValueDescending(distribution);
 
+        HashMap<String, Double> newHash = new HashMap<String, Double>();
+        for(String key : distribution.keySet())
+        {
+            newHash.put(key, (double)distribution.get(key) / (double)total);
+        }
+        return newHash;
+    }
+
+    private static final HashMap<String, HashMap<String, Double>> reduceHashMapstoPercents(HashMap<String, HashMap<String, Integer>> distribution, HashMap<String, Integer> dependendentVariable)
+    {
+        HashMap<String, HashMap<String, Double>> newHash = new HashMap<String, HashMap<String, Double>>();
+        for(String key : dependendentVariable.keySet())
+        {
+            HashMap<String, Double> newSubHash = reduceHashMapstoPercents(distribution.get(key), dependendentVariable.get(key));
+            newHash.put(key, newSubHash);
+        }
+        return newHash;
     }
 
     public static final void addToByteDistribution(HashMap<String, HashMap<String, Integer> > fieldDistribution,
                                                    String byteRange, String fieldValue)
     {
-
         int newCount = 1;
         if(fieldDistribution.containsKey(byteRange))
         {

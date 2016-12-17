@@ -302,19 +302,17 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
     val distParser: multiEdgeDistribution = new multiEdgeDistribution()
     distParser.init(Array(params.connLog))
 
-    //I DIDNT HAVE ENOUGH TIME TO FIGURE OUT HOW TO USE DATA_PARSER
-    //TODO change to use data_Parser
-    //connToVertEdge(sc)
 
     val (vRDD, eRDD): (RDD[(VertexId, nodeData)], RDD[Edge[edgeData]]) = readFromConnFile(sc, params.augLog)
 
     theGraph = Graph(vRDD, eRDD, nodeData())
 
+
     val seed_vert = theGraph.vertices.coalesce(1, true).collect()
     val seed_vert_file = new File(params.seedVertices)
 
     var bw = new BufferedWriter(new FileWriter(seed_vert_file))
-    bw.write("ID,Desc\n")
+//    bw.write("ID,Desc\n")
     for (entry <- seed_vert) {
       bw.write(entry._1 + "," + entry._2 + "\n")
     }
@@ -322,16 +320,16 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
 
     val seed_edges = theGraph.edges.coalesce(1, true).collect()
     val seed_edge_file = new File(params.seedEdges)
-
+//
     bw = new BufferedWriter(new FileWriter(seed_edge_file))
-    bw.write("Source,Target,Weight\n")
+//    bw.write("Source,Target,Weight\n")
     for (entry <- seed_edges) {
       bw.write(entry.srcId + "," + entry.dstId + "," + entry.attr + "\n")
     }
     bw.close()
 
-    //    saveGraphEdges(sc, params.seedEdges)
-    //    saveGraphVerts(sc, params.seedVertices)
+        saveGraphEdges(sc, params.seedEdges)
+        saveGraphVerts(sc, params.seedVertices)
 
 
     return true

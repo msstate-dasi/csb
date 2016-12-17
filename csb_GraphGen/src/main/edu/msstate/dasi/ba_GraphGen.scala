@@ -1,9 +1,12 @@
 package edu.msstate.dasi
 
+import java.io._
+
 import org.apache.spark.SparkContext
 import org.apache.spark.graphx.{Graph, _}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
+
 import scala.collection.mutable
 import scala.util.Random
 
@@ -13,6 +16,7 @@ import scala.util.Random
 class ba_GraphGen extends base_GraphGen with data_Parser {
 
   def run(sc: SparkContext, partitions: Int, seedVertFile: String, seedEdgeFile: String, baIter: Int, outputGraphPrefix: String, nodesPerIter: Int, noPropFlag: Boolean, debugFlag: Boolean, sparkSession: SparkSession): Boolean = {
+
     val dataGen = data_Generator
     dataGen.init(sparkSession)
 
