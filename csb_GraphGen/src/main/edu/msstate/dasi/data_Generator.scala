@@ -37,7 +37,7 @@ object data_Generator extends Serializable {
 
   //constructor
   //THIS MUST BE CALLED FOR THE OBJECT TO FUNCTION PROPERLY
-  def init(sparkSession: SparkSession)
+  def init()
   {
     var fis = new FileInputStream("edgeDistr.ser")
     var ois = new ObjectInputStream(fis)

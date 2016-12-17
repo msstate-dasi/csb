@@ -17,7 +17,7 @@ import scala.util.Random
 class kro_GraphGen extends base_GraphGen with data_Parser {
   def run(sc: SparkContext, partitions: Int, mtxFile: String, genIter: Int, outputGraphPrefix: String, noPropFlag: Boolean, debugFlag: Boolean, sparkSession: SparkSession): Boolean = {
     val dataGen = data_Generator
-    dataGen.init(sparkSession)
+    dataGen.init()
     //val probMtx: Array[Array[Float]] = Array(Array(0.1f, 0.9f), Array(0.9f, 0.5f))
     val probMtx: Array[Array[Double]] = parseMtxDataFromFile(sc, mtxFile)
 
@@ -85,7 +85,7 @@ class kro_GraphGen extends base_GraphGen with data_Parser {
       var srcId: VertexId = 0
       var dstId: VertexId = 0
 
-      for(i <- 1 to iter) {
+      for ( _ <- 1 to iter ) {
         val probToRCPosV: Array[(Double, Int, Int)] = probToRCPosV_Broadcast.value
         val prob = r.nextFloat()
         var n = 0
@@ -109,6 +109,33 @@ class kro_GraphGen extends base_GraphGen with data_Parser {
     }.reduceByKey((left,right) => left).map(record => record._2)
 
     edgeList
+  }
+
+  /**
+   *  Computes the RDD of the additional edges that should be added
+   *  accordingly to the edge distribution.
+   *
+   *  @param edgeList The RDD of the edges returned by the Kronecker
+   *                  algorithm.
+   *
+   *  @return The RDD of the additional edges that should be added
+   *          to the one returned by Kronecker algorithm.
+   */
+  def getMultiEdgesRDD(edgeList: RDD[Edge[edgeData]]): RDD[Edge[edgeData]] =
+  {
+    val dataGen = data_Generator
+    dataGen.init()
+
+    val multiEdgeList: RDD[Edge[edgeData]] = edgeList.flatMap { edge =>
+      val multiEdgesNum = dataGen.getEdgeCount()
+      var multiEdges : Array[Edge[edgeData]] = Array()
+
+      for ( i <- 1 until multiEdgesNum ) {
+        multiEdges :+= Edge(edge.srcId, edge.dstId, edge.attr)
+      }
+      multiEdges
+    }
+    multiEdgeList
   }
 
   /*** Function to generate and return a kronecker graph
@@ -157,6 +184,9 @@ class kro_GraphGen extends base_GraphGen with data_Parser {
       curEdges = edgeList.count().toInt
       println(curEdges)
     }
+    val newEdges = getMultiEdgesRDD(edgeList)
+    edgeList = edgeList.union(newEdges)
+    println("Total # of Edges (including multi edges): " + edgeList.count().toInt)
 
     val vertList: RDD[(VertexId, nodeData)] = edgeList.flatMap{record =>
       val srcId: VertexId = record.srcId

@@ -18,7 +18,7 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
   def run(sc: SparkContext, partitions: Int, seedVertFile: String, seedEdgeFile: String, baIter: Int, outputGraphPrefix: String, nodesPerIter: Int, noPropFlag: Boolean, debugFlag: Boolean, sparkSession: SparkSession): Boolean = {
 
     val dataGen = data_Generator
-    dataGen.init(sparkSession)
+    dataGen.init()
 
     println()
     println("Loading seed graph with vertices file: " + seedVertFile + " and edges file " + seedEdgeFile + " ...")
@@ -91,7 +91,7 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
 
     val r = Random
     val dataGen = data_Generator
-    dataGen.init(sparkSession)
+    dataGen.init()
 
     theGraph = Graph(inVertices, inEdges, nodeData(""))
 
