@@ -260,7 +260,8 @@ class log_Augment extends Serializable {
     try {
       new File(oldName).renameTo(new File(newName));
       true
-    } catch {
+    }
+    catch {
       case _: Throwable => false
     }
 

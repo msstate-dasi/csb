@@ -328,8 +328,9 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
     }
     bw.close()
 
-        saveGraphEdges(sc, params.seedEdges)
-        saveGraphVerts(sc, params.seedVertices)
+    //these functions are repeats of the above code
+//        saveGraphEdges(sc, params.seedEdges)
+//        saveGraphVerts(sc, params.seedVertices)
 
 
     return true

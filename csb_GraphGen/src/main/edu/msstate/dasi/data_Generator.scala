@@ -29,6 +29,7 @@ object data_Generator extends Serializable {
   var respByteCount:    java.util.HashMap[String, java.util.HashMap[String, Double]] = null
   var respIPByteCount:  java.util.HashMap[String, java.util.HashMap[String, Double]] = null
   var respPacketCount:  java.util.HashMap[String, java.util.HashMap[String, Double]] = null
+  var bucketSize: Int = 0
   var spark: SparkSession = null
   var df: sql.DataFrame = null
 
@@ -77,17 +78,22 @@ object data_Generator extends Serializable {
     fis = new FileInputStream("respPacketCount.ser")
     ois = new ObjectInputStream(fis)
     respPacketCount = ois.readObject().asInstanceOf[java.util.HashMap[String, java.util.HashMap[String, Double]]]
+
+    val firstBucket = origBytes.keySet().head
+    val first = firstBucket.split("-")(0)
+    val last = firstBucket.split("-")(1)
+    bucketSize = last.toInt - first.toInt + 1
   }
 
 
 
   def getBucket(byteCount: Long): String =
   {
-    for(key: String <- origBytes.keySet())
-      {
-        if(byteCount >= key.split("-")(0).toLong && byteCount <= key.split("-")(1).toLong) return key
-      }
-    return null
+    val multiple = byteCount / bucketSize
+    val beginBucket = (bucketSize * multiple).toString
+    val endBucket = ((bucketSize * multiple) + bucketSize - 1).toString
+
+    return beginBucket + "-" + endBucket
   }
 
   def getIndependentVariable(hashTable : java.util.HashMap[String, Double]): Long =
