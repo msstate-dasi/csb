@@ -16,8 +16,7 @@ import scala.util.Random
   */
 class kro_GraphGen extends base_GraphGen with data_Parser {
   def run(sc: SparkContext, partitions: Int, mtxFile: String, genIter: Int, outputGraphPrefix: String, noPropFlag: Boolean, debugFlag: Boolean, sparkSession: SparkSession): Boolean = {
-    val dataGen = data_Generator
-    dataGen.init()
+
     //val probMtx: Array[Array[Float]] = Array(Array(0.1f, 0.9f), Array(0.9f, 0.5f))
     val probMtx: Array[Array[Double]] = parseMtxDataFromFile(sc, mtxFile)
 
@@ -45,8 +44,22 @@ class kro_GraphGen extends base_GraphGen with data_Parser {
       println()
       println("Generating Edge and Node properties")
       startTime = System.nanoTime()
-      val eRDD: RDD[Edge[edgeData]] = dataGen.generateEdgeProperties(sc, theGraph.edges)
-      val vRDD: RDD[(VertexId, nodeData)] = dataGen.generateNodeProperties(sc, theGraph.vertices)
+      val eRDD: RDD[Edge[edgeData]] = theGraph.edges.map(record => Edge(record.srcId, record.dstId, {
+        val ORIGBYTES = DataDistributions.getOrigBytesSample()
+        val ORIGIPBYTE = DataDistributions.getOrigIPBytesSample(ORIGBYTES)
+        val CONNECTSTATE = DataDistributions.getConnectionStateSample(ORIGBYTES)
+        val PROTOCOL = DataDistributions.getProtoSample(ORIGBYTES)
+        val DURATION = DataDistributions.getDurationSample(ORIGBYTES)
+        val ORIGPACKCNT = DataDistributions.getOrigPktsSample(ORIGBYTES)
+        val RESPBYTECNT = DataDistributions.getRespBytesSample(ORIGBYTES)
+        val RESPIPBYTECNT = DataDistributions.getRespIPBytesSample(ORIGBYTES)
+        val RESPPACKCNT = DataDistributions.getRespPktsSample(ORIGBYTES)
+        edgeData("", PROTOCOL, DURATION, ORIGBYTES, RESPBYTECNT, CONNECTSTATE, ORIGPACKCNT, ORIGIPBYTE, RESPPACKCNT, RESPBYTECNT, "")
+      }))
+      val vRDD: RDD[(VertexId, nodeData)] = theGraph.vertices.map(record => (record._1, {
+        val DATA = DataDistributions.getIpSample()
+        nodeData(DATA)
+      }))
       theGraph = Graph(vRDD, eRDD, nodeData())
       timeSpan = (System.nanoTime() - startTime) / 1e9
       println()
@@ -62,7 +75,7 @@ class kro_GraphGen extends base_GraphGen with data_Parser {
     //Save the ba graph into a format to be read later
     startTime = System.nanoTime()
     saveGraph(sc, outputGraphPrefix + "_kro_" + genIter)
-    saveGraphVeracity(sc, outputGraphPrefix + "_kro_" + genIter)
+//    saveGraphVeracity(sc, outputGraphPrefix + "_kro_" + genIter)
     timeSpan = (System.nanoTime() - startTime) / 1e9
 
     println()
@@ -123,14 +136,12 @@ class kro_GraphGen extends base_GraphGen with data_Parser {
    */
   def getMultiEdgesRDD(edgeList: RDD[Edge[edgeData]]): RDD[Edge[edgeData]] =
   {
-    val dataGen = data_Generator
-    dataGen.init()
 
     val multiEdgeList: RDD[Edge[edgeData]] = edgeList.flatMap { edge =>
-      val multiEdgesNum = dataGen.getEdgeCount()
+      val multiEdgesNum = DataDistributions.getOutEdgeSample()
       var multiEdges : Array[Edge[edgeData]] = Array()
 
-      for ( i <- 1 until multiEdgesNum ) {
+      for ( i <- 1 until multiEdgesNum.toInt ) {
         multiEdges :+= Edge(edge.srcId, edge.dstId, edge.attr)
       }
       multiEdges
@@ -193,13 +204,13 @@ class kro_GraphGen extends base_GraphGen with data_Parser {
       val dstId: VertexId = record.dstId
       Array(srcId, dstId)
     }.distinct().map{record: VertexId =>
-      val tempNodeData: nodeData = nodeData("")
+      val tempNodeData: nodeData = nodeData()
       (record, tempNodeData)
     }
 
     val vRDD: RDD[(VertexId, nodeData)] = vertList.cache()
     val eRDD: RDD[Edge[edgeData]] = edgeList.cache()
-    val theGraph = Graph(vRDD, eRDD, nodeData(""))
+    val theGraph = Graph(vRDD, eRDD, nodeData())
 
     theGraph
   }

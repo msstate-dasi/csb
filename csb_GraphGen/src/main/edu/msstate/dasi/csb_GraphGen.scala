@@ -255,9 +255,7 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
     val logAug = new log_Augment()
     logAug.run(sc, params.alertLog, params.connLog, params.augLog)
 
-    val distParser: multiEdgeDistribution = new multiEdgeDistribution()
-    distParser.init(Array(params.connLog))
-
+    DataDistributions.init(sc, params.augLog)
 
     val (vRDD, eRDD): (RDD[(VertexId, nodeData)], RDD[Edge[edgeData]]) = readFromConnFile(sc, params.augLog)
 
@@ -293,6 +291,8 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
   }
 
   def run_ba(sc: SparkContext, params: Params, sparkSession: SparkSession): Boolean = {
+    DataDistributions.init(sc, params.augLog)
+
     val baGraph = new ba_GraphGen()
     baGraph.run(sc, params.partitions, params.seedVertices, params.seedEdges, params.baIter, params.outputGraphPrefix, params.numNodesPerIter, params.noProp, params.debug, sparkSession)
 
@@ -300,6 +300,8 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
   }
 
   def run_kro(sc: SparkContext, params: Params, sparkSession: SparkSession): Boolean = {
+    DataDistributions.init(sc, params.augLog)
+
     val kroGraph = new kro_GraphGen()
     kroGraph.run(sc, params.partitions, params.seedMtx, params.kroIter, params.outputGraphPrefix, params.noProp, params.debug, sparkSession)
 

@@ -17,9 +17,6 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
 
   def run(sc: SparkContext, partitions: Int, seedVertFile: String, seedEdgeFile: String, baIter: Int, outputGraphPrefix: String, nodesPerIter: Int, noPropFlag: Boolean, debugFlag: Boolean, sparkSession: SparkSession): Boolean = {
 
-    val dataGen = data_Generator
-    dataGen.init()
-
     println()
     println("Loading seed graph with vertices file: " + seedVertFile + " and edges file " + seedEdgeFile + " ...")
 
@@ -51,8 +48,22 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
       println()
       println("Generating Edge and Node properties")
       startTime = System.nanoTime()
-      val eRDD: RDD[Edge[edgeData]] = dataGen.generateEdgeProperties(sc, theGraph.edges)
-      val vRDD: RDD[(VertexId, nodeData)] = dataGen.generateNodeProperties(sc, theGraph.vertices)
+      val eRDD: RDD[Edge[edgeData]] = theGraph.edges.map(record => Edge(record.srcId, record.dstId, {
+        val ORIGBYTES = DataDistributions.getOrigBytesSample()
+        val ORIGIPBYTE = DataDistributions.getOrigIPBytesSample(ORIGBYTES)
+        val CONNECTSTATE = DataDistributions.getConnectionStateSample(ORIGBYTES)
+        val PROTOCOL = DataDistributions.getProtoSample(ORIGBYTES)
+        val DURATION = DataDistributions.getDurationSample(ORIGBYTES)
+        val ORIGPACKCNT = DataDistributions.getOrigPktsSample(ORIGBYTES)
+        val RESPBYTECNT = DataDistributions.getRespBytesSample(ORIGBYTES)
+        val RESPIPBYTECNT = DataDistributions.getRespIPBytesSample(ORIGBYTES)
+        val RESPPACKCNT = DataDistributions.getRespPktsSample(ORIGBYTES)
+        edgeData("", PROTOCOL, DURATION, ORIGBYTES, RESPBYTECNT, CONNECTSTATE, ORIGPACKCNT, ORIGIPBYTE, RESPPACKCNT, RESPBYTECNT, "")
+      }))
+      val vRDD: RDD[(VertexId, nodeData)] = theGraph.vertices.map(record => (record._1, {
+        val DATA = DataDistributions.getIpSample()
+        nodeData(DATA)
+      }))
       theGraph = Graph(vRDD, eRDD, nodeData())
       timeSpan = (System.nanoTime() - startTime) / 1e9
       println()
@@ -68,7 +79,7 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
     //Save the ba graph into a format to be read later
     startTime = System.nanoTime()
     saveGraph(sc, outputGraphPrefix + "_ba_" + baIter)
-    saveGraphVeracity(sc, outputGraphPrefix + "_ba_" + baIter)
+//    saveGraphVeracity(sc, outputGraphPrefix + "_ba_" + baIter)
     timeSpan = (System.nanoTime() - startTime) / 1e9
 
     println()
@@ -90,8 +101,6 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
   def generateBAGraph(sc: SparkContext, partitions: Int, inVertices: RDD[(VertexId, nodeData)], inEdges: RDD[Edge[edgeData]], iter: Int, nodesPerIter: Int, noPropFlag: Boolean, debugFlag: Boolean, sparkSession: SparkSession): Graph[nodeData,edgeData] = {
 
     val r = Random
-    val dataGen = data_Generator
-    dataGen.init()
 
     theGraph = Graph(inVertices, inEdges, nodeData(""))
 
@@ -116,7 +125,10 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
       println(i + "/" + math.ceil(iter.toDouble / partitions).toInt)
       for (n <- 1 to nPI) {
         //String is IP:Port ex. "192.168.0.1:80"
-        val tempNodeProp: nodeData = if (noPropFlag) nodeData() else nodeData(dataGen.generateNodeData())
+        val tempNodeProp: nodeData = if (noPropFlag) nodeData() else {
+          val DATA = DataDistributions.getIpSample()
+          nodeData(DATA)
+        }
         val srcId: VertexId =
           if (nodeIndices.contains(tempNodeProp.data))
             nodeIndices.get(tempNodeProp.data).head
@@ -135,9 +147,9 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
         vertToAdd = vertToAdd :+ (srcId, tempNodeProp)
         degList = degList :+ (srcId, 0) //initial degree of 0
 
-        val numEdgesToAdd = dataGen.getEdgeCount()
+        val numEdgesToAdd = DataDistributions.getOutEdgeSample()
 
-        for (i <- 1 to numEdgesToAdd) {
+        for (i <- 1 to numEdgesToAdd.toInt) {
           val attachTo: Long = (Math.abs(r.nextLong()) % (degSum - 1)) + 1
 
           var dstIndex: Int = 0
@@ -164,7 +176,7 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
       Array(true)
     }
 
-    theGraph = Graph(inVertices.union(sc.parallelize(vertToAdd)), inEdges.union(sc.parallelize(edgesToAdd)), nodeData(""))
+    theGraph = Graph(inVertices.union(sc.parallelize(vertToAdd)), inEdges.union(sc.parallelize(edgesToAdd)), nodeData())
     theGraph
   }
 

@@ -79,9 +79,9 @@ trait base_GraphGen {
 //    val outDegDist = sc.parallelize(Array("OutDegree,NumNodesWithDegree")).union(outDegreesDist(theGraph).sortBy(_._2, ascending = false).map(record => record._1.toString + ',' + record._2.toString))
 
 
-    val degDist = degreesDist(theGraph).sortBy(_._2, ascending = false).map(record => record._1.toString + ',' + record._2.toString)
-    val inDegDist = inDegreesDist(theGraph).sortBy(_._2, ascending = false).map(record => record._1.toString + ',' + record._2.toString)
-    val outDegDist = outDegreesDist(theGraph).sortBy(_._2, ascending = false).map(record => record._1.toString + ',' + record._2.toString)
+    val degDist = Veracity.degreesDist(theGraph).sortBy(_._2, ascending = false).map(record => record._1.toString + ',' + record._2.toString)
+    val inDegDist = Veracity.inDegreesDist(theGraph).sortBy(_._2, ascending = false).map(record => record._1.toString + ',' + record._2.toString)
+    val outDegDist = Veracity.outDegreesDist(theGraph).sortBy(_._2, ascending = false).map(record => record._1.toString + ',' + record._2.toString)
 
     try {
       degDist.coalesce(1).saveAsTextFile(path + "_veracity/degDist")
@@ -93,35 +93,8 @@ trait base_GraphGen {
 //      inDegDist.repartition(1).saveAsTextFile(path + "_veracity/inDegDist")
 //      outDegDist.repartition(1).saveAsTextFile(path + "_veracity/outDegDist")
     } catch {
-      case e: Exception => println("Couldn't save Veracity files")
+      case _: Exception => println("Couldn't save Veracity files")
     }
-  }
-
-  /** * Function to generate the degree distribution
-    *
-    * @param theGraph The graph to analyze
-    * @return RDD containing degree numbers, and the number of nodes at that specific degree
-    */
-  def degreesDist(theGraph: Graph[nodeData, edgeData]): RDD[(Int, Int)] = {
-    theGraph.degrees.map(record => (record._2, 1)).reduceByKey(_ + _)
-  }
-
-  /** * Function to generate the degree distribution
-    *
-    * @param theGraph The graph to analyze
-    * @return RDD containing degree numbers, and the number of nodes at that specific degree
-    */
-  def inDegreesDist(theGraph: Graph[nodeData, edgeData]): RDD[(Int, Int)] = {
-    theGraph.inDegrees.map(record => (record._2, 1)).reduceByKey(_ + _)
-  }
-
-  /** * Function to generate outDegree distribution
-    *
-    * @param theGraph The graph to analyze
-    * @return RDD containing degree numbers, and the number of nodes at that specific degree
-    */
-  def outDegreesDist(theGraph: Graph[nodeData, edgeData]): RDD[(Int, Int)] = {
-    theGraph.outDegrees.map(record => (record._2, 1)).reduceByKey(_ + _)
   }
 
   def saveGraphAsConnFile(sc: SparkContext, theGraph: Graph[nodeData, edgeData], path: String): Unit = {
@@ -176,5 +149,4 @@ trait base_GraphGen {
       case e: Exception => println("Couldn't save file " + path)
     }
   }
-
 }
