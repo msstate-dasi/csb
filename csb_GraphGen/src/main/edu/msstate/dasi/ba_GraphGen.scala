@@ -1,7 +1,5 @@
 package edu.msstate.dasi
 
-import java.io._
-
 import org.apache.spark.SparkContext
 import org.apache.spark.graphx.{Graph, _}
 import org.apache.spark.rdd.RDD
@@ -49,7 +47,7 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
       println("Generating Edge and Node properties")
       startTime = System.nanoTime()
       val eRDD: RDD[Edge[edgeData]] = theGraph.edges.map(record => Edge(record.srcId, record.dstId, {
-        val ORIGBYTES = DataDistributions.getOrigBytesSample()
+        val ORIGBYTES = DataDistributions.getOrigBytesSample
         val ORIGIPBYTE = DataDistributions.getOrigIPBytesSample(ORIGBYTES)
         val CONNECTSTATE = DataDistributions.getConnectionStateSample(ORIGBYTES)
         val PROTOCOL = DataDistributions.getProtoSample(ORIGBYTES)
@@ -58,10 +56,10 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
         val RESPBYTECNT = DataDistributions.getRespBytesSample(ORIGBYTES)
         val RESPIPBYTECNT = DataDistributions.getRespIPBytesSample(ORIGBYTES)
         val RESPPACKCNT = DataDistributions.getRespPktsSample(ORIGBYTES)
-        edgeData("", PROTOCOL, DURATION, ORIGBYTES, RESPBYTECNT, CONNECTSTATE, ORIGPACKCNT, ORIGIPBYTE, RESPPACKCNT, RESPBYTECNT, "")
+        edgeData("", PROTOCOL, DURATION, ORIGBYTES, RESPBYTECNT, CONNECTSTATE, ORIGPACKCNT, ORIGIPBYTE, RESPPACKCNT, RESPIPBYTECNT)
       }))
       val vRDD: RDD[(VertexId, nodeData)] = theGraph.vertices.map(record => (record._1, {
-        val DATA = DataDistributions.getIpSample()
+        val DATA = DataDistributions.getIpSample
         nodeData(DATA)
       }))
       theGraph = Graph(vRDD, eRDD, nodeData())
@@ -102,7 +100,7 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
 
     val r = Random
 
-    theGraph = Graph(inVertices, inEdges, nodeData(""))
+    theGraph = Graph(inVertices, inEdges, nodeData())
 
     var nodeIndices: mutable.HashMap[String, VertexId] = new mutable.HashMap[String, VertexId]()
     var degList: Array[(VertexId, Int)] = theGraph.degrees.sortBy(_._1).collect()
@@ -123,10 +121,10 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
 
     for (i <- 1 to iters) {
       println(i + "/" + math.ceil(iter.toDouble / partitions).toInt)
-      for (n <- 1 to nPI) {
+      for (_ <- 1 to nPI) {
         //String is IP:Port ex. "192.168.0.1:80"
         val tempNodeProp: nodeData = if (noPropFlag) nodeData() else {
-          val DATA = DataDistributions.getIpSample()
+          val DATA = DataDistributions.getIpSample
           nodeData(DATA)
         }
         val srcId: VertexId =
@@ -147,9 +145,9 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
         vertToAdd = vertToAdd :+ (srcId, tempNodeProp)
         degList = degList :+ (srcId, 0) //initial degree of 0
 
-        val numEdgesToAdd = DataDistributions.getOutEdgeSample()
+        val numEdgesToAdd = DataDistributions.getOutEdgeSample
 
-        for (i <- 1 to numEdgesToAdd.toInt) {
+        for (_ <- 1 to numEdgesToAdd.toInt) {
           val attachTo: Long = (Math.abs(r.nextLong()) % (degSum - 1)) + 1
 
           var dstIndex: Int = 0

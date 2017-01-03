@@ -1,7 +1,5 @@
 package edu.msstate.dasi
 
-import java.io.File
-
 import org.apache.spark.SparkContext
 import org.apache.spark.graphx.{Graph, VertexRDD}
 import org.apache.spark.rdd.RDD
@@ -50,21 +48,23 @@ trait base_GraphGen {
   }
 
   def saveGraphEdges(sc: SparkContext, path: String): Unit = {
-    val edgeFacts: RDD[String] = sc.parallelize(Array("Source,Target,Weight")).union(theGraph.triplets.map(record =>
-      record.srcId + "," + record.dstId + "," + record.attr))
+//    val edgeFacts: RDD[String] = sc.parallelize(Array("Source,Target,Weight")).union(theGraph.triplets.map(record =>
+//      record.srcId + "," + record.dstId + "," + record.attr))
     try {
-      edgeFacts.repartition(1).saveAsTextFile(path)
+//      edgeFacts.repartition(1).saveAsObjectFile(path)
+      theGraph.edges.saveAsObjectFile(path)
     } catch {
-      case e: Exception => println("Couldn't save file " + path)
+      case _: Exception => println("Couldn't save file " + path)
     }
   }
 
   def saveGraphVerts(sc: SparkContext, path: String): Unit = {
-    val vertFacts: RDD[String] = sc.parallelize(Array("ID,Desc")).union(theGraph.vertices.map(record => record._1.toString + "," + record._2.toString))
+//    val vertFacts: RDD[String] = sc.parallelize(Array("ID,Desc")).union(theGraph.vertices.map(record => record._1.toString + "," + record._2.toString))
     try {
-      vertFacts.repartition(1).saveAsTextFile(path)
+//      vertFacts.repartition(1).saveAsObjectFile(path)
+      theGraph.vertices.saveAsObjectFile(path)
     } catch {
-      case e: Exception => println("Couldn't save file " + path)
+      case _: Exception => println("Couldn't save file " + path)
     }
   }
 
@@ -146,7 +146,7 @@ trait base_GraphGen {
     try {
       connRDD.repartition(1).saveAsTextFile(path)
     } catch {
-      case e: Exception => println("Couldn't save file " + path)
+      case _: Exception => println("Couldn't save file " + path)
     }
   }
 }

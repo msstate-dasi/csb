@@ -9,17 +9,17 @@ import org.apache.spark.SparkContext
 /**
  * Created by scordio on 12/17/16.
  */
-object DataDistributions {
+object DataDistributions extends Serializable{
   val bucketSize = 10
 
   val fileDir = "."
 
-  var inDegreeDistribution :Array[(String, Double)] = null
-  var outDegreeDistribution :Array[(String, Double)] = null
-  var degreeDistribution :Array[(String, Double)] = null
+  var inDegreeDistribution :Array[(String, Double)] = _
+  var outDegreeDistribution :Array[(String, Double)] = _
+  var degreeDistribution :Array[(String, Double)] = _
 
-  var outEdgesDistribution :Array[(Long, Double)] = null
-  var origBytesDistribution :Array[(Long, Double)] = null
+  var outEdgesDistribution :Array[(Long, Double)] = _
+  var origBytesDistribution :Array[(Long, Double)] = _
 
   var origPktsDistributions: Map[Long, Array[(Long, Double)]] = Map()
   var respBytesDistributions: Map[Long, Array[(Long, Double)]] = Map()
@@ -140,6 +140,7 @@ object DataDistributions {
 
         println("origPktsDistributions");
         {
+
           /* Conditional distribution of origPkts given the origBytes */
           //The following computes the sum of the occurrences of the packet counts given the byte counts
           val reducedByKey = augLog.map(entry => ((entry.origBytes, entry.origPkts), 1)).reduceByKey(_ + _)
@@ -318,48 +319,44 @@ object DataDistributions {
 
     var oos = new ObjectOutputStream(new FileOutputStream(fileDir+"/"+outEdgesDistributionFileName))
     oos.writeObject(outEdgesDistribution)
-    oos.close
+    oos.close()
 
     oos = new ObjectOutputStream(new FileOutputStream(fileDir+"/"+origBytesDistributionFileName))
     oos.writeObject(origBytesDistribution)
-    oos.close
+    oos.close()
 
     oos = new ObjectOutputStream(new FileOutputStream(fileDir+"/"+origPktsDistributionsFileName))
     oos.writeObject(origPktsDistributions)
-    oos.close
+    oos.close()
 
     oos = new ObjectOutputStream(new FileOutputStream(fileDir+"/"+respBytesDistributionsFileName))
     oos.writeObject(respBytesDistributions)
-    oos.close
+    oos.close()
 
     oos = new ObjectOutputStream(new FileOutputStream(fileDir+"/"+durationDistributionsFileName))
     oos.writeObject(durationDistributions)
-    oos.close
+    oos.close()
 
     oos = new ObjectOutputStream(new FileOutputStream(fileDir+"/"+connStateDistributionsFileName))
     oos.writeObject(connStateDistributions)
-    oos.close
+    oos.close()
 
     oos = new ObjectOutputStream(new FileOutputStream(fileDir+"/"+protoDistributionsFileName))
     oos.writeObject(protoDistributions)
-    oos.close
+    oos.close()
 
     oos = new ObjectOutputStream(new FileOutputStream(fileDir+"/"+origIPBytesDistributionsFileName))
     oos.writeObject(origIPBytesDistributions)
-    oos.close
+    oos.close()
 
     oos = new ObjectOutputStream(new FileOutputStream(fileDir+"/"+respIPBytesDistributionsFileName))
     oos.writeObject(respIPBytesDistributions)
-    oos.close
+    oos.close()
 
     oos = new ObjectOutputStream(new FileOutputStream(fileDir+"/"+respPktsDistributionsFileName))
     oos.writeObject(respPktsDistributions)
-    oos.close
+    oos.close()
   }
-
-
-
-
 
   def readDistributionsFromDisk(fileDir: String) = {
     /* Not needed at this time
@@ -417,19 +414,20 @@ object DataDistributions {
   }
 
 
-  def getOutEdgeSample(): Long = {
+  def getOutEdgeSample: Long = {
     val r = Random.nextDouble()
     var accumulator :Double= 0
+
     val iterator = outEdgesDistribution.iterator
     var outElem : (Long, Double) = null
     while (accumulator < r && iterator.hasNext) {
       outElem = iterator.next()
       accumulator = accumulator + outElem._2
     }
-    return outElem._1
+    outElem._1
   }
 
-  def getOrigBytesSample(): Long = {
+  def getOrigBytesSample: Long = {
     val r = Random.nextDouble()
     var accumulator :Double= 0
     val iterator = origBytesDistribution.iterator
@@ -438,7 +436,7 @@ object DataDistributions {
       outElem = iterator.next()
       accumulator = accumulator + outElem._2
     }
-    return outElem._1
+    outElem._1
   }
 
   def getOrigPktsSample(origBytes: Long) : Long = {
@@ -450,7 +448,7 @@ object DataDistributions {
       outElem = iterator.next()
       accumulator = accumulator + outElem._2
     }
-    return outElem._1
+    outElem._1
   }
 
   def getRespBytesSample(origBytes: Long) : Long = {
@@ -462,7 +460,7 @@ object DataDistributions {
       outElem = iterator.next()
       accumulator = accumulator + outElem._2
     }
-    return outElem._1
+    outElem._1
   }
 
   def getDurationSample(origBytes: Long) : Double = {
@@ -474,7 +472,7 @@ object DataDistributions {
       outElem = iterator.next()
       accumulator = accumulator + outElem._2
     }
-    return outElem._1
+    outElem._1
   }
 
   def getConnectionStateSample(origBytes: Long) : String = {
@@ -486,7 +484,7 @@ object DataDistributions {
       outElem = iterator.next()
       accumulator = accumulator + outElem._2
     }
-    return outElem._1
+    outElem._1
   }
 
   def getProtoSample(origBytes: Long) : String = {
@@ -498,7 +496,7 @@ object DataDistributions {
       outElem = iterator.next()
       accumulator = accumulator + outElem._2
     }
-    return outElem._1
+    outElem._1
   }
 
   def getOrigIPBytesSample(origBytes: Long) : Long = {
@@ -510,7 +508,7 @@ object DataDistributions {
       outElem = iterator.next()
       accumulator = accumulator + outElem._2
     }
-    return outElem._1
+    outElem._1
   }
 
   def getRespIPBytesSample(origBytes: Long) : Long = {
@@ -522,7 +520,7 @@ object DataDistributions {
       outElem = iterator.next()
       accumulator = accumulator + outElem._2
     }
-    return outElem._1
+    outElem._1
   }
 
   def getRespPktsSample(origBytes: Long) : Long = {
@@ -534,10 +532,10 @@ object DataDistributions {
       outElem = iterator.next()
       accumulator = accumulator + outElem._2
     }
-    return outElem._1
+    outElem._1
   }
 
-  def getIpSample(): String = {
+  def getIpSample: String = {
     val r = Random
     r.nextInt(255) + "." + r.nextInt(255) + "." + r.nextInt(255) + "." + r.nextInt(255) + ":" + r.nextInt(65536)
   }

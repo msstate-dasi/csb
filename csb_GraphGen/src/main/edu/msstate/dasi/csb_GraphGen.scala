@@ -3,16 +3,12 @@ package edu.msstate.dasi
 import java.io.{BufferedWriter, File, FileWriter}
 
 import org.apache.log4j.{Level, Logger}
-import org.apache.spark.{SparkConf, SparkContext, graphx}
+import org.apache.spark.SparkContext
 import scopt.OptionParser
-
-import scala.collection.mutable
-import scala.reflect.runtime.universe._
-import java.text.BreakIterator
 
 import org.apache.spark.graphx._
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{SQLContext, SparkSession}
+import org.apache.spark.sql.SparkSession
 
 /**
   * Created by spencer on 11/3/16.
@@ -121,7 +117,7 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
         .action((x, c) => c.copy(checkpointInterval = x))
       opt[Unit]("debug")
         .hidden()
-        .action((x, c) => c.copy(debug = true))
+        .action((_, c) => c.copy(debug = true))
         .text(s"Debug mode, prints all log output to terminal. default: ${dP.debug}")
 
       /**
@@ -208,7 +204,7 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
     parser.parse(args, dP) match {
       case Some(params) => if (params.mode != "") run(params)
       else {
-        println("Error: Must specify command");
+        println("Error: Must specify command")
         parser.showUsageAsError()
       }
       case _ => sys.exit(1)
@@ -220,7 +216,7 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
     * @param params Parameters for the function to run.
     */
   def run(params: Params): Boolean = {
-    if (params.debug == false) {
+    if ( ! params.debug ) {
       //turn off annoying log messages
       Logger.getLogger("org").setLevel(Level.OFF)
       Logger.getLogger("akka").setLevel(Level.OFF)
@@ -248,7 +244,7 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
     }
 
     sys.exit()
-    return true
+    true
   }
 
   def run_gendist(sc: SparkContext, params: Params): Boolean = {
@@ -287,7 +283,7 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
 //        saveGraphVerts(sc, params.seedVertices)
 
 
-    return true
+    true
   }
 
   def run_ba(sc: SparkContext, params: Params, sparkSession: SparkSession): Boolean = {
@@ -296,7 +292,7 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
     val baGraph = new ba_GraphGen()
     baGraph.run(sc, params.partitions, params.seedVertices, params.seedEdges, params.baIter, params.outputGraphPrefix, params.numNodesPerIter, params.noProp, params.debug, sparkSession)
 
-    return true
+    true
   }
 
   def run_kro(sc: SparkContext, params: Params, sparkSession: SparkSession): Boolean = {
@@ -305,7 +301,6 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
     val kroGraph = new kro_GraphGen()
     kroGraph.run(sc, params.partitions, params.seedMtx, params.kroIter, params.outputGraphPrefix, params.noProp, params.debug, sparkSession)
 
-    return true
+    true
   }
-
 }
