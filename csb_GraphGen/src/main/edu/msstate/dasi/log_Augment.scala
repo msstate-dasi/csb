@@ -181,21 +181,21 @@ class log_Augment extends Serializable {
 
     broEntries.count()
 
-    val sn2bro: RDD[((String, Int, String, Int), connLogEntry)] = snortEntries.map(alert => connLogEntry(TS = alert.timeStamp, SRCADDR = alert.srcIP, SRCPORT = alert.srcPort,
+    val sn2bro: RDD[((String, Int, String, Int), connLogEntry)] = snortEntries.map(alert =>  connLogEntry(TS = alert.timeStamp, SRCADDR = alert.srcIP, SRCPORT = alert.srcPort,
       DESTADDR = alert.dstIP, DESTPORT = alert.dstPort, DESC = alert.attackName)).map(entry => ((entry.SRCADDR, entry.SRCPORT, entry.DESTADDR, +entry.DESTPORT), entry))
 
     val keyedBroEntries = broEntries.map(entry => ((entry.SRCADDR, entry.SRCPORT, entry.DESTADDR, entry.DESTPORT), entry))
 
-    /*
-    sn2bro.join(keyedBroEntries).map(p => connLogEntry(p._2._1.TS, p._2._1.UID, p._2._1.SRCADDR, p._2._1.SRCPORT,
-      p._2._1.DESTADDR, p._2._1.DESTPORT, p._2._1.PROTOCOL, p._2._1.SERVICE, p._2._1.DURATION, p._2._1.ORIG_BYTES,
-      p._2._1.RESP_BYTES, p._2._1.CONN_STATE, p._2._1.LOCAL_ORIG, p._2._1.LOCAL_RESP, p._2._1.MISSED_BYTES,
-      p._2._1.HISTORY, p._2._1.ORIG_PKTS, p._2._1.ORIG_IP_BYTES, p._2._1.RESP_PKTS, p._2._1.RESP_IP_BYTES,
-      p._2._1.TUNNEL_PARENT))
-    */
+
+//    sn2bro.join(keyedBroEntries).map(p => connLogEntry(p._2._1.TS, p._2._1.UID, p._2._1.SRCADDR, p._2._1.SRCPORT,
+//      p._2._1.DESTADDR, p._2._1.DESTPORT, p._2._1.PROTOCOL, p._2._1.SERVICE, p._2._1.DURATION, p._2._1.ORIG_BYTES,
+//      p._2._1.RESP_BYTES, p._2._1.CONN_STATE, p._2._1.LOCAL_ORIG, p._2._1.LOCAL_RESP, p._2._1.MISSED_BYTES,
+//      p._2._1.HISTORY, p._2._1.ORIG_PKTS, p._2._1.ORIG_IP_BYTES, p._2._1.RESP_PKTS, p._2._1.RESP_IP_BYTES,
+//      p._2._1.TUNNEL_PARENT))
+
 
     val augEntriesWithoutPortscans = sn2bro.leftOuterJoin(keyedBroEntries)
-      .filter(record => record._2._2.isDefined)
+      .filter(record =>  record._2._2.isDefined)
       .flatMap(record => Array((record._1, record._2._1)) ++ (for (entry <- record._2._2.toSeq) yield (record._1, entry)))
       .reduceByKey(mergeEntries)
 
@@ -205,8 +205,10 @@ class log_Augment extends Serializable {
       .flatMap(record => Array((record._1, record._2._1)) ++ (for (entry <- record._2._2.toSeq) yield (record._1, entry)))
       .reduceByKey(mergeEntries)
 
+
     val augEntries = augEntriesWithoutPortscans.map(entry => ((entry._1._1, entry._1._3), entry._2)).union(augEntriesPortScans).reduceByKey(mergeEntries).map(entry => entry._2)
     val totalEntries = broEntries.map(entry => (entry.TS, entry)).union(augEntries.map(entry => (entry.TS, entry))).reduceByKey((left, right) => right).map(entry => entry._2)
+
 
     try {
 

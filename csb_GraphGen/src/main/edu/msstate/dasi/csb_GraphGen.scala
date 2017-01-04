@@ -64,7 +64,7 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
                      outputGraphPrefix: String = "",
                      partitions: Int = 120,
                      checkpointDir: Option[String] = None,
-                     checkpointInterval: Int = 10,
+                     checkpointInterval: Long = 10,
                      debug: Boolean = false,
 
                      /**
@@ -78,10 +78,10 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
                        * BA Arguments
                        */
                      noProp: Boolean = false,
-                     numNodesPerIter: Int = 120,
+                     numNodesPerIter: Long = 120,
                      seedVertices: String = "seed_vert",
                      seedEdges: String = "seed_edges",
-                     baIter: Int = 1000,
+                     baIter: Long = 1000,
 
                      /**
                        * Kronecker Arguments

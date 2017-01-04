@@ -13,7 +13,7 @@ import scala.util.Random
   */
 class ba_GraphGen extends base_GraphGen with data_Parser {
 
-  def run(sc: SparkContext, partitions: Int, seedVertFile: String, seedEdgeFile: String, baIter: Int, outputGraphPrefix: String, nodesPerIter: Int, noPropFlag: Boolean, debugFlag: Boolean, sparkSession: SparkSession): Boolean = {
+  def run(sc: SparkContext, partitions: Long, seedVertFile: String, seedEdgeFile: String, baIter: Long, outputGraphPrefix: String, nodesPerIter: Long, noPropFlag: Boolean, debugFlag: Boolean, sparkSession: SparkSession): Boolean = {
 
     println()
     println("Loading seed graph with vertices file: " + seedVertFile + " and edges file " + seedEdgeFile + " ...")
@@ -35,7 +35,7 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
 
     //Generate a BA Graph with iterations
     startTime = System.nanoTime()
-    theGraph = generateBAGraph(sc, partitions, inVertices, inEdges, baIter.toInt, nodesPerIter, noPropFlag, debugFlag, sparkSession)
+    theGraph = generateBAGraph(sc, partitions, inVertices, inEdges, baIter.toLong, nodesPerIter, noPropFlag, debugFlag, sparkSession)
     timeSpan = (System.nanoTime() - startTime) / 1e9
     println()
     println("Finished generating BA graph.")
@@ -96,7 +96,7 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
     * @param iter Number of iterations to perform BA
     * @return Graph containing vertices + edu.msstate.dasi.nodeData, edges + edu.msstate.dasi.edgeData
     */
-  def generateBAGraph(sc: SparkContext, partitions: Int, inVertices: RDD[(VertexId, nodeData)], inEdges: RDD[Edge[edgeData]], iter: Int, nodesPerIter: Int, noPropFlag: Boolean, debugFlag: Boolean, sparkSession: SparkSession): Graph[nodeData,edgeData] = {
+  def generateBAGraph(sc: SparkContext, partitions: Long, inVertices: RDD[(VertexId, nodeData)], inEdges: RDD[Edge[edgeData]], iter: Long, nodesPerIter: Long, noPropFlag: Boolean, debugFlag: Boolean, sparkSession: SparkSession): Graph[nodeData,edgeData] = {
 
     val r = Random
 
@@ -119,9 +119,9 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
       nPI = iter; 1
     }
 
-    for (i <- 1 to iters) {
-      println(i + "/" + math.ceil(iter.toDouble / partitions).toInt)
-      for (_ <- 1 to nPI) {
+    for (i <- 1L to iters) {
+      println(i + "/" + math.ceil(iter.toDouble / partitions).toLong)
+      for (_ <- 1L to nPI) {
         //String is IP:Port ex. "192.168.0.1:80"
         val tempNodeProp: nodeData = if (noPropFlag) nodeData() else {
           val DATA = DataDistributions.getIpSample
@@ -134,7 +134,7 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
             degList.last._1.toLong + 1
         var srcIndex =
           if (nodeIndices.contains(tempNodeProp.data))
-            nodeIndices.get(tempNodeProp.data).head.toInt
+            nodeIndices.get(tempNodeProp.data).head.toLong
           else
             degList.length
         if (degList.head._1 != 0L) {
@@ -147,25 +147,25 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
 
         val numEdgesToAdd = DataDistributions.getOutEdgeSample
 
-        for (_ <- 1 to numEdgesToAdd.toInt) {
+        for (_ <- 1L to numEdgesToAdd.toLong) {
           val attachTo: Long = (Math.abs(r.nextLong()) % (degSum - 1)) + 1
 
-          var dstIndex: Int = 0
+          var dstIndex: Long = 0
           var tempDegSum: Long = 0
           while (tempDegSum < attachTo) {
-            tempDegSum += degList(dstIndex)._2
+            tempDegSum += degList(dstIndex.toInt)._2
             dstIndex += 1
           }
 
           dstIndex = dstIndex - 1
           //now we know that the node must attach at index
-          val dstId: VertexId = degList(dstIndex)._1
+          val dstId: VertexId = degList(dstIndex.toInt)._1
 
           edgesToAdd = edgesToAdd :+ Edge(srcId, dstId, edgeData())
 
           //This doesn't matter, but to be correct, this code updates the degList dstId's degree
-          degList(dstIndex) = (degList(dstIndex)._1, degList(dstIndex)._2 + 1)
-          degList(srcIndex) = (degList(srcIndex)._1, degList(srcIndex)._2 + 1)
+          degList(dstIndex.toInt) = (degList(dstIndex.toInt)._1, degList(dstIndex.toInt)._2 + 1)
+          degList(srcIndex.toInt) = (degList(srcIndex.toInt)._1, degList(srcIndex.toInt)._2 + 1)
 
           degSum += 2
 

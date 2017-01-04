@@ -16,8 +16,8 @@ object Veracity {
    * @param graph The graph to analyze
    * @return RDD containing degree numbers, and the number of nodes at that specific degree
    */
-  def degreesDist(graph: Graph[nodeData, edgeData]): RDD[(Int, Int)] = {
-    graph.degrees.map(record => (record._2, 1)).reduceByKey(_ + _)
+  def degreesDist(graph: Graph[nodeData, edgeData]): RDD[(Long, Long)] = {
+    graph.degrees.map(record => (record._2.toLong, 1L)).reduceByKey(_ + _)
   }
 
   /**
@@ -26,8 +26,8 @@ object Veracity {
    * @param graph The graph to analyze
    * @return RDD containing degree numbers, and the number of nodes at that specific degree
    */
-  def inDegreesDist(graph: Graph[nodeData, edgeData]): RDD[(Int, Int)] = {
-    graph.inDegrees.map(record => (record._2, 1)).reduceByKey(_ + _)
+  def inDegreesDist(graph: Graph[nodeData, edgeData]): RDD[(Long, Long)] = {
+    graph.inDegrees.map(record => (record._2.toLong, 1L)).reduceByKey(_ + _)
   }
 
   /**
@@ -36,8 +36,8 @@ object Veracity {
    * @param graph The graph to analyze
    * @return RDD containing degree numbers, and the number of nodes at that specific degree
    */
-  def outDegreesDist(graph: Graph[nodeData, edgeData]): RDD[(Int, Int)] = {
-    graph.outDegrees.map(record => (record._2, 1)).reduceByKey(_ + _)
+  def outDegreesDist(graph: Graph[nodeData, edgeData]): RDD[(Long, Long)] = {
+    graph.outDegrees.map(record => (record._2.toLong, 1L)).reduceByKey(_ + _)
   }
 
 }
