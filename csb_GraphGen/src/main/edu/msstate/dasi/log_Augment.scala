@@ -176,6 +176,54 @@ class log_Augment extends Serializable {
     v
   }
 
+  /***
+    * This is a function that is called to find the ONE connection that is within the time stamp
+    * @param TSofAlert the timestamp given by snort
+    * @param connEntries the entries that match the src ip and port and dest ip and port
+    * @param DESC the description snort gives of the attack
+    * @return
+    */
+  def reduceRecords(TSofAlert: Double, connEntries: Array[connLogEntry], DESC: String): connLogEntry =
+  {
+    val timeBuffer = 1.0
+    for(x <- connEntries)
+      {
+        if(TSofAlert <= x.TS.toDouble + x.DURATION + timeBuffer && TSofAlert >= x.TS.toDouble - timeBuffer)
+          {
+            var temp = new connLogEntry(x.TS,x.UID, x.SRCADDR, x.SRCPORT, x.DESTADDR, x.DESTPORT, x.PROTOCOL, x.SERVICE, x.DURATION, x.ORIG_BYTES,
+              x.RESP_BYTES, x.CONN_STATE, x.LOCAL_ORIG, x.LOCAL_RESP, x.MISSED_BYTES, x.HISTORY, x.ORIG_PKTS, x.ORIG_IP_BYTES, x.RESP_PKTS, x.RESP_IP_BYTES, x.TUNNEL_PARENT, DESC)
+            return temp
+          }
+      }
+    return null
+  }
+
+  /***
+    * This method returns all the connections that were flagged as port scans.  It is important to note that this function
+    * returns an array.  This is because snort only gives one alert for a port scan, but a port scan creates several connections
+    * and we need to flag all those connections.
+    * @param TSofAlert
+    * @param connEntries
+    * @param DESC
+    * @return
+    */
+  def reducePortScanRecords(TSofAlert: Double, connEntries: Array[connLogEntry], DESC: String): Array[connLogEntry] =
+  {
+    val timeBuffer: Double = 5.0
+
+    var listOfConnections = new scala.collection.mutable.ArrayBuffer[connLogEntry]
+    for(x <- connEntries)
+      {
+        if(TSofAlert <= x.TS.toDouble + timeBuffer && TSofAlert >= x.TS.toDouble - timeBuffer )
+          {
+            var temp = new connLogEntry(x.TS,x.UID, x.SRCADDR, x.SRCPORT, x.DESTADDR, x.DESTPORT, x.PROTOCOL, x.SERVICE, x.DURATION, x.ORIG_BYTES,
+              x.RESP_BYTES, x.CONN_STATE, x.LOCAL_ORIG, x.LOCAL_RESP, x.MISSED_BYTES, x.HISTORY, x.ORIG_PKTS, x.ORIG_IP_BYTES, x.RESP_PKTS, x.RESP_IP_BYTES, x.TUNNEL_PARENT, DESC)
+            listOfConnections.append(temp)
+          }
+      }
+    return listOfConnections.toArray
+  }
+
   def getAugLogInfo(sc: SparkContext, snortEntries: RDD[alertBlock], broEntries: RDD[connLogEntry], augLog: String): Unit = {
     //println(snortEntries.count())
 
@@ -184,30 +232,34 @@ class log_Augment extends Serializable {
     val sn2bro: RDD[((String, Int, String, Int), connLogEntry)] = snortEntries.map(alert =>  connLogEntry(TS = alert.timeStamp, SRCADDR = alert.srcIP, SRCPORT = alert.srcPort,
       DESTADDR = alert.dstIP, DESTPORT = alert.dstPort, DESC = alert.attackName)).map(entry => ((entry.SRCADDR, entry.SRCPORT, entry.DESTADDR, +entry.DESTPORT), entry))
 
+
     val keyedBroEntries = broEntries.map(entry => ((entry.SRCADDR, entry.SRCPORT, entry.DESTADDR, entry.DESTPORT), entry))
 
 
-//    sn2bro.join(keyedBroEntries).map(p => connLogEntry(p._2._1.TS, p._2._1.UID, p._2._1.SRCADDR, p._2._1.SRCPORT,
-//      p._2._1.DESTADDR, p._2._1.DESTPORT, p._2._1.PROTOCOL, p._2._1.SERVICE, p._2._1.DURATION, p._2._1.ORIG_BYTES,
-//      p._2._1.RESP_BYTES, p._2._1.CONN_STATE, p._2._1.LOCAL_ORIG, p._2._1.LOCAL_RESP, p._2._1.MISSED_BYTES,
-//      p._2._1.HISTORY, p._2._1.ORIG_PKTS, p._2._1.ORIG_IP_BYTES, p._2._1.RESP_PKTS, p._2._1.RESP_IP_BYTES,
-//      p._2._1.TUNNEL_PARENT))
-
 
     val augEntriesWithoutPortscans = sn2bro.leftOuterJoin(keyedBroEntries)
-      .filter(record =>  record._2._2.isDefined)
-      .flatMap(record => Array((record._1, record._2._1)) ++ (for (entry <- record._2._2.toSeq) yield (record._1, entry)))
-      .reduceByKey(mergeEntries)
+      .filter(record => record._2._2.isDefined)
+        .map(record => (record._1, reduceRecords(record._2._1.TS.toDouble / 1000, record._2._2.toArray, record._2._1.DESC)))
+      .filter(record => record._2 != null)
+
+
 
     val augEntriesPortScans = sn2bro.map(entry => ((entry._1._1, entry._1._3), entry._2))
       .leftOuterJoin(keyedBroEntries.map(entry => ((entry._1._1, entry._1._3), entry._2)))
-      .filter(record => record._2._2.isDefined)
-      .flatMap(record => Array((record._1, record._2._1)) ++ (for (entry <- record._2._2.toSeq) yield (record._1, entry)))
-      .reduceByKey(mergeEntries)
+        .filter(record => record._2._2.isDefined)
+      .map(record => (record._1, reducePortScanRecords((record._2._1.TS.toDouble / 1000), record._2._2.toArray, record._2._1.DESC)))
+        .filter(record => record._2.length > 0)
 
 
-    val augEntries = augEntriesWithoutPortscans.map(entry => ((entry._1._1, entry._1._3), entry._2)).union(augEntriesPortScans).reduceByKey(mergeEntries).map(entry => entry._2)
-    val totalEntries = broEntries.map(entry => (entry.TS, entry)).union(augEntries.map(entry => (entry.TS, entry))).reduceByKey((left, right) => right).map(entry => entry._2)
+
+
+    val totalBadEntries = augEntriesPortScans.flatMap(record => record._2).union(augEntriesWithoutPortscans.map(record => record._2))
+
+    val allEntries = broEntries.union(totalBadEntries).map(record => (record.TS, record)).reduceByKey((record1, record2) =>  if(record1.DESC != "") record1 else record2)
+
+    try {
+      allEntries.coalesce(1).saveAsTextFile("theTrueAugment")
+    }
 
 
     try {
@@ -221,7 +273,7 @@ class log_Augment extends Serializable {
         "#open   2016-09-15-15-59-01",
         "#fields ts      uid     id.orig_h       id.orig_p       id.resp_h       id.resp_p       proto   service duration        orig_bytes      resp_bytes      conn_state      local_orig      local_resp      missed_bytes    history orig_pkts      orig_ip_bytes    resp_pkts       resp_ip_bytes   tunnel_parents Desc",
         "#types  time    string  addr    port    addr    port    enum    string  intervalcount   count   string  bool    bool    count   string  count   count   count  count    set[string]  string"
-      ) ++ totalEntries.map(entry =>
+      ) ++ totalBadEntries.map(entry =>
         entry.TS + "\t" +
           entry.UID + "\t" +
           entry.SRCADDR + "\t" +
