@@ -54,7 +54,8 @@ class kro_GraphGen extends base_GraphGen with data_Parser {
         val RESPBYTECNT = DataDistributions.getRespBytesSample(ORIGBYTES)
         val RESPIPBYTECNT = DataDistributions.getRespIPBytesSample(ORIGBYTES)
         val RESPPACKCNT = DataDistributions.getRespPktsSample(ORIGBYTES)
-        edgeData("", PROTOCOL, DURATION, ORIGBYTES, RESPBYTECNT, CONNECTSTATE, ORIGPACKCNT, ORIGIPBYTE, RESPPACKCNT, RESPIPBYTECNT)
+        val DESC = DataDistributions.getDescSample(ORIGBYTES)
+        edgeData("", PROTOCOL, DURATION, ORIGBYTES, RESPBYTECNT, CONNECTSTATE, ORIGPACKCNT, ORIGIPBYTE, RESPPACKCNT, RESPIPBYTECNT, DESC)
       }))
       val vRDD: RDD[(VertexId, nodeData)] = theGraph.vertices.map(record => (record._1, {
         val DATA = DataDistributions.getIpSample

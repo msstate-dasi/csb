@@ -188,9 +188,10 @@ class log_Augment extends Serializable {
     val timeBuffer = 1.0
     for(x <- connEntries)
       {
+//        println("here is alert time " + TSofAlert + " < " + (x.TS.toDouble + x.DURATION - timeBuffer) + " and " + TSofAlert + " > " + (x.TS.toDouble - timeBuffer))
         if(TSofAlert <= x.TS.toDouble + x.DURATION + timeBuffer && TSofAlert >= x.TS.toDouble - timeBuffer)
           {
-            var temp = new connLogEntry(x.TS,x.UID, x.SRCADDR, x.SRCPORT, x.DESTADDR, x.DESTPORT, x.PROTOCOL, x.SERVICE, x.DURATION, x.ORIG_BYTES,
+            val temp = new connLogEntry(x.TS,x.UID, x.SRCADDR, x.SRCPORT, x.DESTADDR, x.DESTPORT, x.PROTOCOL, x.SERVICE, x.DURATION, x.ORIG_BYTES,
               x.RESP_BYTES, x.CONN_STATE, x.LOCAL_ORIG, x.LOCAL_RESP, x.MISSED_BYTES, x.HISTORY, x.ORIG_PKTS, x.ORIG_IP_BYTES, x.RESP_PKTS, x.RESP_IP_BYTES, x.TUNNEL_PARENT, DESC)
             return temp
           }
@@ -203,25 +204,21 @@ class log_Augment extends Serializable {
     * returns an array.  This is because snort only gives one alert for a port scan, but a port scan creates several connections
     * and we need to flag all those connections.
     * @param TSofAlert
-    * @param connEntries
+    * @param connEntry
     * @param DESC
     * @return
     */
-  def reducePortScanRecords(TSofAlert: Double, connEntries: Array[connLogEntry], DESC: String): Array[connLogEntry] =
+  def reducePortScanRecords(TSofAlert: Double, connEntry: connLogEntry, DESC: String): connLogEntry =
   {
     val timeBuffer: Double = 5.0
 
-    var listOfConnections = new scala.collection.mutable.ArrayBuffer[connLogEntry]
-    for(x <- connEntries)
-      {
-        if(TSofAlert <= x.TS.toDouble + timeBuffer && TSofAlert >= x.TS.toDouble - timeBuffer )
-          {
-            var temp = new connLogEntry(x.TS,x.UID, x.SRCADDR, x.SRCPORT, x.DESTADDR, x.DESTPORT, x.PROTOCOL, x.SERVICE, x.DURATION, x.ORIG_BYTES,
-              x.RESP_BYTES, x.CONN_STATE, x.LOCAL_ORIG, x.LOCAL_RESP, x.MISSED_BYTES, x.HISTORY, x.ORIG_PKTS, x.ORIG_IP_BYTES, x.RESP_PKTS, x.RESP_IP_BYTES, x.TUNNEL_PARENT, DESC)
-            listOfConnections.append(temp)
-          }
-      }
-    return listOfConnections.toArray
+    if(TSofAlert <= connEntry.TS.toDouble + timeBuffer && TSofAlert >= connEntry.TS.toDouble - timeBuffer )
+    {
+      val temp = new connLogEntry(connEntry.TS,connEntry.UID, connEntry.SRCADDR, connEntry.SRCPORT, connEntry.DESTADDR, connEntry.DESTPORT, connEntry.PROTOCOL, connEntry.SERVICE, connEntry.DURATION, connEntry.ORIG_BYTES,
+        connEntry.RESP_BYTES, connEntry.CONN_STATE, connEntry.LOCAL_ORIG, connEntry.LOCAL_RESP, connEntry.MISSED_BYTES, connEntry.HISTORY, connEntry.ORIG_PKTS, connEntry.ORIG_IP_BYTES, connEntry.RESP_PKTS, connEntry.RESP_IP_BYTES, connEntry.TUNNEL_PARENT, DESC)
+      return temp
+    }
+    return null
   }
 
   def getAugLogInfo(sc: SparkContext, snortEntries: RDD[alertBlock], broEntries: RDD[connLogEntry], augLog: String): Unit = {
@@ -229,12 +226,25 @@ class log_Augment extends Serializable {
 
     broEntries.count()
 
+    //first we set an rdd with the following characteristics
+    //((SrcIP, SrcPort, destIP, destPort), connLogEntry) where connLogEntry is just a container of all the info in a conn line
+    //keep in mind that a snort alert does not give as much info as a conn line but that is ok.  Using the srcIP+port, destIP+Port and Time stamp we can narrow down the connections in the conn file
     val sn2bro: RDD[((String, Int, String, Int), connLogEntry)] = snortEntries.map(alert =>  connLogEntry(TS = alert.timeStamp, SRCADDR = alert.srcIP, SRCPORT = alert.srcPort,
       DESTADDR = alert.dstIP, DESTPORT = alert.dstPort, DESC = alert.attackName)).map(entry => ((entry.SRCADDR, entry.SRCPORT, entry.DESTADDR, +entry.DESTPORT), entry))
 
 
+    //next we get the actual bro entries from well bro:P
     val keyedBroEntries = broEntries.map(entry => ((entry.SRCADDR, entry.SRCPORT, entry.DESTADDR, entry.DESTPORT), entry))
 
+
+    //next we group the two entries up.
+    //heres the process, first we group each rdd up that has the same key,
+    //next we get a list of keys with an array of potential values (has the same src and dest parameters)
+    //clearly just matching the src and dest isn't enough...you need to include the time stamp also
+    //after that we filter the result to get rid of snort entries that were not found
+
+    //the next question you may ask is why is there a difference between port scans and not port scans?
+    //the answer is simple.  snort does not give a src port or dest port for port scans.  If you think about it it makes sense:P
 
 
     val augEntriesWithoutPortscans = sn2bro.leftOuterJoin(keyedBroEntries)
@@ -244,22 +254,23 @@ class log_Augment extends Serializable {
 
 
 
+
     val augEntriesPortScans = sn2bro.map(entry => ((entry._1._1, entry._1._3), entry._2))
       .leftOuterJoin(keyedBroEntries.map(entry => ((entry._1._1, entry._1._3), entry._2)))
         .filter(record => record._2._2.isDefined)
-      .map(record => (record._1, reducePortScanRecords((record._2._1.TS.toDouble / 1000), record._2._2.toArray, record._2._1.DESC)))
-        .filter(record => record._2.length > 0)
+        .flatMap(record => for(x <- record._2._2) yield (record._1, record._2._1, x))
+      .map(record => (record._1, reducePortScanRecords((record._2.TS.toDouble / 1000), record._3, record._2.DESC)))
+        .filter(record => record._2  != null)
 
 
+    //this combines all the bad connections
+    val totalBadEntries = augEntriesPortScans.map(record => record._2).union(augEntriesWithoutPortscans.map(record => record._2))
 
+    //this will replace the conn entries that were flagged as bad with the version that includes the description of the attack
+    val allEntries = broEntries.union(totalBadEntries).map(record => (record.TS, record))
+      .reduceByKey((record1, record2) =>  if(record1.DESC != "") record1 else record2)
+      .map(record => record._2).sortBy(entry => entry.TS.toDouble) //may get rid of sort
 
-    val totalBadEntries = augEntriesPortScans.flatMap(record => record._2).union(augEntriesWithoutPortscans.map(record => record._2))
-
-    val allEntries = broEntries.union(totalBadEntries).map(record => (record.TS, record)).reduceByKey((record1, record2) =>  if(record1.DESC != "") record1 else record2)
-
-    try {
-      allEntries.coalesce(1).saveAsTextFile("theTrueAugment")
-    }
 
 
     try {
@@ -273,7 +284,7 @@ class log_Augment extends Serializable {
         "#open   2016-09-15-15-59-01",
         "#fields ts      uid     id.orig_h       id.orig_p       id.resp_h       id.resp_p       proto   service duration        orig_bytes      resp_bytes      conn_state      local_orig      local_resp      missed_bytes    history orig_pkts      orig_ip_bytes    resp_pkts       resp_ip_bytes   tunnel_parents Desc",
         "#types  time    string  addr    port    addr    port    enum    string  intervalcount   count   string  bool    bool    count   string  count   count   count  count    set[string]  string"
-      ) ++ totalBadEntries.map(entry =>
+      ) ++ allEntries.map(entry =>
         entry.TS + "\t" +
           entry.UID + "\t" +
           entry.SRCADDR + "\t" +

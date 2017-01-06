@@ -29,17 +29,19 @@ object DataDistributions extends Serializable{
   var origIPBytesDistributions: Map[Long, Array[(Long, Double)]] = Map()
   var respIPBytesDistributions: Map[Long, Array[(Long, Double)]] = Map()
   var respPktsDistributions: Map[Long, Array[(Long, Double)]] = Map()
+  var descriptionDistributions: Map[Long, Array[(String, Double)]] = Map()
 
-  val outEdgesDistributionFileName = "outEdgesDistribution.ser"
-  val origBytesDistributionFileName = "origBytesDistribution.ser"
-  val origPktsDistributionsFileName = "origPktsDistributions.ser"
-  val respBytesDistributionsFileName = "respBytesDistributions.ser"
-  val durationDistributionsFileName = "durationDistributions.ser"
-  val connStateDistributionsFileName = "connStateDistributions.ser"
-  val protoDistributionsFileName = "protoDistributions.ser"
+  val outEdgesDistributionFileName =     "outEdgesDistribution.ser"
+  val origBytesDistributionFileName =    "origBytesDistribution.ser"
+  val origPktsDistributionsFileName =    "origPktsDistributions.ser"
+  val respBytesDistributionsFileName =   "respBytesDistributions.ser"
+  val durationDistributionsFileName =    "durationDistributions.ser"
+  val connStateDistributionsFileName =   "connStateDistributions.ser"
+  val protoDistributionsFileName =       "protoDistributions.ser"
   val origIPBytesDistributionsFileName = "origIPBytesDistributions.ser"
   val respIPBytesDistributionsFileName = "respIPBytesDistributions.ser"
-  val respPktsDistributionsFileName = "respPktsDistributions.ser"
+  val respPktsDistributionsFileName =    "respPktsDistributions.ser"
+  val descriptionDistributionsFilename = "descDistributions.ser"
 
   def isTcpUdp(line: String): Boolean = {
     line.contains("tcp") || line.contains("udp")
@@ -49,7 +51,7 @@ object DataDistributions extends Serializable{
                         respPort: Integer, proto: String, service: String, duration: Double, origBytes: Long,
                         respBytes: Long, connState: String, /* localOrig: Boolean, localResp: Boolean, */
                         missedBytes: Long, history: String, origPkts: Long, origIpBytes: Long, respPkts: Long,
-                        respIpBytes: Long, tunnelParents: String)
+                        respIpBytes: Long, tunnelParents: String, desc: String)
 
   def parseAugLog(line: String) = {
     val pieces = line.split('\t')
@@ -75,10 +77,15 @@ object DataDistributions extends Serializable{
     val respPkts = pieces(18).toLong
     val respIpBytes = pieces(19).toLong
     val tunnelParents = pieces(20)
+    var desc     = ""
+    if(pieces.length > 21)
+      {
+        desc = pieces(21)
+      }
     AugLogLine(ts, origIp, origPort, respIp, respPort, proto, service, duration,
       origBytes - origBytes % bucketSize, respBytes - respBytes % bucketSize, connState, missedBytes, history,
       origPkts - origPkts % bucketSize, origIpBytes - origIpBytes % bucketSize, respPkts - respPkts % bucketSize,
-      respIpBytes - respIpBytes % bucketSize, tunnelParents)
+      respIpBytes - respIpBytes % bucketSize, tunnelParents, desc)
   }
 
   /**
@@ -87,7 +94,7 @@ object DataDistributions extends Serializable{
    * @param sc
    * @param augLogPath
    */
-  def init(sc: SparkContext, augLogPath: String) = {
+  def init(sc: SparkContext, augLogPath: String, gen_dist: Boolean) = {
 
     if (new File(fileDir + "/" + outEdgesDistributionFileName).exists() &&
       new File(fileDir + "/" + origBytesDistributionFileName).exists() &&
@@ -98,7 +105,9 @@ object DataDistributions extends Serializable{
       new File(fileDir + "/" + protoDistributionsFileName).exists() &&
       new File(fileDir + "/" + origIPBytesDistributionsFileName).exists() &&
       new File(fileDir + "/" + respIPBytesDistributionsFileName).exists() &&
-      new File(fileDir + "/" + respPktsDistributionsFileName).exists()
+      new File(fileDir + "/" + respPktsDistributionsFileName).exists() &&
+      new File(fileDir + "/" + descriptionDistributionsFilename).exists() &&
+      !gen_dist
     ) {
       readDistributionsFromDisk(fileDir)
     } else {
@@ -145,7 +154,7 @@ object DataDistributions extends Serializable{
           //The following computes the sum of the occurrences of the packet counts given the byte counts
           val reducedByKey = augLog.map(entry => ((entry.origBytes, entry.origPkts), 1)).reduceByKey(_ + _)
           //The following sorts the count in descending order (it is now mapped as the second entry of the first element of the k,v tuple)
-          val orderedData = reducedByKey.map(entry => ((entry._1._1, entry._2), entry._1._2)).sortBy(_._1, false).persist()
+          val orderedData = reducedByKey.map(entry => ((entry._1._1 , entry._2), entry._1._2)).sortBy(_._1, false).persist()
           //The following computes the total of occurrences counted for each byte count
           val occTotalRdd = reducedByKey.map(x => (x._1._1, x._2)).reduceByKey(_ + _)
           val occTotalArray = occTotalRdd.collect()
@@ -295,6 +304,26 @@ object DataDistributions extends Serializable{
             respPktsDistributions += (origBytes -> filteredOrderedData.map(x => (x._2, x._1._2 / occTotal.toDouble)).collect())
           }
         }
+
+        println("descDistributions");
+        {
+          /* Conditional distribution of origPkts given the origBytes */
+          //The following computes the sum of the occurrences of the packet counts given the byte counts
+          val reducedByKey = augLog.map(entry => ((entry.origBytes, entry.desc), 1)).reduceByKey(_ + _)
+          //The following sorts the count in descending order (it is now mapped as the second entry of the first element of the k,v tuple)
+          val orderedData = reducedByKey.map(entry => ((entry._1._1 , entry._2), entry._1._2)).sortBy(_._1, false).persist()
+          //The following computes the total of occurrences counted for each byte count
+          val occTotalRdd = reducedByKey.map(x => (x._1._1, x._2)).reduceByKey(_ + _)
+          val occTotalArray = occTotalRdd.collect()
+          for (x <- occTotalArray) {
+            totalsMap += (x._1 -> x._2)
+          }
+          for (origBytes <- origBytesList) {
+            val occTotal = totalsMap(origBytes)
+            val filteredOrderedData = orderedData.filter(entry => entry._1._1 == origBytes)
+            descriptionDistributions += (origBytes -> filteredOrderedData.map(x => (x._2, x._1._2 / occTotal.toDouble)).collect())
+          }
+        }
       }
       writeDistributionsToDisk(fileDir)
     }
@@ -356,6 +385,10 @@ object DataDistributions extends Serializable{
     oos = new ObjectOutputStream(new FileOutputStream(fileDir+"/"+respPktsDistributionsFileName))
     oos.writeObject(respPktsDistributions)
     oos.close()
+
+    oos = new ObjectOutputStream(new FileOutputStream(fileDir+"/"+descriptionDistributionsFilename))
+    oos.writeObject(descriptionDistributions)
+    oos.close()
   }
 
   def readDistributionsFromDisk(fileDir: String) = {
@@ -410,6 +443,10 @@ object DataDistributions extends Serializable{
 
     ois = new ObjectInputStream(new FileInputStream(fileDir+"/"+respPktsDistributionsFileName))
     respPktsDistributions = ois.readObject().asInstanceOf[Map[Long, Array[(Long, Double)]]]
+    ois.close()
+
+    ois = new ObjectInputStream(new FileInputStream(fileDir+"/"+descriptionDistributionsFilename))
+      descriptionDistributions= ois.readObject().asInstanceOf[Map[Long, Array[(String, Double)]]]
     ois.close()
   }
 
@@ -535,6 +572,17 @@ object DataDistributions extends Serializable{
     outElem._1
   }
 
+  def getDescSample(origBytes: Long): String = {
+    val r = Random.nextDouble()
+    var accumulator :Double= 0
+    val iterator = descriptionDistributions(origBytes).iterator
+    var outElem : (String, Double) = null
+    while (accumulator < r && iterator.hasNext) {
+      outElem = iterator.next()
+      accumulator = accumulator + outElem._2
+    }
+    outElem._1
+  }
   def getIpSample: String = {
     val r = Random
     r.nextInt(255) + "." + r.nextInt(255) + "." + r.nextInt(255) + "." + r.nextInt(255) + ":" + r.nextInt(65536)
