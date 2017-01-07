@@ -4,21 +4,19 @@ import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.graphx.{Edge, Graph, VertexId}
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.SparkSession
 
 import scala.util.Random
-
 
 /***
   * Created by spencer on 11/3/16.
   *
   * edu.msstate.dasi.kro_GraphGen: Kronecker based Graph generation given seed matrix.
   */
-class kro_GraphGen extends base_GraphGen with data_Parser {
-  def run(sc: SparkContext, partitions: Int, mtxFile: String, genIter: Long, outputGraphPrefix: String, noPropFlag: Boolean, debugFlag: Boolean, sparkSession: SparkSession): Boolean = {
+class kro_GraphGen(sc: SparkContext, partitions: Int, graphPs: GraphPersistence) extends base_GraphGen with data_Parser {
+  def run(mtxFile: String, genIter: Long, seedVertFile: String, seedEdgeFile: String, noPropFlag: Boolean, debugFlag: Boolean): Boolean = {
 
     //val probMtx: Array[Array[Float]] = Array(Array(0.1f, 0.9f), Array(0.9f, 0.5f))
-    val probMtx: Array[Array[Double]] = parseMtxDataFromFile(sc, mtxFile)
+    val probMtx: Array[Array[Double]] = parseMtxDataFromFile(mtxFile)
 
     println()
     print("Matrix: ")
@@ -63,31 +61,43 @@ class kro_GraphGen extends base_GraphGen with data_Parser {
       }))
       theGraph = Graph(vRDD, eRDD, nodeData())
       timeSpan = (System.nanoTime() - startTime) / 1e9
-      println()
-      println("Finished generating Edge and Node Properties.")
-      println("\tTotal time elapsed: " + timeSpan.toString)
-      println()
+      println("Finished generating Edge and Node Properties. Total time elapsed: " + timeSpan.toString)
     }
 
-    println()
-    println("Saving Kronecker Graph and Veracity measurements.....")
-    println()
-
+    println("Saving Kronecker Graph...")
     //Save the ba graph into a format to be read later
     startTime = System.nanoTime()
-//    saveGraph(sc, outputGraphPrefix + "_kro_" + genIter)
-//    saveGraphVeracity(sc, outputGraphPrefix + "_kro_" + genIter)
+    graphPs.saveGraph(theGraph)
     timeSpan = (System.nanoTime() - startTime) / 1e9
 
-    println()
-    println("Finished saving Kronecker graph.")
-    println("\tTotal time elapsed: " + timeSpan.toString)
-    println()
+    println("Finished saving Kronecker Graph. Total time elapsed: " + timeSpan.toString + "s")
+
+    println("Calculating degrees veracity...")
+
+    //////////////
+    val inVertices: RDD[(VertexId,nodeData)] = sc.textFile(seedVertFile)
+      .map(line => line.stripPrefix("(").stripSuffix(")").split(','))
+      .map { inData => (true, (inData(0).toLong, nodeData(inData(1).stripPrefix("nodeData(").stripSuffix(")")))) }
+      .filter(_._1 != false).map(record => record._2)
+
+    val inEdges: RDD[Edge[edgeData]] = sc.textFile(seedEdgeFile)
+      .map(line => line.stripPrefix("Edge(").stripSuffix(")").split(",", 3))
+      .map { inData => (true, Edge(inData(0).toLong, inData(1).toLong, edgeData())) }
+      .filter(_._1 != false).map(record => record._2)
+    //////////////
+
+    val seedGraph = Graph(inVertices, inEdges, nodeData())
+
+    val degVeracity = Veracity.degreesVeracity(Veracity.degreesDistRDD(seedGraph.degrees), Veracity.degreesDistRDD(theGraph.degrees))
+    val inDegVeracity = Veracity.degreesVeracity(Veracity.degreesDistRDD(seedGraph.inDegrees), Veracity.degreesDistRDD(theGraph.inDegrees))
+    val outDegVeracity = Veracity.degreesVeracity(Veracity.degreesDistRDD(seedGraph.outDegrees), Veracity.degreesDistRDD(theGraph.outDegrees))
+    println("Finished calculating degrees veracity.\n\tDegree Veracity:" + degVeracity + "\n\tIn Degree Veracity: " +
+      inDegVeracity + "\n\tOut Degree Veracity:" + outDegVeracity)
 
     true
   }
 
-  def getKroRDD(sc: SparkContext, partitions: Int, nVerts: Long, nEdges: Long, n1: Long, iter: Long, probToRCPosV_Broadcast: Broadcast[Array[(Double, Long, Long)]] ): RDD[Edge[edgeData]] =
+  def getKroRDD(nVerts: Long, nEdges: Long, n1: Long, iter: Long, probToRCPosV_Broadcast: Broadcast[Array[(Double, Long, Long)]] ): RDD[Edge[edgeData]] =
   {
     //TODO the algorithm must be commented and meaningful variable names must be used
     val r = Random
@@ -153,7 +163,7 @@ class kro_GraphGen extends base_GraphGen with data_Parser {
    *  @return The RDD of the additional edges that should be added
    *          to the one returned by Kronecker algorithm.
    */
-  def getMultiEdgesRDD(edgeList: RDD[Edge[edgeData]], sc: SparkContext): RDD[Edge[edgeData]] =
+  def getMultiEdgesRDD(edgeList: RDD[Edge[edgeData]]): RDD[Edge[edgeData]] =
   {
   
    val outEdgesDistribution = sc.broadcast(DataDistributions.outEdgesDistribution)
@@ -188,7 +198,6 @@ class kro_GraphGen extends base_GraphGen with data_Parser {
 
   /*** Function to generate and return a kronecker graph
     *
-    * @param sc Current Sparkcontext
     * @param probMtx Probability Matrix used to generate Kronecker Graph
     * @param iter Number of iterations to perform kronecker
     * @return Graph containing vertices + edu.msstate.dasi.nodeData, edges + edu.msstate.dasi.edgeData
@@ -219,26 +228,25 @@ class kro_GraphGen extends base_GraphGen with data_Parser {
 
     val probToRCPosV_Broadcast = sc.broadcast(probToRCPosV_Private)
 
-    var edgeList: RDD[Edge[edgeData]] = getKroRDD(sc, partitions, nVerts, nEdges, n1, iter, probToRCPosV_Broadcast).cache()
+    var edgeList: RDD[Edge[edgeData]] = getKroRDD(nVerts, nEdges, n1, iter, probToRCPosV_Broadcast).cache()
 
     var curEdges: Long = edgeList.count()
 
     while (nEdges > curEdges) {
       val oldRDD = edgeList
-      val newRDD = getKroRDD(sc, partitions, nVerts, nEdges - curEdges - 1, n1, iter, probToRCPosV_Broadcast)
+      val newRDD = getKroRDD(nVerts, nEdges - curEdges - 1, n1, iter, probToRCPosV_Broadcast)
 
       println(s"getKroRDD(sc, $partitions, $nVerts, $nEdges - $curEdges, $n1, $iter, probToRCPosV_Broadcast)")
       edgeList = oldRDD.union(newRDD).map(entry => ((entry.srcId, entry.dstId), entry)).reduceByKey((left,_) => left).map(record => record._2).cache()
       curEdges = edgeList.count()
       println(curEdges)
     }
-    val newEdges = getMultiEdgesRDD(edgeList, sc)
+    val newEdges = getMultiEdgesRDD(edgeList)
 
     println("Number of edges before union: "+edgeList.count())
     if (newEdges == null) {
       println("null!!")
     } else println("Not null!!")
-    //edgeList = edgeList.union(newEdges)
     val finalEdgeList = edgeList.union(newEdges).cache()
     println("Total # of Edges (including multi edges): " + finalEdgeList.count())
 
@@ -258,27 +266,7 @@ class kro_GraphGen extends base_GraphGen with data_Parser {
     theGraph
   }
 
-//  def checkProb(prob: Float, u: Int, v: Int, n1: Int, k: Int, probMtx: Array[Array[Float]]): Boolean = {
-//
-//    val adjProb = prob
-//
-//    var result = 1f
-//
-//    for(i <- 0 to (k-1)) {
-//
-//      val x: Int = Math.floor(u/Math.pow(n1,i)).toInt % n1
-//      val y: Int = Math.floor(v/Math.pow(n1,i)).toInt % n1
-//      val currProb = probMtx(x)(y)
-//
-//      result = result * currProb
-//
-//      if (result < adjProb) return false
-//    }
-//
-//    return true
-//  }
-
-  def parseMtxDataFromFile(sc: SparkContext, mtxFilePath: String): Array[Array[Double]] = {
+  def parseMtxDataFromFile(mtxFilePath: String): Array[Array[Double]] = {
     sc.textFile(mtxFilePath)
       .map(line => line.split(" "))
       .map(record => record.map(number => number.toDouble).array)

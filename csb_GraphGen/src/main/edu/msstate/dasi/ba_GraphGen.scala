@@ -3,7 +3,6 @@ package edu.msstate.dasi
 import org.apache.spark.SparkContext
 import org.apache.spark.graphx.{Graph, _}
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.SparkSession
 
 import scala.collection.mutable
 import scala.util.Random
@@ -11,9 +10,9 @@ import scala.util.Random
 /**
   * Created by spencer on 11/3/16.
   */
-class ba_GraphGen extends base_GraphGen with data_Parser {
+class ba_GraphGen(sc: SparkContext, partitions: Int, graphPs: GraphPersistence) extends base_GraphGen with data_Parser {
 
-  def run(sc: SparkContext, partitions: Long, seedVertFile: String, seedEdgeFile: String, baIter: Long, outputGraphPrefix: String, nodesPerIter: Long, noPropFlag: Boolean, debugFlag: Boolean, sparkSession: SparkSession): Boolean = {
+  def run(seedVertFile: String, seedEdgeFile: String, baIter: Long, nodesPerIter: Long, noPropFlag: Boolean, debugFlag: Boolean): Boolean = {
 
     println()
     println("Loading seed graph with vertices file: " + seedVertFile + " and edges file " + seedEdgeFile + " ...")
@@ -35,7 +34,7 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
 
     //Generate a BA Graph with iterations
     startTime = System.nanoTime()
-    theGraph = generateBAGraph(sc, partitions, inVertices, inEdges, baIter.toLong, nodesPerIter, noPropFlag, debugFlag, sparkSession)
+    theGraph = generateBAGraph(inVertices, inEdges, baIter.toLong, nodesPerIter, noPropFlag, debugFlag)
     timeSpan = (System.nanoTime() - startTime) / 1e9
     println()
     println("Finished generating BA graph.")
@@ -77,8 +76,7 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
 
     //Save the ba graph into a format to be read later
     startTime = System.nanoTime()
-    saveGraph(sc, outputGraphPrefix + "_ba_" + baIter)
-//    saveGraphVeracity(sc, outputGraphPrefix + "_ba_" + baIter)
+    graphPs.saveGraph(theGraph)
     timeSpan = (System.nanoTime() - startTime) / 1e9
 
     println()
@@ -91,13 +89,12 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
 
   /***
     *
-    * @param sc Current Sparkcontext
     * @param inVertices RDD of vertices and their edu.msstate.dasi.nodeData
     * @param inEdges RDD of edges and their edu.msstate.dasi.edgeData
     * @param iter Number of iterations to perform BA
     * @return Graph containing vertices + edu.msstate.dasi.nodeData, edges + edu.msstate.dasi.edgeData
     */
-  def generateBAGraph(sc: SparkContext, partitions: Long, inVertices: RDD[(VertexId, nodeData)], inEdges: RDD[Edge[edgeData]], iter: Long, nodesPerIter: Long, noPropFlag: Boolean, debugFlag: Boolean, sparkSession: SparkSession): Graph[nodeData,edgeData] = {
+  def generateBAGraph(inVertices: RDD[(VertexId, nodeData)], inEdges: RDD[Edge[edgeData]], iter: Long, nodesPerIter: Long, noPropFlag: Boolean, debugFlag: Boolean): Graph[nodeData,edgeData] = {
 
     val r = Random
 
@@ -175,7 +172,11 @@ class ba_GraphGen extends base_GraphGen with data_Parser {
       Array(true)
     }
 
-    theGraph = Graph(inVertices.union(sc.parallelize(vertToAdd)), inEdges.union(sc.parallelize(edgesToAdd)), nodeData())
+    theGraph = Graph(
+      inVertices.union(sc.parallelize(vertToAdd, partitions)),
+      inEdges.union(sc.parallelize(edgesToAdd, partitions)),
+      nodeData()
+    )
     theGraph
   }
 

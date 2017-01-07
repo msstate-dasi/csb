@@ -14,7 +14,7 @@ object DataDistributions extends Serializable{
 
   val fileDir = "."
 
-  var inDegreeDistribution :Array[(String, Double)] = _
+  var inDegreeDistribution :Array[(String, Double)] = null
   var outDegreeDistribution :Array[(String, Double)] = _
   var degreeDistribution :Array[(String, Double)] = _
 
@@ -106,40 +106,45 @@ object DataDistributions extends Serializable{
       new File(fileDir + "/" + origIPBytesDistributionsFileName).exists() &&
       new File(fileDir + "/" + respIPBytesDistributionsFileName).exists() &&
       new File(fileDir + "/" + respPktsDistributionsFileName).exists() &&
-      new File(fileDir + "/" + descriptionDistributionsFilename).exists() &&
-      !gen_dist
+      new File(fileDir + "/" + descriptionDistributionsFilename).exists()
+      // !gen_dist
     ) {
       readDistributionsFromDisk(fileDir)
     } else {
       if (inDegreeDistribution == null) {
         val augLogFile = sc.textFile(augLogPath)
 
-        val augLogFiltered = augLogFile.mapPartitionsWithIndex { (idx, iter) => if (idx == 0) iter.drop(8) else iter }.filter(isTcpUdp)
+        val augLogFiltered = augLogFile.mapPartitionsWithIndex { (idx, lines) => if (idx == 0) lines.drop(8) else lines }.filter(isTcpUdp)
 
         /* Cache augLog because it is the basis for any distribution computation */ val augLog = augLogFiltered.map(line => parseAugLog(line)).persist()
 
-        /* # of incoming edges per vertex */ val inEdgesPerNode = augLog.map(entry => (entry.respIp, 1L)).reduceByKey(_ + _).persist()
+        // # of incoming edges per vertex
+        val inEdgesPerNode = augLog.map(entry => (entry.respIp, 1L)).reduceByKey(_ + _).persist()
         val inEdgesTotal = inEdgesPerNode.map(_._2).reduce(_ + _)
         inDegreeDistribution = inEdgesPerNode.map(x => (x._1, x._2 / inEdgesTotal.toDouble)).sortBy(_._2, false).collect()
 
-        /* # of outgoing edges per vertex */ val outEdgesPerNode = augLog.map(entry => (entry.origIp, 1L)).reduceByKey(_ + _).persist()
+        // # of outgoing edges per vertex
+        val outEdgesPerNode = augLog.map(entry => (entry.origIp, 1L)).reduceByKey(_ + _).persist()
         val outEdgesTotal = outEdgesPerNode.map(_._2).reduce(_ + _)
         outDegreeDistribution = outEdgesPerNode.map(x => (x._1, x._2 / outEdgesTotal.toDouble)).sortBy(_._2, false).collect()
 
-        /* # of incoming and outgoing edges per each vertex */ val edgesPerNode = inEdgesPerNode.union(outEdgesPerNode).reduceByKey(_ + _)
+        // # of incoming and outgoing edges per each vertex
+        val edgesPerNode = inEdgesPerNode.union(outEdgesPerNode).reduceByKey(_ + _)
         val edgesTotal = inEdgesTotal + outEdgesTotal
         degreeDistribution = edgesPerNode.map(x => (x._1, x._2 / edgesTotal.toDouble)).sortBy(_._2, false).collect()
 
         outEdgesPerNode.unpersist()
         inEdgesPerNode.unpersist()
 
-        /* # of edges per (origIp -> respIp) */ val outEdgesPerPair = augLog.map(entry => ((entry.origIp, entry.respIp), 1L)).reduceByKey(_ + _)
+        // # of edges per (origIp -> respIp)
+        val outEdgesPerPair = augLog.map(entry => ((entry.origIp, entry.respIp), 1L)).reduceByKey(_ + _)
         val pairsPerOutEdgeMultiplicity = outEdgesPerPair.map(x => (x._2, 1L)).reduceByKey(_ + _).sortBy(_._2, false).persist()
         val pairsTotal = pairsPerOutEdgeMultiplicity.map(_._2).reduce(_ + _)
         outEdgesDistribution = pairsPerOutEdgeMultiplicity.map(x => (x._1, x._2 / pairsTotal.toDouble)).sortBy(_._2, false).collect()
         pairsPerOutEdgeMultiplicity.unpersist()
 
-        /* Distribution of the number of origBytes*/ val edgesPerOrigBytes = augLog.map(entry => (entry.origBytes, 1L)).reduceByKey(_ + _).persist()
+        // Distribution of the number of origBytes
+        val edgesPerOrigBytes = augLog.map(entry => (entry.origBytes, 1L)).reduceByKey(_ + _).persist()
         val origBytesDistributionRDD = edgesPerOrigBytes.map(x => (x._1, x._2 / outEdgesTotal.toDouble)).sortBy(_._2, false)
 
         origBytesDistribution = origBytesDistributionRDD.collect()

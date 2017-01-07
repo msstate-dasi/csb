@@ -17,7 +17,7 @@ trait base_GraphGen {
     *
     * @return Tuple containing the Facts, degrees, and degree list of the graph
     */
-  def printGraph() = {
+  def printGraph(): (RDD[String], VertexRDD[Int], RDD[(Int, Int)]) = {
     val facts: RDD[String] = theGraph.triplets.map(record =>
       record.srcId + " " + record.dstId + " " + record.attr)
     println("Graph:")
@@ -37,66 +37,25 @@ trait base_GraphGen {
     (facts, nodeDegs, degList)
   }
 
-  /** * Saves the graph to the specified path
-    *
-    * @param sc   Current SparkContext
-    * @param path The folder name to save the graph files under
-    */
-  def saveGraph(sc: SparkContext, path: String): Unit = {
-    saveGraphEdges(sc, path)
-    saveGraphVerts(sc, path + "_vert")
-  }
-
-  def saveGraphEdges(sc: SparkContext, path: String): Unit = {
-//    val edgeFacts: RDD[String] = sc.parallelize(Array("Source,Target,Weight")).union(theGraph.triplets.map(record =>
-//      record.srcId + "," + record.dstId + "," + record.attr))
-    try {
-//      edgeFacts.repartition(1).saveAsObjectFile(path)
-      theGraph.edges.saveAsObjectFile(path)
-    } catch {
-      case _: Exception => println("Couldn't save file " + path)
-    }
-  }
-
-  def saveGraphVerts(sc: SparkContext, path: String): Unit = {
-//    val vertFacts: RDD[String] = sc.parallelize(Array("ID,Desc")).union(theGraph.vertices.map(record => record._1.toString + "," + record._2.toString))
-    try {
-//      vertFacts.repartition(1).saveAsObjectFile(path)
-      theGraph.vertices.saveAsObjectFile(path)
-    } catch {
-      case _: Exception => println("Couldn't save file " + path)
-    }
-  }
-
-  /** * Saves the Graph's degree distribution, inDegree distribution, and outDegree distribution to the specified path
-    *
-    * @param sc   Current SparkContext
-    * @param path The folder path that Spark will output the files under
-    */
-  def saveGraphVeracity(sc: SparkContext, path: String): Unit = {
-//    val degDist = sc.parallelize(Array("Degree,NumNodesWithDegree")).union(degreesDist(theGraph).sortBy(_._2, ascending = false).map(record => record._1.toString + ',' + record._2.toString))
-//    val inDegDist = sc.parallelize(Array("InDegree,NumNodesWithDegree")).union(inDegreesDist(theGraph).sortBy(_._2, ascending = false).map(record => record._1.toString + ',' + record._2.toString))
-//    val outDegDist = sc.parallelize(Array("OutDegree,NumNodesWithDegree")).union(outDegreesDist(theGraph).sortBy(_._2, ascending = false).map(record => record._1.toString + ',' + record._2.toString))
-
-
-    val degDist = Veracity.degreesDist(theGraph).sortBy(_._2, ascending = false).map(record => record._1.toString + ',' + record._2.toString)
-    val inDegDist = Veracity.inDegreesDist(theGraph).sortBy(_._2, ascending = false).map(record => record._1.toString + ',' + record._2.toString)
-    val outDegDist = Veracity.outDegreesDist(theGraph).sortBy(_._2, ascending = false).map(record => record._1.toString + ',' + record._2.toString)
-
-    try {
-      degDist.coalesce(1).saveAsTextFile(path + "_veracity/degDist")
-      inDegDist.coalesce(1).saveAsTextFile(path + "_veracity/inDegDist")
-      outDegDist.coalesce(1).saveAsTextFile(path + "_veracity/outDegDist")
-
-
-//      degDist.repartition(1).saveAsTextFile(path + "_veracity/degDist")
-//      inDegDist.repartition(1).saveAsTextFile(path + "_veracity/inDegDist")
-//      outDegDist.repartition(1).saveAsTextFile(path + "_veracity/outDegDist")
-    } catch {
-      case _: Exception => println("Couldn't save Veracity files")
-    }
-  }
-
+//
+//  /** * Saves the Graph's degree distribution, inDegree distribution, and outDegree distribution to the specified path
+//   *
+//   * @param sc   Current SparkContext
+//   * @param path The folder path that Spark will output the files under
+//   */
+//  def saveGraphVeracity(sc: SparkContext, path: String): Unit = {
+//    val degDist = Veracity.degreesDist(theGraph)
+//    val inDegDist = Veracity.inDegreesDist(theGraph)
+//    val outDegDist = Veracity.outDegreesDist(theGraph)
+//
+//    try {
+//      degDist.coalesce(1).saveAsTextFile(path + "_veracity/degDist")
+//      inDegDist.coalesce(1).saveAsTextFile(path + "_veracity/inDegDist")
+//      outDegDist.coalesce(1).saveAsTextFile(path + "_veracity/outDegDist")
+//    } catch {
+//      case _: Exception => println("Couldn't save Veracity files")
+//    }
+//  }
   def saveGraphAsConnFile(sc: SparkContext, theGraph: Graph[nodeData, edgeData], path: String): Unit = {
     val eRDD = theGraph.edges
     val vRDD = theGraph.vertices

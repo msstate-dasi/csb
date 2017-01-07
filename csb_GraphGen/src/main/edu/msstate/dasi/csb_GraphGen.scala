@@ -18,7 +18,12 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
 
   val versionString = "0.2-DEV"
 
-
+  val neo4jBoltHost     = "localhost"
+  val neo4jBoltPort     = "7687"
+  val neo4jBoltUser     = "neo4j"
+  val neo4jBoltPassword = "stefano"
+  val neo4jBoltUrl: String =
+    "bolt://" + neo4jBoltUser + ":" + neo4jBoltPassword + "@" + neo4jBoltHost + ":" + neo4jBoltPort
 
   case class ParamsHelp(
                          /**
@@ -26,9 +31,10 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
                            */
                          outputGraphPrefix_desc: String = "Prefix to use when saving the output graph",
                          partitions_desc: String = "Number of partitions to set RDDs to.",
+                         backend_desc: String = "Backend used to save generated data (fs or neo4j).",
                          checkpointDir_desc: String = "Directory for checkpointing intermediate results. " +
-                           "Checkpointing helps with recovery and eliminates temporary shuffle files on disk",
-                         checkpointInterval_desc: String = "Iterations between each checkpoint.  Only used if " +
+                           "Checkpointing helps with recovery and eliminates temporary shuffle files on disk.",
+                         checkpointInterval_desc: String = "Iterations between each checkpoint. Only used if " +
                            "checkpointDir is set.",
 
                          /**
@@ -63,6 +69,7 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
                        */
                      outputGraphPrefix: String = "",
                      partitions: Int = 120,
+                     backend: String = "fs",
                      checkpointDir: Option[String] = None,
                      checkpointInterval: Long = 10,
                      debug: Boolean = false,
@@ -106,9 +113,12 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
         .action((x, c) => c.copy(outputGraphPrefix = x))
       opt[Int]("partitions")
         .text(s"${h.partitions_desc} default: ${dP.partitions}")
-        .validate(x => if (x > 0) success
-        else failure("Partition count must be greater than 0."))
+        .validate(x => if (x > 0) success else failure("Partition count must be greater than 0."))
         .action((x, c) => c.copy(partitions = x))
+      opt[String]("backend")
+        .text(s"${h.backend_desc} default: ${dP.backend}")
+        .validate(x => if (x == "fs" || x == "neo4j") success else failure("Backend must be fs or neo4j."))
+        .action((x, c) => c.copy(backend = x))
       opt[String]("checkpointDir")
         .text(s"${h.checkpointDir_desc} default: ${dP.checkpointDir}")
         .action((x, c) => c.copy(checkpointDir = Some(x)))
@@ -191,6 +201,14 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
             .text(s"${h.seedMtx_desc} default: ${dP.seedMtx}")
             .required()
             .action((x, c) => c.copy(seedMtx = x)),
+          arg[String]("seed_vert")
+            .text(s"${h.seedVertices_desc} default: ${dP.seedVertices}")
+            .required()
+            .action((x, c) => c.copy(seedVertices = x)),
+          arg[String]("seed_edges")
+            .text(s"${h.seedEdges_desc} default: ${dP.seedEdges}")
+            .required()
+            .action((x, c) => c.copy(seedEdges = x)),
           arg[Int]("<# of Iterations>")
             .text(s"${h.kroIter_desc} default: ${dP.baIter}")
             .validate(x => if (x > 0) success
@@ -230,16 +248,17 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
     val warehouseLocation = "spark-warehouse"
     val spark = SparkSession
       .builder()
-      .appName("SparkSession")
+      .appName("Cyber Security Benchmark")
       .config("spark.sql.warehouse.dir", warehouseLocation)
+      .config("spark.neo4j.bolt.url", neo4jBoltUrl)
       .getOrCreate()
     val sc = spark.sparkContext
 
 
     params.mode match {
       case "gen_dist" => run_gendist(sc, params)
-      case "ba" => run_ba(sc, params, spark)
-      case "kro" => run_kro(sc, params, spark)
+      case "ba" => run_ba(sc, params)
+      case "kro" => run_kro(sc, params)
       case _ => sys.exit(1)
     }
 
@@ -286,20 +305,32 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
     true
   }
 
-  def run_ba(sc: SparkContext, params: Params, sparkSession: SparkSession): Boolean = {
+  def run_ba(sc: SparkContext, params: Params): Boolean = {
     DataDistributions.init(sc, params.augLog, false)
 
-    val baGraph = new ba_GraphGen()
-    baGraph.run(sc, params.partitions, params.seedVertices, params.seedEdges, params.baIter, params.outputGraphPrefix, params.numNodesPerIter, params.noProp, params.debug, sparkSession)
+    var graphPs: GraphPersistence = null
+    params.backend match {
+      case "fs" => graphPs = new ObjectPersistence(params.outputGraphPrefix)
+      case "neo4j" => graphPs = new Neo4jPersistence(sc)
+    }
+
+    val baGraph = new ba_GraphGen(sc, params.partitions, graphPs)
+    baGraph.run(params.seedVertices, params.seedEdges, params.baIter, params.numNodesPerIter, params.noProp, params.debug)
 
     true
   }
 
-  def run_kro(sc: SparkContext, params: Params, sparkSession: SparkSession): Boolean = {
+  def run_kro(sc: SparkContext, params: Params): Boolean = {
     DataDistributions.init(sc, params.augLog, false)
 
-    val kroGraph = new kro_GraphGen()
-    kroGraph.run(sc, params.partitions, params.seedMtx, params.kroIter, params.outputGraphPrefix, params.noProp, params.debug, sparkSession)
+    var graphPs: GraphPersistence = null
+    params.backend match {
+      case "fs" => graphPs = new ObjectPersistence(params.outputGraphPrefix)
+      case "neo4j" => graphPs = new Neo4jPersistence(sc)
+    }
+
+    val kroGraph = new kro_GraphGen(sc, params.partitions, graphPs)
+    kroGraph.run(params.seedMtx, params.kroIter, params.seedVertices, params.seedEdges, params.noProp, params.debug)
 
     true
   }
