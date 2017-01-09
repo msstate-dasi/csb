@@ -74,7 +74,7 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, graphPs: GraphPersistence)
 
     println("Calculating degrees veracity...")
 
-    //////////////
+    // TODO: the following trick creates a graph from the seed files -> this should be changed with a cleaner approach
     val inVertices: RDD[(VertexId,nodeData)] = sc.textFile(seedVertFile)
       .map(line => line.stripPrefix("(").stripSuffix(")").split(','))
       .map { inData => (true, (inData(0).toLong, nodeData(inData(1).stripPrefix("nodeData(").stripSuffix(")")))) }
@@ -88,9 +88,12 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, graphPs: GraphPersistence)
 
     val seedGraph = Graph(inVertices, inEdges, nodeData())
 
-    val degVeracity = Veracity.degreesVeracity(Veracity.degreesDistRDD(seedGraph.degrees), Veracity.degreesDistRDD(theGraph.degrees))
-    val inDegVeracity = Veracity.degreesVeracity(Veracity.degreesDistRDD(seedGraph.inDegrees), Veracity.degreesDistRDD(theGraph.inDegrees))
-    val outDegVeracity = Veracity.degreesVeracity(Veracity.degreesDistRDD(seedGraph.outDegrees), Veracity.degreesDistRDD(theGraph.outDegrees))
+    val degVeracity = Veracity.degree(seedGraph.degrees, theGraph.degrees, saveDistAsCSV = true,
+      overwrite = true)
+    val inDegVeracity = Veracity.degree(seedGraph.inDegrees, theGraph.inDegrees, saveDistAsCSV = true,
+      "in", overwrite = true)
+    val outDegVeracity = Veracity.degree(seedGraph.outDegrees, theGraph.outDegrees, saveDistAsCSV = true,
+      "out", overwrite = true)
     println("Finished calculating degrees veracity.\n\tDegree Veracity:" + degVeracity + "\n\tIn Degree Veracity: " +
       inDegVeracity + "\n\tOut Degree Veracity:" + outDegVeracity)
 
@@ -99,7 +102,7 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, graphPs: GraphPersistence)
 
   def getKroRDD(nVerts: Long, nEdges: Long, n1: Long, iter: Long, probToRCPosV_Broadcast: Broadcast[Array[(Double, Long, Long)]] ): RDD[Edge[edgeData]] =
   {
-    //TODO the algorithm must be commented and meaningful variable names must be used
+    // TODO: the algorithm must be commented and meaningful variable names must be used
     val r = Random
 
     var i: RDD[Long] = sc.emptyRDD
