@@ -1,18 +1,21 @@
 package edu.msstate.dasi
 
-import java.io.File
 
+import org.apache.spark.SparkContext
+
+
+import java.io.File
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs._
 import org.apache.spark.rdd.RDD
-import org.apache.spark.graphx.{Graph, VertexRDD}
-
+import org.apache.spark.graphx._
+import scala.collection.mutable
+import scala.collection.mutable.{ArrayBuffer, Queue}
 import scala.reflect.ClassTag
-
 /**
  * Helper methods to compute veracity metrics for [[org.apache.spark.graphx.Graph]]
  */
-object Veracity {
+object Veracity extends data_Parser {
 
   /**
    * Computes the neighboring vertex degrees distribution
@@ -108,14 +111,228 @@ object Veracity {
     squaredDistance(v1,v2)
   }
 
+//  /**
+//   * Computes the effective diameter of the graph, defined as the minimum number of links (steps/hops) in which some
+//   * fraction (or quantile q, say q = 0.9) of all connected pairs of nodes can reach each other
+//   *
+//   * @param graph The graph to analyze
+//   * @return The value of the effective diameter
+//   */
+//  def effectiveDiameter(graph: Graph[nodeData, edgeData]): Long = {
+//    0
+//  }
+
+
+
+
+  class DistanceNodePair(var distance: Long, var totalPairs: Long) extends Comparable[DistanceNodePair] {
+
+    override def compareTo(dp: DistanceNodePair): Int = (this.distance - dp.distance).toInt
+  }
+
+  class Node(var id: VertexId) extends java.io.Serializable {
+
+    var children: ArrayBuffer[Long] = new ArrayBuffer[Long]()
+
+    def addChildren(c: Long) {
+      children.append(c)
+    }
+  }
+
+  class NodeVisitCounter extends java.io.Serializable {
+
+    var totalPairs: Long = _
+
+    var levelSize: mutable.HashMap[Long, Long] = _ //first is distance second is pair at that distance
+  }
+
+
   /**
-   * Computes the effective diameter of the graph, defined as the minimum number of links (steps/hops) in which some
-   * fraction (or quantile q, say q = 0.9) of all connected pairs of nodes can reach each other
-   *
-   * @param graph The graph to analyze
-   * @return The value of the effective diameter
-   */
-  def effectiveDiameter(graph: Graph[nodeData, edgeData]): Long = {
-    0
+    * Computes the effective diameter of a graph.
+    * @param distancePairs
+    * @param totalPairs
+    * @return
+    */
+  def computeEffectiveDiameter(distancePairs: ArrayBuffer[DistanceNodePair], totalPairs: Long): Double = {
+    var effectiveDiameter = 0.0
+    for (i <- 0 until distancePairs.size) //until stops 1 before distancePairs.size
+    {
+      val dp = distancePairs(i)
+      val ratio = dp.totalPairs.toDouble / totalPairs.toDouble
+      if (ratio >= 0.9) {
+        if (ratio == 0.9 || i == 0) return dp.distance else {
+          val dpPrev = distancePairs(i - 1)
+          val prevRatio = dpPrev.totalPairs.toDouble / totalPairs.toDouble
+          val slope = (dp.distance.toDouble - dpPrev.distance.toDouble) / (ratio - prevRatio)
+          effectiveDiameter = slope * (0.9 - prevRatio) + dpPrev.distance.toDouble
+          return effectiveDiameter
+        }
+      }
+    }
+    effectiveDiameter = distancePairs(distancePairs.size - 1).distance
+    effectiveDiameter
+  }
+
+
+  /**
+    * Performs a bredth first search.  This algorithm is run in parrallel
+    * @param n
+    * @param hashmap
+    * @return
+    */
+  def BFSNode(n: Node, hashmap: scala.collection.Map[Long, Node]): NodeVisitCounter = {
+    val q = new Queue[Node]()
+    q.enqueue(n)
+    val visited = new mutable.HashSet[VertexId]()
+    val levelSize = new mutable.HashMap[Long, Long]()
+    visited.add(n.id)
+    var totalPairs: Long = 0
+    val visitCounter = new NodeVisitCounter()
+    var level = 0
+    while(q.nonEmpty)
+    {
+      val size = q.size
+      totalPairs += size
+      if(level != 0)
+      {
+        levelSize.put(level, size);
+      }
+
+      var list: Array[Node] = new Array[Node](size)
+      for(x <- 0 until size)
+      {
+        list(x) = q.dequeue()
+      }
+      var children: ArrayBuffer[Long] = null
+      for(x <- list)
+      {
+
+        var node: Node = x
+
+        children = node.children
+        for(c: Long <- children)
+        {
+          val childNode = hashmap.get(c).head
+          if(!visited.contains(childNode.id))
+          {
+            q.enqueue(childNode)
+            visited.add(childNode.id)
+          }
+        }
+      }
+      level += 1
+    }
+    totalPairs -= 1
+
+    visitCounter.levelSize = levelSize
+    visitCounter.totalPairs = totalPairs
+
+    return visitCounter
+  }
+
+
+  /**
+    * This takes two hashmaps and combines them.  Arindam got this from stackoverflow
+    * @param map1
+    * @param map2
+    * @return
+    */
+  def mergeMaps(map1: mutable.HashMap[Long, Long], map2: mutable.HashMap[Long, Long]): mutable.HashMap[Long, Long] = {
+    val merged = new mutable.HashMap[Long, Long]()
+    for (x <- map1.keySet)
+    {
+      val y = map2.get(x)
+
+      if (y == None)
+      {
+        merged.put(x, map1.get(x).head)
+      }
+      else
+      {
+        merged.put(x, map1.get(x).head + y.head)
+      }
+    }
+    for (x <- map2.keySet if merged.get(x) == None)
+    {
+      merged.put(x, map2.get(x).head)
+    }
+    return merged
+  }
+
+  def HopPlot(sc: SparkContext, nodes: Array[(Node, Array[Node])], hashmap: scala.collection.Map[Long, Node])
+  {
+    //    var levelSizeMerged = new mutable.HashMap[Long, Long]()
+    var totalPairs: Long = 0
+
+    //paralize doing BFS
+    val BFSNodes = nodes.map(record => BFSNode(record._1, hashmap))
+    //get total number of pairs (this number is messed up
+    totalPairs = BFSNodes.map(record => record.totalPairs).reduce(_ + _)
+    println("total pairs " + totalPairs)
+    var levelSizeMerged = BFSNodes.map(record => record.levelSize).reduce((record1, record2) => this.mergeMaps(record1, record2))
+
+    //    for (node <- nodes)
+    //    {
+    //      val counter = BFSNode(node)
+    //      totalPairs += counter.totalPairs
+    //      val merged = mergeMaps(levelSizeMerged, counter.levelSize)
+    //      levelSizeMerged = merged
+    //    }
+    println(levelSizeMerged.size)
+    var distancePairs = new ArrayBuffer[DistanceNodePair]()
+
+    for (x <- levelSizeMerged.keySet)
+    {
+      println("Node pairs " + levelSizeMerged.get(x).head + ", " + "Distance " + x)
+      val dp = new DistanceNodePair(x, levelSizeMerged.get(x).head)
+      distancePairs.append(dp)
+    }
+    distancePairs = distancePairs.sortBy(_.distance)
+    //    Collections.sort(distancePairs)
+    for (i <- 1 until distancePairs.size)
+    {
+      val dp = distancePairs(i)
+      dp.totalPairs += distancePairs(i - 1).totalPairs
+    }
+    for (dp: DistanceNodePair <- distancePairs)
+    {
+
+      println("Distance " + dp.distance + ", " + dp.totalPairs)
+    }
+    println(computeEffectiveDiameter(distancePairs, totalPairs))
+  }
+
+
+  def performHopPlot(sc: SparkContext, seedVertFile: String, seedEdgeFile: String): Unit =
+  {
+    println()
+    println("Loading seed graph with vertices file: " + seedVertFile + " and edges file " + seedEdgeFile + " ...")
+
+    var startTime = System.nanoTime()
+    //read in and parse vertices and edges
+    val (inVertices, inEdges) = readFromSeedGraph(sc, seedVertFile,seedEdgeFile)
+    var timeSpan = (System.nanoTime() - startTime) / 1e9
+    println()
+    println("Finished loading seed graph.")
+    println("\tTotal time elapsed: " + timeSpan.toString)
+    println("\tVertices "+inVertices.count())
+    println("\tEdges "+inEdges.count())
+    println()
+    println()
+    println("running hop plot...")
+    println()
+
+    //this gets every edge both directions
+    val undirectedEdges = inEdges.flatMap(record => Array((record.srcId, record.dstId), (record.dstId, record.srcId))).groupByKey().map(record => (record._1, record._2.toArray))
+
+    //this acts as a hashmap where the key in the vertex id and value is the node
+    val hashmap = undirectedEdges.map(record => (record._1, new Node(record._1))).collectAsMap()
+
+    //this creates the children to point back to the hashmap
+    val completedNodes = undirectedEdges.map(record => (hashmap.get(record._1).head, for(x <- record._2) yield hashmap.get(x).head)).collect()
+    completedNodes.map(record => for(x <- record._2) {record._1.children.append(x.id); hashmap.get(record._1.id).head.children.append(x.id);})
+
+    //do hop plot
+    HopPlot(sc, completedNodes, hashmap)
   }
 }

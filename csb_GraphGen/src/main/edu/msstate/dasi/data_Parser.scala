@@ -114,6 +114,7 @@ trait data_Parser extends java.io.Serializable {
       } catch {
         case _: Throwable =>
           println("!!! THERE MAY BE ERRORS IN THE DATASET !!!")
+          println()
           (false, Edge(0L, 0L, edgeData("", "", 0, 0, 0, "", 0, 0, 0, 0, "")))
       }
 

@@ -5,7 +5,6 @@ import java.io.{BufferedWriter, File, FileWriter}
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.SparkContext
 import scopt.OptionParser
-
 import org.apache.spark.graphx._
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
@@ -57,7 +56,12 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
                            * Kronecker Arguments
                            */
                          seedMtx_desc: String = "Space-separated matrix file to use as a seed for Kronecker.",
-                         kroIter_desc: String = "Number of iterations for Kronecker model."
+                         kroIter_desc: String = "Number of iterations for Kronecker model.",
+
+                         /**
+                           * veracity arguements
+                           */
+                       veracity_Desc: String = "the veracity metric you want to compute. Options include: hop-plot"
 
                        )
 
@@ -94,7 +98,12 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
                        * Kronecker Arguments
                        */
                      seedMtx: String = "seed.mtx",
-                     kroIter: Int = 10
+                     kroIter: Int = 10,
+
+                     /**
+                       * veracity arguements
+                       */
+                     metric: String = "hop-plot"
 
                    )
 
@@ -217,6 +226,22 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
         )
       note("\n")
 
+      cmd("ver").action((_, c) => c.copy(mode = "ver"))
+        .text(s"Compute veracity metrics on a given vertices and edge seed files")
+        .children(
+          arg[String]("seed_vert")
+              .text(s"${h.seedVertices_desc} default: ${dP.seedVertices}")
+              .required()
+              .action((x,c) => c.copy(seedVertices = x)),
+          arg[String]("seed_edges")
+              .text(s"${h.seedEdges_desc} default: ${dP.seedEdges}")
+              .required()
+              .action((x, c) => c.copy(seedEdges = x)),
+          arg[String]("metric")
+            .text(s"${h.veracity_Desc} default: ${dP.metric}")
+            .required()
+        )
+
     }
 
     parser.parse(args, dP) match {
@@ -259,12 +284,14 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
       case "gen_dist" => run_gendist(sc, params)
       case "ba" => run_ba(sc, params)
       case "kro" => run_kro(sc, params)
+      case "ver" => run_ver(sc, params)
       case _ => sys.exit(1)
     }
 
     sys.exit()
     true
   }
+
 
   def run_gendist(sc: SparkContext, params: Params): Boolean = {
     val logAug = new log_Augment()
@@ -332,6 +359,11 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
     val kroGraph = new kro_GraphGen(sc, params.partitions, graphPs)
     kroGraph.run(params.seedMtx, params.kroIter, params.seedVertices, params.seedEdges, params.noProp, params.debug)
 
+    true
+  }
+
+  def run_ver(sc: SparkContext, params: Params): Boolean = {
+    Veracity.performHopPlot(sc, params.seedVertices, params.seedEdges)
     true
   }
 }
