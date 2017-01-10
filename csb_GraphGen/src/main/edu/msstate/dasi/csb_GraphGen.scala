@@ -61,7 +61,10 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
                          /**
                            * veracity arguements
                            */
-                       veracity_Desc: String = "the veracity metric you want to compute. Options include: hop-plot"
+                       veracity_Desc: String = "The veracity metric you want to compute. Options include: hop-plot",
+                         veracity_File: String = "The file to save the metric information",
+                         seed_vertsMetric: String = "Comma-separated vertices file to use as a seed",
+                         seed_edgeMetric: String = "Comma-separated edges file to use as a seed"
 
                        )
 
@@ -103,7 +106,8 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
                      /**
                        * veracity arguements
                        */
-                     metric: String = "hop-plot"
+                     metric: String = "hop-plot",
+                     metricSave: String = "hop-plotSave"
 
                    )
 
@@ -230,7 +234,7 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
         .text(s"Compute veracity metrics on a given vertices and edge seed files")
         .children(
           arg[String]("seed_vert")
-              .text(s"${h.seedVertices_desc} default: ${dP.seedVertices}")
+              .text(s"${h.seed_vertsMetric} default: ${dP.seedVertices}")
               .required()
               .action((x,c) => c.copy(seedVertices = x)),
           arg[String]("seed_edges")
@@ -238,8 +242,13 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
               .required()
               .action((x, c) => c.copy(seedEdges = x)),
           arg[String]("metric")
-            .text(s"${h.veracity_Desc} default: ${dP.metric}")
+            .text(s"${h.veracity_Desc}")
             .required()
+            .action((x,c) => c.copy(metric = x)),
+          arg[String]("save_file")
+            .text(s"${h.veracity_File}")
+            .required()
+            .action((x,c) => c.copy(metricSave = x))
         )
 
     }
@@ -363,7 +372,12 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
   }
 
   def run_ver(sc: SparkContext, params: Params): Boolean = {
-    Veracity.performHopPlot(sc, params.seedVertices, params.seedEdges)
+    params.metric match
+      {
+      case "hop-plot" => Veracity.performHopPlot(sc, params.seedVertices, params.seedEdges, params.metricSave)
+      case _ => println("Invalid metric " + params.metric)
+    }
+
     true
   }
 }

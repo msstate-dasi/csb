@@ -2,13 +2,14 @@ package edu.msstate.dasi
 
 
 import org.apache.spark.SparkContext
+import java.io.{BufferedWriter, File, Writer}
 
-
-import java.io.File
+import breeze.io.TextWriter.FileWriter
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs._
 import org.apache.spark.rdd.RDD
 import org.apache.spark.graphx._
+
 import scala.collection.mutable
 import scala.collection.mutable.{ArrayBuffer, Queue}
 import scala.reflect.ClassTag
@@ -181,6 +182,8 @@ object Veracity extends data_Parser {
     * @return
     */
   def BFSNode(n: Node, hashmap: scala.collection.Map[Long, Node]): NodeVisitCounter = {
+
+
     val q = new Queue[Node]()
     q.enqueue(n)
     val visited = new mutable.HashSet[VertexId]()
@@ -259,15 +262,18 @@ object Veracity extends data_Parser {
     return merged
   }
 
-  def HopPlot(sc: SparkContext, nodes: Array[(Node, Array[Node])], hashmap: scala.collection.Map[Long, Node])
+  def HopPlot(sc: SparkContext, nodes: Array[(Node, Array[Node])], hashmap: scala.collection.Map[Long, Node], filename: String)
   {
     //    var levelSizeMerged = new mutable.HashMap[Long, Long]()
     var totalPairs: Long = 0
 
     //paralize doing BFS
-    val BFSNodes = nodes.map(record => BFSNode(record._1, hashmap))
+    println("doing BFS search please wait....")
+    val BFSNodes = sc.parallelize(nodes).map(record => BFSNode(record._1, hashmap)).persist()
+    BFSNodes.count()
+    println("done")
     //get total number of pairs (this number is messed up
-    totalPairs = BFSNodes.map(record => record.totalPairs).reduce(_ + _)
+    totalPairs = BFSNodes.map(record => record.totalPairs).reduce(_ + _) / 2 //not required but to be correct divide the pairs by two since each pair is counted twice
     println("total pairs " + totalPairs)
     var levelSizeMerged = BFSNodes.map(record => record.levelSize).reduce((record1, record2) => this.mergeMaps(record1, record2))
 
@@ -284,7 +290,7 @@ object Veracity extends data_Parser {
     for (x <- levelSizeMerged.keySet)
     {
       println("Node pairs " + levelSizeMerged.get(x).head + ", " + "Distance " + x)
-      val dp = new DistanceNodePair(x, levelSizeMerged.get(x).head)
+      val dp = new DistanceNodePair(x, levelSizeMerged.get(x).head/ 2) //not required but to be correct divide the pairs by two since each pair is counted twice
       distancePairs.append(dp)
     }
     distancePairs = distancePairs.sortBy(_.distance)
@@ -294,16 +300,27 @@ object Veracity extends data_Parser {
       val dp = distancePairs(i)
       dp.totalPairs += distancePairs(i - 1).totalPairs
     }
+
+    //write info to file
+//    val fw = new FileWriter(new File("hop-plotData"))
+//    val bw = new BufferedWriter(fw.osw)
+
+    val file = new File(filename)
+    val bw = new BufferedWriter(new java.io.FileWriter(file))
+
     for (dp: DistanceNodePair <- distancePairs)
     {
-
-      println("Distance " + dp.distance + ", " + dp.totalPairs)
+      bw.write("Distance " + dp.distance + ", " + dp.totalPairs + "\n")
+//      println("Distance " + dp.distance + ", " + dp.totalPairs)
     }
-    println(computeEffectiveDiameter(distancePairs, totalPairs))
+    bw.write("\n")
+    bw.write(computeEffectiveDiameter(distancePairs, totalPairs).toString)
+    bw.close()
+//    println(computeEffectiveDiameter(distancePairs, totalPairs))
   }
 
 
-  def performHopPlot(sc: SparkContext, seedVertFile: String, seedEdgeFile: String): Unit =
+  def performHopPlot(sc: SparkContext, seedVertFile: String, seedEdgeFile: String, saveFile: String): Unit =
   {
     println()
     println("Loading seed graph with vertices file: " + seedVertFile + " and edges file " + seedEdgeFile + " ...")
@@ -322,6 +339,7 @@ object Veracity extends data_Parser {
     println("running hop plot...")
     println()
 
+    println("prepping for hop plot...")
     //this gets every edge both directions
     val undirectedEdges = inEdges.flatMap(record => Array((record.srcId, record.dstId), (record.dstId, record.srcId))).groupByKey().map(record => (record._1, record._2.toArray))
 
@@ -332,7 +350,8 @@ object Veracity extends data_Parser {
     val completedNodes = undirectedEdges.map(record => (hashmap.get(record._1).head, for(x <- record._2) yield hashmap.get(x).head)).collect()
     completedNodes.map(record => for(x <- record._2) {record._1.children.append(x.id); hashmap.get(record._1.id).head.children.append(x.id);})
 
+    println("done prepping for hop plot")
     //do hop plot
-    HopPlot(sc, completedNodes, hashmap)
+    HopPlot(sc, completedNodes, hashmap, saveFile)
   }
 }

@@ -41,6 +41,7 @@ class ba_GraphGen(sc: SparkContext, partitions: Int, graphPs: GraphPersistence) 
     println("\tTotal time elapsed: " + timeSpan.toString)
     println()
 
+
     if(!noPropFlag) {
       println()
       println("Generating Edge and Node properties")
