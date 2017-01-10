@@ -59,23 +59,33 @@ trait data_Parser extends java.io.Serializable {
   def readFromSeedGraph(sc: SparkContext, seedVertFile: String,seedEdgeFile: String): (RDD[(VertexId,nodeData)], RDD[Edge[edgeData]]) = {
 
     val inVertices: RDD[(VertexId,nodeData)] = sc.textFile(seedVertFile).map(line => line.stripPrefix("(").stripSuffix(")").split(',')).map { record =>
-      parseNodeData(record)
+      val inData = (record)
+
+      /*** Parses data for a node out of an array of strings
+        *
+        * @param inData Array strings to parse as node data. First element is the ID of the node, second element is the description of the node
+        * @return Tuple (bool whether the record was successfully parsed, record(VertexID, edu.msstate.dasi.nodeData))
+        */
+      //private def parseNodeData(inData: Array[String]): (Boolean, (Long, nodeData))  = {
+      try {
+        (true, (inData(0).toLong, nodeData(inData(1).stripPrefix("nodeData(").stripSuffix(")"))))
+      } catch {
+        case _: Throwable =>
+          println("!!! THERE MAY BE ERRORS IN THE DATASET !!!")
+          (false, (0L, nodeData("")))
+      }
+    //}
     }.filter(_._1 != false).map(record => record._2)
 
     val inEdges: RDD[Edge[edgeData]] = sc.textFile(seedEdgeFile).map(line => line.stripPrefix("Edge(").stripSuffix(")").split(",", 3)).map { record =>
-      parseEdgeData(record)
-    }.filter(_._1 != false).map(record => record._2)
+      val inData = record
 
-    return (inVertices,inEdges)
-  }
-
-  /*** Parses Data for an edge out of an array of strings
-    *
-    * @param inData Array of strings to parse as edge data. First element is source ID, second element is destination ID, third element is the edge data
-    * @return (bool whether the record was successfully parsed, record(VertexID, VertexID, edu.msstate.dasi.edgeData))
-    */
-  private def parseEdgeData(inData: Array[String]): (Boolean, Edge[edgeData]) = {
-    val result: (Boolean, Edge[edgeData]) =
+      /*** Parses Data for an edge out of an array of strings
+        *
+        * @param inData Array of strings to parse as edge data. First element is source ID, second element is destination ID, third element is the edge data
+        * @return (bool whether the record was successfully parsed, record(VertexID, VertexID, edu.msstate.dasi.edgeData))
+        */
+     //private def parseEdgeData(inData: Array[String]): (Boolean, Edge[edgeData]) = {
       try {
         val srcNode = inData(0).toLong
         val dstNode = inData(1).toLong
@@ -115,29 +125,16 @@ trait data_Parser extends java.io.Serializable {
         case _: Throwable =>
           println("!!! THERE MAY BE ERRORS IN THE DATASET !!!")
           println()
-          (false, Edge(0L, 0L, edgeData("", "", 0, 0, 0, "", 0, 0, 0, 0, "")))
+          (false, Edge(0L, 0L, edgeData()))
       }
+    //}
+    }.filter(_._1 != false).map(record => record._2)
 
-    //return
-    result
+    return (inVertices,inEdges)
   }
 
 
-  /*** Parses data for a node out of an array of strings
-    *
-    * @param inData Array strings to parse as node data. First element is the ID of the node, second element is the description of the node
-    * @return Tuple (bool whether the record was successfully parsed, record(VertexID, edu.msstate.dasi.nodeData))
-    */
-  private def parseNodeData(inData: Array[String]): (Boolean, (Long, nodeData))  = {
-    val result: (Boolean, (VertexId, nodeData)) =
-      try {
-        (true, (inData(0).toLong, nodeData(inData(1).stripPrefix("nodeData(").stripSuffix(")"))))
-      } catch {
-        case _: Throwable =>
-          println("!!! THERE MAY BE ERRORS IN THE DATASET !!!")
-          (false, (0L, nodeData("")))
-      }
 
-    result
-  }
+
+
 }

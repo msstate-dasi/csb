@@ -1,1 +1,1 @@
-$SPARK_HOME/bin/spark-submit --class csb_GraphGen target/csb-_.jar seed_vertices seed_edges 100
+$SPARK_HOME/bin/spark-submit --driver-memory=15G --executor-memory=10G csb-dep.jar ba seed_vert seed_edges 1000

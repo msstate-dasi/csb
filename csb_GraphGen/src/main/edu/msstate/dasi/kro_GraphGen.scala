@@ -74,17 +74,7 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, graphPs: GraphPersistence)
 
     println("Calculating degrees veracity...")
 
-    // TODO: the following trick creates a graph from the seed files -> this should be changed with a cleaner approach
-    val inVertices: RDD[(VertexId,nodeData)] = sc.textFile(seedVertFile)
-      .map(line => line.stripPrefix("(").stripSuffix(")").split(','))
-      .map { inData => (true, (inData(0).toLong, nodeData(inData(1).stripPrefix("nodeData(").stripSuffix(")")))) }
-      .filter(_._1 != false).map(record => record._2)
-
-    val inEdges: RDD[Edge[edgeData]] = sc.textFile(seedEdgeFile)
-      .map(line => line.stripPrefix("Edge(").stripSuffix(")").split(",", 3))
-      .map { inData => (true, Edge(inData(0).toLong, inData(1).toLong, edgeData())) }
-      .filter(_._1 != false).map(record => record._2)
-    //////////////
+    val (inVertices, inEdges): (RDD[(VertexId,nodeData)], RDD[Edge[edgeData]]) = readFromSeedGraph(sc, seedVertFile,seedEdgeFile)
 
     val seedGraph = Graph(inVertices, inEdges, nodeData())
 

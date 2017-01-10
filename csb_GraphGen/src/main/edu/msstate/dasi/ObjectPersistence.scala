@@ -5,7 +5,7 @@ import org.apache.spark.graphx.Graph
 /**
  * Created by scordio on 1/4/17.
  */
-class ObjectPersistence(path: String) extends GraphPersistence {
+class ObjectPersistence(path: String) extends GraphPersistence with java.io.Serializable{
   private val edges_suffix = "_edges"
   private val vertices_suffix = "_vertices"
 
