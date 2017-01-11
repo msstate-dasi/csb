@@ -18,27 +18,30 @@ import scala.reflect.ClassTag
 object Veracity extends data_Parser {
 
   /**
-   * Computes a normalized distribution
+   * Computes a normalized distribution given a list of keys
    *
-   * @param values The values to analyze
-   * @param bucketNum The number of buckets where the values should fall
+   * @param keys Keys to analyze
+   * @param bucketNum Number of buckets where the keys should fall; if 0, the keys are not bucketed
    * @return RDD containing the normalized distribution
    */
-  private def normDistRDD(values: VertexRDD[Int], bucketNum :Int = 0 ): RDD[(Double, Double)] = {
-    val valuesCount = values.map(x => (x._2, 1L)).reduceByKey(_ + _).cache()
+  private def normDistRDD(keys: VertexRDD[Int], bucketNum :Int = 0 ): RDD[(Double, Double)] = {
+    // Computes how many times each key appears
+    val keysCount = keys.map(x => (x._2, 1L)).reduceByKey(_ + _).cache()
 
-    // TODO: Could we improve performance if we replace the following with a Spark accumulator in the previous map?
-    val valuesTotal = valuesCount.map(_._2).reduce(_ + _)
-    val keysTotal = valuesCount.map(_._1).reduce(_ + _)
+    // Computes the sum of keys and the sum of values
+    val keysTotal = keysCount.keys.sum()
+    val valuesTotal = keysCount.values.sum()
 
-    var normDist = valuesCount.map(x => (x._1 / keysTotal.toDouble, x._2 / valuesTotal.toDouble))
+    // Normalizes keys and values
+    var normDist = keysCount.map(x => (x._1 / keysTotal, x._2 / valuesTotal))
 
     if (bucketNum > 0) {
       val bucketSize = 1.0 / bucketNum
+      // Groups keys in buckets adding their values
       normDist = normDist.map( x => (x._1 - x._1 % bucketSize, x._2)).reduceByKey(_ + _)
     }
 
-    normDist.sortBy(_._2, ascending = false)
+    normDist
   }
 
   /**
@@ -66,6 +69,7 @@ object Veracity extends data_Parser {
    */
   private def RDDtoCSV[K: ClassTag, V: ClassTag](rdd: RDD[(K, V)], filename: String, overwrite :Boolean): Unit = {
     val tmpFile = "__RDDtoCSV.tmp"
+    val numPartitions = 16
 
     if (overwrite) {
       FileUtil.fullyDelete(new File(filename))
@@ -74,7 +78,7 @@ object Veracity extends data_Parser {
     rdd.map {
       // for each (key,value) pair, create a "key,value" string
       case (key, value) => Array(key, value).mkString(",")
-    }.saveAsTextFile(tmpFile)
+    }.coalesce(numPartitions).saveAsTextFile(tmpFile)
 
     merge(tmpFile, filename)
 
@@ -82,17 +86,17 @@ object Veracity extends data_Parser {
   }
 
   /**
-   * Computes the squared Euclidean distance between two vectors
-   *
-   * @note If the arrays differ in size, the lower size defines how many elements are taken for the computation
+   * Computes the Euclidean distance between two RDDs
    */
-  private def squaredDistance(v1: Array[Double], v2: Array[Double]): Double = {
-    var d = 0.0
-
-    for (i <- 0 until v1.length.min(v2.length)) {
-      d += math.pow( v1(i) - v2(i), 2 )
-    }
-    d
+  private def euclideanDistance(rdd1: RDD[(Double, Double)], rdd2: RDD[(Double, Double)]): Double = {
+    math.sqrt(
+      // Unifies the RDDs
+      rdd1.union(rdd2)
+      // Computes the squared difference of the values belonging to the same keys
+      .reduceByKey( (value1, value2) => math.pow(value1-value2, 2) )
+      // Sum all the resulting values
+      .values.sum()
+    )
   }
 
   /**
@@ -116,13 +120,7 @@ object Veracity extends data_Parser {
       RDDtoCSV(synthRDD, filePrefix + "_degrees_dist.synth.csv", overwrite)
     }
 
-    val v1 = seedRDD.map(_._2).collect()
-    val v2 = synthRDD.map(_._2).collect()
-
-    seedRDD.unpersist()
-    synthRDD.unpersist()
-
-    squaredDistance(v1,v2)
+    euclideanDistance(seedRDD,synthRDD) / bucketNum
   }
 
 //  /**

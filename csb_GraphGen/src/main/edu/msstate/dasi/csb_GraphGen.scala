@@ -78,7 +78,7 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
                      partitions: Int = 120,
                      backend: String = "fs",
                      checkpointDir: Option[String] = None,
-                     checkpointInterval: Long = 10,
+                     checkpointInterval: Int = 10,
                      debug: Boolean = false,
 
                      /**
@@ -182,7 +182,7 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
           opt[Unit]("no-prop")
             .text(s"${h.noProp_desc} default: ${dP.noProp}")
             .action((_, c) => c.copy(noProp = true)),
-          opt[Int]("nodes-per-iter")
+          opt[Long]("nodes-per-iter")
             .text(s"${h.numNodesPerIter_desc} default: ${dP.numNodesPerIter}")
             .action((x, c) => c.copy(numNodesPerIter = x)),
           arg[String]("seed_vert")
@@ -195,8 +195,7 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
             .action((x, c) => c.copy(seedEdges = x)),
           arg[Int]("<# of Iterations>")
             .text(s"${h.baIter_desc} default: ${dP.baIter}")
-            .validate(x => if (x > 0) success
-            else failure("Iteration count must be greater than 0."))
+            .validate(x => if (x > 0) success else failure("Iteration count must be greater than 0."))
             .action((x, c) => c.copy(baIter = x))
         )
 
@@ -223,9 +222,8 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
             .required()
             .action((x, c) => c.copy(seedEdges = x)),
           arg[Int]("<# of Iterations>")
-            .text(s"${h.kroIter_desc} default: ${dP.baIter}")
-            .validate(x => if (x > 0) success
-            else failure("Iteration count must be greater than 0."))
+            .text(s"${h.kroIter_desc} default: ${dP.kroIter}")
+            .validate(x => if (x > 0) success else failure("Iteration count must be greater than 0."))
             .action((x, c) => c.copy(kroIter = x))
         )
       note("\n")
@@ -346,7 +344,7 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
 
     var graphPs: GraphPersistence = null
     params.backend match {
-      case "fs" => graphPs = new ObjectPersistence(params.outputGraphPrefix)
+      case "fs" => graphPs = new SparkPersistence(params.outputGraphPrefix)
       case "neo4j" => graphPs = new Neo4jPersistence(sc)
     }
 
@@ -361,7 +359,7 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
 
     var graphPs: GraphPersistence = null
     params.backend match {
-      case "fs" => graphPs = new ObjectPersistence(params.outputGraphPrefix)
+      case "fs" => graphPs = new SparkPersistence(params.outputGraphPrefix)
       case "neo4j" => graphPs = new Neo4jPersistence(sc)
     }
 

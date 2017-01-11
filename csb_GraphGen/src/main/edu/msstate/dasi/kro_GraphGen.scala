@@ -13,7 +13,7 @@ import scala.util.Random
   * edu.msstate.dasi.kro_GraphGen: Kronecker based Graph generation given seed matrix.
   */
 class kro_GraphGen(sc: SparkContext, partitions: Int, graphPs: GraphPersistence) extends base_GraphGen with data_Parser {
-  def run(mtxFile: String, genIter: Long, seedVertFile: String, seedEdgeFile: String, noPropFlag: Boolean, debugFlag: Boolean): Boolean = {
+  def run(mtxFile: String, genIter: Int, seedVertFile: String, seedEdgeFile: String, noPropFlag: Boolean, debugFlag: Boolean): Boolean = {
 
     //val probMtx: Array[Array[Float]] = Array(Array(0.1f, 0.9f), Array(0.9f, 0.5f))
     val probMtx: Array[Array[Double]] = parseMtxDataFromFile(mtxFile)
@@ -78,20 +78,27 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, graphPs: GraphPersistence)
 
     val seedGraph = Graph(inVertices, inEdges, nodeData())
 
-    val degVeracity = Veracity.degree(seedGraph.degrees, theGraph.degrees, saveDistAsCSV = true,
-      overwrite = true)
-    val inDegVeracity = Veracity.degree(seedGraph.inDegrees, theGraph.inDegrees, saveDistAsCSV = true,
-      "in", overwrite = true)
-    val outDegVeracity = Veracity.degree(seedGraph.outDegrees, theGraph.outDegrees, saveDistAsCSV = true,
-      "out", overwrite = true)
-    println("Finished calculating degrees veracity.\n\tDegree Veracity:" + degVeracity + "\n\tIn Degree Veracity: " +
-      inDegVeracity + "\n\tOut Degree Veracity:" + outDegVeracity)
+    println("Edges: " + seedGraph.edges.count())
+
+    startTime = System.nanoTime()
+    val degVeracity = Veracity.degree(seedGraph.degrees, theGraph.degrees)
+    timeSpan = (System.nanoTime() - startTime) / 1e9
+    println("\tDegree Veracity:" + degVeracity + " [" + timeSpan + "s]")
+
+    startTime = System.nanoTime()
+    val inDegVeracity = Veracity.degree(seedGraph.inDegrees, theGraph.inDegrees)
+    timeSpan = (System.nanoTime() - startTime) / 1e9
+    println("\n\tIn Degree Veracity: " + inDegVeracity + " [" + timeSpan + "s]")
+
+    startTime = System.nanoTime()
+    val outDegVeracity = Veracity.degree(seedGraph.outDegrees, theGraph.outDegrees)
+    timeSpan = (System.nanoTime() - startTime) / 1e9
+    println("\n\tOut Degree Veracity:" + outDegVeracity + " [" + timeSpan + "s]")
 
     true
   }
 
-  def getKroRDD(nVerts: Long, nEdges: Long, n1: Long, iter: Long, probToRCPosV_Broadcast: Broadcast[Array[(Double, Long, Long)]] ): RDD[Edge[edgeData]] =
-  {
+  def getKroRDD(nVerts: Long, nEdges: Long, n1: Long, iter: Long, probToRCPosV_Broadcast: Broadcast[Array[(Double, Long, Long)]] ): RDD[Edge[edgeData]] = {
     // TODO: the algorithm must be commented and meaningful variable names must be used
     val r = Random
 
@@ -156,16 +163,10 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, graphPs: GraphPersistence)
    *  @return The RDD of the additional edges that should be added
    *          to the one returned by Kronecker algorithm.
    */
-  def getMultiEdgesRDD(edgeList: RDD[Edge[edgeData]]): RDD[Edge[edgeData]] =
-  {
-  
-   val outEdgesDistribution = sc.broadcast(DataDistributions.outEdgesDistribution)
-   
-   
+  def getMultiEdgesRDD(edgeList: RDD[Edge[edgeData]]): RDD[Edge[edgeData]] = {
+    val outEdgesDistribution = sc.broadcast(DataDistributions.outEdgesDistribution)
 
-    
     val multiEdgeList: RDD[Edge[edgeData]] = edgeList.flatMap { edge =>
-   
       val r = Random.nextDouble()
       var accumulator :Double= 0
 
@@ -174,9 +175,7 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, graphPs: GraphPersistence)
       while (accumulator < r && iterator.hasNext) {
         outElem = iterator.next()
         accumulator = accumulator + outElem._2
-    }
-    
-
+      }
 
       val multiEdgesNum = outElem._1
       var multiEdges : Array[Edge[edgeData]] = Array()
@@ -184,6 +183,7 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, graphPs: GraphPersistence)
       for ( _ <- 1L until multiEdgesNum.toLong ) {
         multiEdges :+= Edge(edge.srcId, edge.dstId, edge.attr)
       }
+
       multiEdges
     }
     multiEdgeList
@@ -201,8 +201,8 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, graphPs: GraphPersistence)
     println("n1 = " + n1)
 
     val mtxSum: Double = probMtx.map(record => record.sum).sum
-    val nVerts = Math.pow(n1, iter).toLong
-    val nEdges = Math.pow(mtxSum, iter).toLong
+    val nVerts = math.pow(n1, iter).toLong
+    val nEdges = math.pow(mtxSum, iter).toLong
     println("Total # of Vertices: " + nVerts)
     println("Total # of Edges: " + nEdges)
 
@@ -266,19 +266,19 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, graphPs: GraphPersistence)
       .collect()
   }
 
-  /*** Function to convert an adjaceny matrix to an edge RDD with correct properties, for use with GraphX
-    *
-    * @param adjMtx The matrix to convert into an edge RDD
-    * @return Edge RDD containing the edge data for the graph
-    */
-  def mtx2Edges(adjMtx: RDD[RDD[Long]]): RDD[Edge[edgeData]] = {
-    adjMtx.zipWithIndex
-      .map(record => (record._2, record._1))
-      .map(record => (record._1, record._2.zipWithIndex.map(record=>(record._2, record._1))))
-      .flatMap{record =>
-        val edgesTo = record._2.filter(record => record._2!=0).map(record => record._1)
-        edgesTo.map(record2 => Edge(record._1, record2, edgeData())).collect()
-      }
-
-  }
+//  /*** Function to convert an adjacency matrix to an edge RDD with correct properties, for use with GraphX
+//    *
+//    * @param adjMtx The matrix to convert into an edge RDD
+//    * @return Edge RDD containing the edge data for the graph
+//    */
+//  def mtx2Edges(adjMtx: RDD[RDD[Long]]): RDD[Edge[edgeData]] = {
+//    adjMtx.zipWithIndex
+//      .map(record => (record._2, record._1))
+//      .map(record => (record._1, record._2.zipWithIndex.map(record=>(record._2, record._1))))
+//      .flatMap{record =>
+//        val edgesTo = record._2.filter(record => record._2!=0).map(record => record._1)
+//        edgesTo.map(record2 => Edge(record._1, record2, edgeData())).collect()
+//      }
+//
+//  }
 }
