@@ -11,6 +11,7 @@ trait GraphPersistence {
    * Save the graph
    *
    * @param graph
+   * @param overwrite
    */
-  def saveGraph(graph: Graph[nodeData, edgeData]): Unit
+  def saveGraph(graph: Graph[nodeData, edgeData], overwrite :Boolean = false): Unit
 }

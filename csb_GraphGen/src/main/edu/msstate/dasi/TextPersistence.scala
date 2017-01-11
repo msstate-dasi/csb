@@ -1,5 +1,8 @@
 package edu.msstate.dasi
 
+import java.io.File
+
+import org.apache.hadoop.fs.FileUtil
 import org.apache.spark.graphx.Graph
 
 /**
@@ -13,8 +16,14 @@ class TextPersistence(path: String) extends GraphPersistence {
    * Save the graph
    *
    * @param graph
+   * @param overwrite
    */
-  override def saveGraph(graph: Graph[nodeData, edgeData]): Unit = {
+  override def saveGraph(graph: Graph[nodeData, edgeData], overwrite :Boolean = false): Unit = {
+    if (overwrite) {
+      FileUtil.fullyDelete(new File(path + edges_suffix))
+      FileUtil.fullyDelete(new File(path + vertices_suffix))
+    }
+
     graph.edges.coalesce(16).saveAsTextFile(path + edges_suffix)
     graph.vertices.coalesce(16).saveAsTextFile(path + vertices_suffix)
   }

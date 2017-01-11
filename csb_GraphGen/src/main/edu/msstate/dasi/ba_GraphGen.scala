@@ -77,7 +77,7 @@ class ba_GraphGen(sc: SparkContext, partitions: Int, graphPs: GraphPersistence) 
 
     //Save the ba graph into a format to be read later
     startTime = System.nanoTime()
-    graphPs.saveGraph(theGraph)
+    graphPs.saveGraph(theGraph, overwrite = true)
     timeSpan = (System.nanoTime() - startTime) / 1e9
 
     println()

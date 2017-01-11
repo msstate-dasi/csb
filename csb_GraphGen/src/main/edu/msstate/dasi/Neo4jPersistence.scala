@@ -13,8 +13,13 @@ class Neo4jPersistence(sc: SparkContext) extends GraphPersistence {
    * Save the graph
    *
    * @param graph
+   * @param overwrite
    */
-  override def saveGraph(graph: Graph[nodeData, edgeData]): Unit = {
+  override def saveGraph(graph: Graph[nodeData, edgeData], overwrite :Boolean = false): Unit = {
+    if (overwrite) {
+      // delete existing graph in the DB
+    }
+
     Neo4jGraph.saveGraph(sc, graph)
   }
 }

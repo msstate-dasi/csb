@@ -1,33 +1,44 @@
 package edu.msstate.dasi
 
+import java.io.{BufferedWriter, File}
 
-import org.apache.spark.SparkContext
-import java.io.{BufferedWriter, File, Writer}
-
-import breeze.io.TextWriter.FileWriter
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs._
-import org.apache.spark.rdd.RDD
+import org.apache.spark.SparkContext
 import org.apache.spark.graphx._
+import org.apache.spark.rdd.RDD
 
 import scala.collection.mutable
 import scala.collection.mutable.{ArrayBuffer, Queue}
 import scala.reflect.ClassTag
+
 /**
  * Helper methods to compute veracity metrics for [[org.apache.spark.graphx.Graph]]
  */
 object Veracity extends data_Parser {
 
   /**
-   * Computes the neighboring vertex degrees distribution
+   * Computes a normalized distribution
    *
-   * @param degrees The degrees to analyze
-   * @return RDD containing the normalized degrees distributions
+   * @param values The values to analyze
+   * @param bucketNum The number of buckets where the values should fall
+   * @return RDD containing the normalized distribution
    */
-  private def degreesDistRDD(degrees: VertexRDD[Int]): RDD[(Int, Double)] = {
-    val degreesCount = degrees.map(x => (x._2, 1L)).reduceByKey(_ + _).cache()
-    val degreesTotal = degreesCount.map(_._2).reduce(_ + _)
-    degreesCount.map(x => (x._1, x._2 / degreesTotal.toDouble)).sortBy(_._2, ascending = false)
+  private def normDistRDD(values: VertexRDD[Int], bucketNum :Int = 0 ): RDD[(Double, Double)] = {
+    val valuesCount = values.map(x => (x._2, 1L)).reduceByKey(_ + _).cache()
+
+    // TODO: Could we improve performance if we replace the following with a Spark accumulator in the previous map?
+    val valuesTotal = valuesCount.map(_._2).reduce(_ + _)
+    val keysTotal = valuesCount.map(_._1).reduce(_ + _)
+
+    var normDist = valuesCount.map(x => (x._1 / keysTotal.toDouble, x._2 / valuesTotal.toDouble))
+
+    if (bucketNum > 0) {
+      val bucketSize = 1.0 / bucketNum
+      normDist = normDist.map( x => (x._1 - x._1 % bucketSize, x._2)).reduceByKey(_ + _)
+    }
+
+    normDist.sortBy(_._2, ascending = false)
   }
 
   /**
@@ -95,8 +106,10 @@ object Veracity extends data_Parser {
    */
   def degree(seed: VertexRDD[Int], synth: VertexRDD[Int], saveDistAsCSV : Boolean = false, filePrefix: String = "",
               overwrite :Boolean = false): Double = {
-    val seedRDD = degreesDistRDD(seed).cache()
-    val synthRDD = degreesDistRDD(synth).cache()
+    val bucketNum = 100000
+
+    val seedRDD = normDistRDD(seed,bucketNum).cache()
+    val synthRDD = normDistRDD(synth, bucketNum).cache()
 
     if (saveDistAsCSV) {
       RDDtoCSV(seedRDD, filePrefix + "_degrees_dist.seed.csv", overwrite)
@@ -176,7 +189,7 @@ object Veracity extends data_Parser {
 
 
   /**
-    * Performs a bredth first search.  This algorithm is run in parrallel
+    * Performs a bredth first search.  This algorithm is run in parallel
     * @param n
     * @param hashmap
     * @return
