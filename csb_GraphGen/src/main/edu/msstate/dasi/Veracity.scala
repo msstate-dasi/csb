@@ -26,19 +26,19 @@ object Veracity extends data_Parser {
    */
   private def normDistRDD(keys: VertexRDD[Int], bucketNum :Int = 0 ): RDD[(Double, Double)] = {
     // Computes how many times each key appears
-    val keysCount = keys.map(x => (x._2, 1L)).reduceByKey(_ + _).cache()
+    val keysCount = keys.map { case (_, key)  => (key, 1L) }.reduceByKey(_ + _).cache()
 
     // Computes the sum of keys and the sum of values
     val keysSum = keysCount.keys.sum()
     val valuesSum = keysCount.values.sum()
 
     // Normalizes keys and values
-    var normDist = keysCount.map(x => (x._1 / keysSum, x._2 / valuesSum))
+    var normDist = keysCount.map { case (key, value) => (key / keysSum, value / valuesSum) }
 
     if (bucketNum > 0) {
       val bucketSize = 1.0 / bucketNum
       // Groups keys in buckets adding their values
-      normDist = normDist.map( x => (x._1 - x._1 % bucketSize, x._2)).reduceByKey(_ + _)
+      normDist = normDist.map { case (key, value) => (key - key % bucketSize, value) }.reduceByKey(_ + _)
     }
 
     normDist
