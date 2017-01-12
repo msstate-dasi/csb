@@ -30,7 +30,7 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, graphPs: GraphPersistence)
 
     //Run Kronecker with the adjacency matrix
     var startTime = System.nanoTime()
-    theGraph = generateKroGraph(sc, partitions, probMtx, genIter.toLong)
+    theGraph = generateKroGraph(probMtx, genIter.toLong)
     var timeSpan = (System.nanoTime() - startTime) / 1e9
     println()
     println("Finished generating Kronecker graph.")
@@ -83,17 +83,17 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, graphPs: GraphPersistence)
     startTime = System.nanoTime()
     val degVeracity = Veracity.degree(seedGraph.degrees, theGraph.degrees)
     timeSpan = (System.nanoTime() - startTime) / 1e9
-    println("\tDegree Veracity:" + degVeracity + " [" + timeSpan + "s]")
+    println(s"\tDegree Veracity: $degVeracity [$timeSpan s]")
 
     startTime = System.nanoTime()
     val inDegVeracity = Veracity.degree(seedGraph.inDegrees, theGraph.inDegrees)
     timeSpan = (System.nanoTime() - startTime) / 1e9
-    println("\n\tIn Degree Veracity: " + inDegVeracity + " [" + timeSpan + "s]")
+    println(s"\tIn Degree Veracity: $inDegVeracity [$timeSpan s]")
 
     startTime = System.nanoTime()
     val outDegVeracity = Veracity.degree(seedGraph.outDegrees, theGraph.outDegrees)
     timeSpan = (System.nanoTime() - startTime) / 1e9
-    println("\n\tOut Degree Veracity:" + outDegVeracity + " [" + timeSpan + "s]")
+    println(s"\tOut Degree Veracity: $outDegVeracity [$timeSpan s]")
 
     true
   }
@@ -118,7 +118,7 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, graphPs: GraphPersistence)
 //        i = sc.parallelize(for (j <- 0L to nEdges) yield j, partitions)
 //      }
 
-    i = sc.parallelize(for (j <- 0L to nEdges) yield j, partitions) //comment this is you uncomment the top code
+    i = sc.parallelize(for (j <- 0L to nEdges) yield j, partitions) //comment this if you uncomment the above code
 
 
     val edgeList: RDD[Edge[edgeData]] = i.flatMap { _ =>
@@ -195,7 +195,7 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, graphPs: GraphPersistence)
     * @param iter Number of iterations to perform kronecker
     * @return Graph containing vertices + edu.msstate.dasi.nodeData, edges + edu.msstate.dasi.edgeData
     */
-  def generateKroGraph(sc: SparkContext, partitions: Int, probMtx: Array[Array[Double]], iter: Long): Graph[nodeData, edgeData] = {
+  def generateKroGraph(probMtx: Array[Array[Double]], iter: Long): Graph[nodeData, edgeData] = {
 
     val n1 = probMtx.length
     println("n1 = " + n1)
@@ -227,9 +227,10 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, graphPs: GraphPersistence)
 
     while (nEdges > curEdges) {
       val oldRDD = edgeList
+
+      println(s"getKroRDD($nVerts, $nEdges - $curEdges, $n1, $iter, probToRCPosV_Broadcast)")
       val newRDD = getKroRDD(nVerts, nEdges - curEdges - 1, n1, iter, probToRCPosV_Broadcast)
 
-      println(s"getKroRDD(sc, $partitions, $nVerts, $nEdges - $curEdges, $n1, $iter, probToRCPosV_Broadcast)")
       edgeList = oldRDD.union(newRDD).map(entry => ((entry.srcId, entry.dstId), entry)).reduceByKey((left,_) => left).map(record => record._2).cache()
       curEdges = edgeList.count()
       println(curEdges)

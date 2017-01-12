@@ -29,11 +29,11 @@ object Veracity extends data_Parser {
     val keysCount = keys.map(x => (x._2, 1L)).reduceByKey(_ + _).cache()
 
     // Computes the sum of keys and the sum of values
-    val keysTotal = keysCount.keys.sum()
-    val valuesTotal = keysCount.values.sum()
+    val keysSum = keysCount.keys.sum()
+    val valuesSum = keysCount.values.sum()
 
     // Normalizes keys and values
-    var normDist = keysCount.map(x => (x._1 / keysTotal, x._2 / valuesTotal))
+    var normDist = keysCount.map(x => (x._1 / keysSum, x._2 / valuesSum))
 
     if (bucketNum > 0) {
       val bucketSize = 1.0 / bucketNum
