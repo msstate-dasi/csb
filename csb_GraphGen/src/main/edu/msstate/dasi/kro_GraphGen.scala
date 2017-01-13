@@ -25,12 +25,12 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, graphPs: GraphPersistence)
     println()
 
     println()
-    println("Running Kronecker with " + genIter + " iterations.")
+    println(s"Running Kronecker with $genIter iterations.")
     println()
 
     //Run Kronecker with the adjacency matrix
     var startTime = System.nanoTime()
-    theGraph = generateKroGraph(probMtx, genIter.toLong)
+    theGraph = generateKroGraph(probMtx, genIter)
     var timeSpan = (System.nanoTime() - startTime) / 1e9
     println()
     println("Finished generating Kronecker graph.")
@@ -98,38 +98,24 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, graphPs: GraphPersistence)
     true
   }
 
-  def getKroRDD(nVerts: Long, nEdges: Long, n1: Long, iter: Long, probToRCPosV_Broadcast: Broadcast[Array[(Double, Long, Long)]] ): RDD[Edge[edgeData]] = {
+  def getKroRDD(nVerts: Long, nEdges: Long, n1: Int, iter: Int, probToRCPosV_Broadcast: Broadcast[Array[(Double, Long, Long)]] ): RDD[Edge[edgeData]] = {
     // TODO: the algorithm must be commented and meaningful variable names must be used
+
     val r = Random
 
-    var i: RDD[Long] = sc.emptyRDD
-//    if( nEdges > Integer.MAX_VALUE/2)
-//      {
-//        var counter = 0L
-//        while((nEdges - counter) - Integer.MAX_VALUE/2 > 0L)
-//          {
-//             i = i.union(sc.parallelize(for(subCounter <- counter to counter + Integer.MAX_VALUE/2) yield subCounter, partitions))
-//            counter = counter + Integer.MAX_VALUE/2
-//          }
-//        i = i.union(sc.parallelize(for(subCounter <- counter to nEdges) yield subCounter, partitions))
-//      }
-//    else
-//      {
-//        i = sc.parallelize(for (j <- 0L to nEdges) yield j, partitions)
-//      }
+    val localPartitions = math.min(nEdges, partitions).toInt
+    val recordsPerPartition = math.min( (nEdges / localPartitions).toInt, Int.MaxValue )
+    val i = sc.parallelize(Seq[Char](), localPartitions).mapPartitions( _ =>  (1 to recordsPerPartition).iterator )
 
-    i = sc.parallelize(for (j <- 0L to nEdges) yield j, partitions) //comment this if you uncomment the above code
+    val edgeList = i.flatMap { _ =>
 
+      var range = nVerts
+      var srcId = 0L
+      var dstId = 0L
 
-    val edgeList: RDD[Edge[edgeData]] = i.flatMap { _ =>
-
-      var range: Long = nVerts
-      var srcId: VertexId = 0
-      var dstId: VertexId = 0
-
-      for ( _ <- 1L to iter ) {
-        val probToRCPosV: Array[(Double, Long, Long)] = probToRCPosV_Broadcast.value
-        val prob = r.nextFloat()
+      for ( _ <- 1 to iter ) {
+        val probToRCPosV = probToRCPosV_Broadcast.value
+        val prob = r.nextDouble()
         var n = 0
         while (prob > probToRCPosV(n)._1) {
           n += 1
@@ -145,8 +131,7 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, graphPs: GraphPersistence)
         //println("Row " + srcId + ", Col " + dstId)
       }
 
-      val tempEdgeData = edgeData()
-      Array(((srcId, dstId), Edge(srcId, dstId, tempEdgeData)))
+      Array( ( (srcId, dstId), Edge(srcId, dstId, edgeData()) ) )
 
     }.reduceByKey((left,_) => left).map(record => record._2)
 
@@ -195,7 +180,7 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, graphPs: GraphPersistence)
     * @param iter Number of iterations to perform kronecker
     * @return Graph containing vertices + edu.msstate.dasi.nodeData, edges + edu.msstate.dasi.edgeData
     */
-  def generateKroGraph(probMtx: Array[Array[Double]], iter: Long): Graph[nodeData, edgeData] = {
+  def generateKroGraph(probMtx: Array[Array[Double]], iter: Int): Graph[nodeData, edgeData] = {
 
     val n1 = probMtx.length
     println("n1 = " + n1)
@@ -209,8 +194,7 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, graphPs: GraphPersistence)
     var cumProb: Double = 0f
     var probToRCPosV_Private: Array[(Double, Long, Long)] = Array.empty
 
-    for(i <- 0 until n1)
-      for(j <- 0 until n1) {
+    for (i <- 0 until n1; j <- 0 until n1) {
         val prob = probMtx(i)(j)
         cumProb+=prob
 
@@ -221,26 +205,21 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, graphPs: GraphPersistence)
 
     val probToRCPosV_Broadcast = sc.broadcast(probToRCPosV_Private)
 
-    var edgeList: RDD[Edge[edgeData]] = getKroRDD(nVerts, nEdges, n1, iter, probToRCPosV_Broadcast).cache()
+    var curEdges: Long = 0
+    var edgeList: RDD[Edge[edgeData]] = sc.emptyRDD
 
-    var curEdges: Long = edgeList.count()
+    while ( curEdges < nEdges ) {
+      println("getKroRDD(" + nVerts + ", " + (nEdges-curEdges) + s", $n1, $iter, probToRCPosV_Broadcast)")
+      val newRDD = getKroRDD(nVerts, nEdges - curEdges, n1, iter, probToRCPosV_Broadcast)
 
-    while (nEdges > curEdges) {
-      val oldRDD = edgeList
-
-      println(s"getKroRDD($nVerts, $nEdges - $curEdges, $n1, $iter, probToRCPosV_Broadcast)")
-      val newRDD = getKroRDD(nVerts, nEdges - curEdges - 1, n1, iter, probToRCPosV_Broadcast)
-
-      edgeList = oldRDD.union(newRDD).map(entry => ((entry.srcId, entry.dstId), entry)).reduceByKey((left,_) => left).map(record => record._2).cache()
+      edgeList = edgeList.union(newRDD).map(entry => ((entry.srcId, entry.dstId), entry)).reduceByKey((left,_) => left).map(record => record._2).cache()
       curEdges = edgeList.count()
-      println(curEdges)
+      println(s"$curEdges $nEdges")
     }
+
     val newEdges = getMultiEdgesRDD(edgeList)
 
     println("Number of edges before union: "+edgeList.count())
-    if (newEdges == null) {
-      println("null!!")
-    } else println("Not null!!")
     val finalEdgeList = edgeList.union(newEdges).cache()
     println("Total # of Edges (including multi edges): " + finalEdgeList.count())
 
