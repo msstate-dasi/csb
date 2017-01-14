@@ -129,7 +129,7 @@ class ba_GraphGen(sc: SparkContext, partitions: Int, dataDist: DataDistributions
 
     for (i <- 1 to iters) {
       println(i + "/" + math.ceil(iter.toDouble / partitions).toLong)
-      for (_ <- 1 to nPI) {
+      for (_ <- 1 to nPI.toInt) {
         //String is IP:Port ex. "192.168.0.1:80"
         val tempNodeProp: nodeData = if (noPropFlag) nodeData() else {
           val DATA = dataDist.getIpSample
