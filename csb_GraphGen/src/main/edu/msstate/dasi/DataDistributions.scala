@@ -9,41 +9,280 @@ import org.apache.spark.SparkContext
 /**
  * Created by scordio on 12/17/16.
  */
-object DataDistributions extends Serializable{
-  val bucketSize = 10
+class DataDistributions(sc: SparkContext, augLogPath: String) extends Serializable{
+  private val bucketSize = 10
 
-  val fileDir = "."
+  private val fileDir = "."
 
-  var inDegreeDistribution :Array[(String, Double)] = null
-  var outDegreeDistribution :Array[(String, Double)] = _
-  var degreeDistribution :Array[(String, Double)] = _
+  private var inDegreeDistribution :Array[(String, Double)] = Array.empty
+  private var outDegreeDistribution :Array[(String, Double)] = Array.empty
+  private var degreeDistribution :Array[(String, Double)] = Array.empty
 
-  var outEdgesDistribution :Array[(Long, Double)] = _
-  var origBytesDistribution :Array[(Long, Double)] = _
+  private var outEdgesDistribution :Array[(Long, Double)] = Array.empty
+  private var origBytesDistribution :Array[(Long, Double)] = Array.empty
 
-  var origPktsDistributions: Map[Long, Array[(Long, Double)]] = Map()
-  var respBytesDistributions: Map[Long, Array[(Long, Double)]] = Map()
-  var durationDistributions: Map[Long, Array[(Double, Double)]] = Map()
-  var connStateDistributions: Map[Long, Array[(String, Double)]] = Map()
-  var protoDistributions: Map[Long, Array[(String, Double)]] = Map()
-  var origIPBytesDistributions: Map[Long, Array[(Long, Double)]] = Map()
-  var respIPBytesDistributions: Map[Long, Array[(Long, Double)]] = Map()
-  var respPktsDistributions: Map[Long, Array[(Long, Double)]] = Map()
-  var descriptionDistributions: Map[Long, Array[(String, Double)]] = Map()
+  private var origPktsDistributions: Map[Long, Array[(Long, Double)]] = Map.empty
+  private var respBytesDistributions: Map[Long, Array[(Long, Double)]] = Map.empty
+  private var durationDistributions: Map[Long, Array[(Double, Double)]] = Map.empty
+  private var connStateDistributions: Map[Long, Array[(String, Double)]] = Map.empty
+  private var protoDistributions: Map[Long, Array[(String, Double)]] = Map.empty
+  private var origIPBytesDistributions: Map[Long, Array[(Long, Double)]] = Map.empty
+  private var respIPBytesDistributions: Map[Long, Array[(Long, Double)]] = Map.empty
+  private var respPktsDistributions: Map[Long, Array[(Long, Double)]] = Map.empty
+  private var descriptionDistributions: Map[Long, Array[(String, Double)]] = Map.empty
 
-  val outEdgesDistributionFileName =     "outEdgesDistribution.ser"
-  val origBytesDistributionFileName =    "origBytesDistribution.ser"
-  val origPktsDistributionsFileName =    "origPktsDistributions.ser"
-  val respBytesDistributionsFileName =   "respBytesDistributions.ser"
-  val durationDistributionsFileName =    "durationDistributions.ser"
-  val connStateDistributionsFileName =   "connStateDistributions.ser"
-  val protoDistributionsFileName =       "protoDistributions.ser"
-  val origIPBytesDistributionsFileName = "origIPBytesDistributions.ser"
-  val respIPBytesDistributionsFileName = "respIPBytesDistributions.ser"
-  val respPktsDistributionsFileName =    "respPktsDistributions.ser"
-  val descriptionDistributionsFilename = "descDistributions.ser"
+  private val outEdgesDistributionFileName =     "outEdgesDistribution.ser"
+  private val origBytesDistributionFileName =    "origBytesDistribution.ser"
+  private val origPktsDistributionsFileName =    "origPktsDistributions.ser"
+  private val respBytesDistributionsFileName =   "respBytesDistributions.ser"
+  private val durationDistributionsFileName =    "durationDistributions.ser"
+  private val connStateDistributionsFileName =   "connStateDistributions.ser"
+  private val protoDistributionsFileName =       "protoDistributions.ser"
+  private val origIPBytesDistributionsFileName = "origIPBytesDistributions.ser"
+  private val respIPBytesDistributionsFileName = "respIPBytesDistributions.ser"
+  private val respPktsDistributionsFileName =    "respPktsDistributions.ser"
+  private val descriptionDistributionsFilename = "descDistributions.ser"
 
-  def isTcpUdp(line: String): Boolean = {
+
+  if (new File(fileDir + "/" + outEdgesDistributionFileName).exists() &&
+    new File(fileDir + "/" + origBytesDistributionFileName).exists() &&
+    new File(fileDir + "/" + origPktsDistributionsFileName).exists() &&
+    new File(fileDir + "/" + respBytesDistributionsFileName).exists() &&
+    new File(fileDir + "/" + durationDistributionsFileName).exists() &&
+    new File(fileDir + "/" + connStateDistributionsFileName).exists() &&
+    new File(fileDir + "/" + protoDistributionsFileName).exists() &&
+    new File(fileDir + "/" + origIPBytesDistributionsFileName).exists() &&
+    new File(fileDir + "/" + respIPBytesDistributionsFileName).exists() &&
+    new File(fileDir + "/" + respPktsDistributionsFileName).exists() &&
+    new File(fileDir + "/" + descriptionDistributionsFilename).exists()
+  // !gen_dist
+  ) {
+    readDistributionsFromDisk(fileDir)
+  } else {
+    if (inDegreeDistribution.isEmpty) {
+      val augLogFile = sc.textFile(augLogPath)
+
+      val augLogFiltered = augLogFile.mapPartitionsWithIndex { (idx, lines) => if (idx == 0) lines.drop(8) else lines }.filter(isTcpUdp)
+
+      /* Cache augLog because it is the basis for any distribution computation */ val augLog = augLogFiltered.map(line => parseAugLog(line)).persist()
+
+      // # of incoming edges per vertex
+      val inEdgesPerNode = augLog.map(entry => (entry.respIp, 1L)).reduceByKey(_ + _).persist()
+      val inEdgesTotal = inEdgesPerNode.map(_._2).reduce(_ + _)
+      inDegreeDistribution = inEdgesPerNode.map(x => (x._1, x._2 / inEdgesTotal.toDouble)).sortBy(_._2, false).collect()
+
+      // # of outgoing edges per vertex
+      val outEdgesPerNode = augLog.map(entry => (entry.origIp, 1L)).reduceByKey(_ + _).persist()
+      val outEdgesTotal = outEdgesPerNode.map(_._2).reduce(_ + _)
+      outDegreeDistribution = outEdgesPerNode.map(x => (x._1, x._2 / outEdgesTotal.toDouble)).sortBy(_._2, false).collect()
+
+      // # of incoming and outgoing edges per each vertex
+      val edgesPerNode = inEdgesPerNode.union(outEdgesPerNode).reduceByKey(_ + _)
+      val edgesTotal = inEdgesTotal + outEdgesTotal
+      degreeDistribution = edgesPerNode.map(x => (x._1, x._2 / edgesTotal.toDouble)).sortBy(_._2, false).collect()
+
+      outEdgesPerNode.unpersist()
+      inEdgesPerNode.unpersist()
+
+      // # of edges per (origIp -> respIp)
+      val outEdgesPerPair = augLog.map(entry => ((entry.origIp, entry.respIp), 1L)).reduceByKey(_ + _)
+      val pairsPerOutEdgeMultiplicity = outEdgesPerPair.map(x => (x._2, 1L)).reduceByKey(_ + _).sortBy(_._2, false).persist()
+      val pairsTotal = pairsPerOutEdgeMultiplicity.map(_._2).reduce(_ + _)
+      outEdgesDistribution = pairsPerOutEdgeMultiplicity.map(x => (x._1, x._2 / pairsTotal.toDouble)).sortBy(_._2, false).collect()
+      pairsPerOutEdgeMultiplicity.unpersist()
+
+      // Distribution of the number of origBytes
+      val edgesPerOrigBytes = augLog.map(entry => (entry.origBytes, 1L)).reduceByKey(_ + _).persist()
+      val origBytesDistributionRDD = edgesPerOrigBytes.map(x => (x._1, x._2 / outEdgesTotal.toDouble)).sortBy(_._2, false)
+
+      origBytesDistribution = origBytesDistributionRDD.collect()
+
+      val origBytesList = origBytesDistributionRDD.map(_._1).collect()
+      var totalsMap: Map[Long, Long] = Map()
+
+      println("origPktsDistributions");
+      {
+
+        /* Conditional distribution of origPkts given the origBytes */
+        //The following computes the sum of the occurrences of the packet counts given the byte counts
+        val reducedByKey = augLog.map(entry => ((entry.origBytes, entry.origPkts), 1)).reduceByKey(_ + _)
+        //The following sorts the count in descending order (it is now mapped as the second entry of the first element of the k,v tuple)
+        val orderedData = reducedByKey.map(entry => ((entry._1._1 , entry._2), entry._1._2)).sortBy(_._1, false).persist()
+        //The following computes the total of occurrences counted for each byte count
+        val occTotalRdd = reducedByKey.map(x => (x._1._1, x._2)).reduceByKey(_ + _)
+        val occTotalArray = occTotalRdd.collect()
+        for (x <- occTotalArray) {
+          totalsMap += (x._1 -> x._2)
+        }
+        for (origBytes <- origBytesList) {
+          val occTotal = totalsMap(origBytes)
+          val filteredOrderedData = orderedData.filter(entry => entry._1._1 == origBytes)
+          origPktsDistributions += (origBytes -> filteredOrderedData.map(x => (x._2, x._1._2 / occTotal.toDouble)).collect())
+        }
+      }
+
+      println("respBytesDistributions");
+      {
+        /* Conditional distribution of respBytes given the origBytes */
+        //The following computes the sum of the occurrences of the packet counts given the byte counts
+        val reducedByKey = augLog.map(entry => ((entry.origBytes, entry.respBytes), 1)).reduceByKey(_ + _)
+        //The following sorts the count in descending order (it is now mapped as the second entry of the first element of the k,v tuple)
+        val orderedData = reducedByKey.map(entry => ((entry._1._1, entry._2), entry._1._2)).sortBy(_._1, false).persist()
+        //The following computes the total of occurrences counted for each byte count
+        val occTotalRdd = reducedByKey.map(x => (x._1._1, x._2)).reduceByKey(_ + _)
+        val occTotalArray = occTotalRdd.collect()
+        for (x <- occTotalArray) {
+          totalsMap += (x._1 -> x._2)
+        }
+        for (origBytes <- origBytesList) {
+          val occTotal = totalsMap(origBytes)
+          val filteredOrderedData = orderedData.filter(entry => entry._1._1 == origBytes)
+          respBytesDistributions += (origBytes -> filteredOrderedData.map(x => (x._2, x._1._2 / occTotal.toDouble)).collect())
+        }
+      }
+
+      /* Conditional distribution of connState given the origBytes */
+
+      println("connStateDistributions");
+      {
+        /* Conditional distribution of respBytes given the origBytes */
+        //The following computes the sum of the occurrences of the packet counts given the byte counts
+        val reducedByKey = augLog.map(entry => ((entry.origBytes, entry.connState), 1)).reduceByKey(_ + _)
+        //The following sorts the count in descending order (it is now mapped as the second entry of the first element of the k,v tuple)
+        val orderedData = reducedByKey.map(entry => ((entry._1._1, entry._2), entry._1._2)).sortBy(_._1, false).persist()
+        //The following computes the total of occurrences counted for each byte count
+        val occTotalRdd = reducedByKey.map(x => (x._1._1, x._2)).reduceByKey(_ + _)
+        val occTotalArray = occTotalRdd.collect()
+        for (x <- occTotalArray) {
+          totalsMap += (x._1 -> x._2)
+        }
+        for (origBytes <- origBytesList) {
+          val occTotal = totalsMap(origBytes)
+          val filteredOrderedData = orderedData.filter(entry => entry._1._1 == origBytes)
+          connStateDistributions += (origBytes -> filteredOrderedData.map(x => (x._2, x._1._2 / occTotal.toDouble)).collect())
+        }
+      }
+
+      /* Conditional distribution of duration given the origBytes */ println("durationDistributions");
+      {
+        //The following computes the sum of the occurrences of the packet counts given the byte counts
+        val reducedByKey = augLog.map(entry => ((entry.origBytes, entry.duration), 1)).reduceByKey(_ + _)
+        //The following sorts the count in descending order (it is now mapped as the second entry of the first element of the k,v tuple)
+        val orderedData = reducedByKey.map(entry => ((entry._1._1, entry._2), entry._1._2)).sortBy(_._1, false).persist()
+        //The following computes the total of occurrences counted for each byte count
+        val occTotalRdd = reducedByKey.map(x => (x._1._1, x._2)).reduceByKey(_ + _)
+        val occTotalArray = occTotalRdd.collect()
+        for (x <- occTotalArray) {
+          totalsMap += (x._1 -> x._2)
+        }
+        for (origBytes <- origBytesList) {
+          val occTotal = totalsMap(origBytes)
+          val filteredOrderedData = orderedData.filter(entry => entry._1._1 == origBytes)
+          durationDistributions += (origBytes -> filteredOrderedData.map(x => (x._2, x._1._2 / occTotal.toDouble)).collect())
+        }
+      }
+
+      /* Conditional distribution of proto given the origBytes */ println("protoDistributions");
+      {
+        //The following computes the sum of the occurrences of the packet counts given the byte counts
+        val reducedByKey = augLog.map(entry => ((entry.origBytes, entry.proto), 1)).reduceByKey(_ + _)
+        //The following sorts the count in descending order (it is now mapped as the second entry of the first element of the k,v tuple)
+        val orderedData = reducedByKey.map(entry => ((entry._1._1, entry._2), entry._1._2)).sortBy(_._1, false).persist()
+        //The following computes the total of occurrences counted for each byte count
+        val occTotalRdd = reducedByKey.map(x => (x._1._1, x._2)).reduceByKey(_ + _)
+        val occTotalArray = occTotalRdd.collect()
+        for (x <- occTotalArray) {
+          totalsMap += (x._1 -> x._2)
+        }
+        for (origBytes <- origBytesList) {
+          val occTotal = totalsMap(origBytes)
+          val filteredOrderedData = orderedData.filter(entry => entry._1._1 == origBytes)
+          protoDistributions += (origBytes -> filteredOrderedData.map(x => (x._2, x._1._2 / occTotal.toDouble)).collect())
+        }
+      }
+
+      /* Conditional distribution of origIPBytes given the origBytes */ println("origIPBytesDistributions");
+      {
+        //The following computes the sum of the occurrences of the packet counts given the byte counts
+        val reducedByKey = augLog.map(entry => ((entry.origBytes, entry.origIpBytes), 1)).reduceByKey(_ + _)
+        //The following sorts the count in descending order (it is now mapped as the second entry of the first element of the k,v tuple)
+        val orderedData = reducedByKey.map(entry => ((entry._1._1, entry._2), entry._1._2)).sortBy(_._1, false).persist()
+        //The following computes the total of occurrences counted for each byte count
+        val occTotalRdd = reducedByKey.map(x => (x._1._1, x._2)).reduceByKey(_ + _)
+        val occTotalArray = occTotalRdd.collect()
+        for (x <- occTotalArray) {
+          totalsMap += (x._1 -> x._2)
+        }
+        for (origBytes <- origBytesList) {
+          val occTotal = totalsMap(origBytes)
+          val filteredOrderedData = orderedData.filter(entry => entry._1._1 == origBytes)
+          origIPBytesDistributions += (origBytes -> filteredOrderedData.map(x => (x._2, x._1._2 / occTotal.toDouble)).collect())
+        }
+      }
+
+      /* Conditional distribution of respIPBytes given the origBytes */ println("respIPBytesDistributions");
+      {
+        //The following computes the sum of the occurrences of the packet counts given the byte counts
+        val reducedByKey = augLog.map(entry => ((entry.origBytes, entry.respIpBytes), 1)).reduceByKey(_ + _)
+        //The following sorts the count in descending order (it is now mapped as the second entry of the first element of the k,v tuple)
+        val orderedData = reducedByKey.map(entry => ((entry._1._1, entry._2), entry._1._2)).sortBy(_._1, false).persist()
+        //The following computes the total of occurrences counted for each byte count
+        val occTotalRdd = reducedByKey.map(x => (x._1._1, x._2)).reduceByKey(_ + _)
+        val occTotalArray = occTotalRdd.collect()
+        for (x <- occTotalArray) {
+          totalsMap += (x._1 -> x._2)
+        }
+        for (origBytes <- origBytesList) {
+          val occTotal = totalsMap(origBytes)
+          val filteredOrderedData = orderedData.filter(entry => entry._1._1 == origBytes)
+          respIPBytesDistributions += (origBytes -> filteredOrderedData.map(x => (x._2, x._1._2 / occTotal.toDouble)).collect())
+        }
+      }
+
+      /* Conditional distribution of respPkts given the origBytes */ println("respPktsDistributions");
+      {
+        //The following computes the sum of the occurrences of the packet counts given the byte counts
+        val reducedByKey = augLog.map(entry => ((entry.origBytes, entry.respPkts), 1)).reduceByKey(_ + _)
+        //The following sorts the count in descending order (it is now mapped as the second entry of the first element of the k,v tuple)
+        val orderedData = reducedByKey.map(entry => ((entry._1._1, entry._2), entry._1._2)).sortBy(_._1, false).persist()
+        //The following computes the total of occurrences counted for each byte count
+        val occTotalRdd = reducedByKey.map(x => (x._1._1, x._2)).reduceByKey(_ + _)
+        val occTotalArray = occTotalRdd.collect()
+        for (x <- occTotalArray) {
+          totalsMap += (x._1 -> x._2)
+        }
+        for (origBytes <- origBytesList) {
+          val occTotal = totalsMap(origBytes)
+          val filteredOrderedData = orderedData.filter(entry => entry._1._1 == origBytes)
+          respPktsDistributions += (origBytes -> filteredOrderedData.map(x => (x._2, x._1._2 / occTotal.toDouble)).collect())
+        }
+      }
+
+      println("descDistributions");
+      {
+        /* Conditional distribution of origPkts given the origBytes */
+        //The following computes the sum of the occurrences of the packet counts given the byte counts
+        val reducedByKey = augLog.map(entry => ((entry.origBytes, entry.desc), 1)).reduceByKey(_ + _)
+        //The following sorts the count in descending order (it is now mapped as the second entry of the first element of the k,v tuple)
+        val orderedData = reducedByKey.map(entry => ((entry._1._1 , entry._2), entry._1._2)).sortBy(_._1, false).persist()
+        //The following computes the total of occurrences counted for each byte count
+        val occTotalRdd = reducedByKey.map(x => (x._1._1, x._2)).reduceByKey(_ + _)
+        val occTotalArray = occTotalRdd.collect()
+        for (x <- occTotalArray) {
+          totalsMap += (x._1 -> x._2)
+        }
+        for (origBytes <- origBytesList) {
+          val occTotal = totalsMap(origBytes)
+          val filteredOrderedData = orderedData.filter(entry => entry._1._1 == origBytes)
+          descriptionDistributions += (origBytes -> filteredOrderedData.map(x => (x._2, x._1._2 / occTotal.toDouble)).collect())
+        }
+      }
+    }
+    writeDistributionsToDisk(fileDir)
+  }
+
+
+  private def isTcpUdp(line: String): Boolean = {
     line.contains("tcp") || line.contains("udp")
   }
 
@@ -86,252 +325,6 @@ object DataDistributions extends Serializable{
       origBytes - origBytes % bucketSize, respBytes - respBytes % bucketSize, connState, missedBytes, history,
       origPkts - origPkts % bucketSize, origIpBytes - origIpBytes % bucketSize, respPkts - respPkts % bucketSize,
       respIpBytes - respIpBytes % bucketSize, tunnelParents, desc)
-  }
-
-  /**
-   *
-   *
-   * @param sc
-   * @param augLogPath
-   */
-  def init(sc: SparkContext, augLogPath: String, gen_dist: Boolean) = {
-
-    if (new File(fileDir + "/" + outEdgesDistributionFileName).exists() &&
-      new File(fileDir + "/" + origBytesDistributionFileName).exists() &&
-      new File(fileDir + "/" + origPktsDistributionsFileName).exists() &&
-      new File(fileDir + "/" + respBytesDistributionsFileName).exists() &&
-      new File(fileDir + "/" + durationDistributionsFileName).exists() &&
-      new File(fileDir + "/" + connStateDistributionsFileName).exists() &&
-      new File(fileDir + "/" + protoDistributionsFileName).exists() &&
-      new File(fileDir + "/" + origIPBytesDistributionsFileName).exists() &&
-      new File(fileDir + "/" + respIPBytesDistributionsFileName).exists() &&
-      new File(fileDir + "/" + respPktsDistributionsFileName).exists() &&
-      new File(fileDir + "/" + descriptionDistributionsFilename).exists()
-      // !gen_dist
-    ) {
-      readDistributionsFromDisk(fileDir)
-    } else {
-      if (inDegreeDistribution == null) {
-        val augLogFile = sc.textFile(augLogPath)
-
-        val augLogFiltered = augLogFile.mapPartitionsWithIndex { (idx, lines) => if (idx == 0) lines.drop(8) else lines }.filter(isTcpUdp)
-
-        /* Cache augLog because it is the basis for any distribution computation */ val augLog = augLogFiltered.map(line => parseAugLog(line)).persist()
-
-        // # of incoming edges per vertex
-        val inEdgesPerNode = augLog.map(entry => (entry.respIp, 1L)).reduceByKey(_ + _).persist()
-        val inEdgesTotal = inEdgesPerNode.map(_._2).reduce(_ + _)
-        inDegreeDistribution = inEdgesPerNode.map(x => (x._1, x._2 / inEdgesTotal.toDouble)).sortBy(_._2, false).collect()
-
-        // # of outgoing edges per vertex
-        val outEdgesPerNode = augLog.map(entry => (entry.origIp, 1L)).reduceByKey(_ + _).persist()
-        val outEdgesTotal = outEdgesPerNode.map(_._2).reduce(_ + _)
-        outDegreeDistribution = outEdgesPerNode.map(x => (x._1, x._2 / outEdgesTotal.toDouble)).sortBy(_._2, false).collect()
-
-        // # of incoming and outgoing edges per each vertex
-        val edgesPerNode = inEdgesPerNode.union(outEdgesPerNode).reduceByKey(_ + _)
-        val edgesTotal = inEdgesTotal + outEdgesTotal
-        degreeDistribution = edgesPerNode.map(x => (x._1, x._2 / edgesTotal.toDouble)).sortBy(_._2, false).collect()
-
-        outEdgesPerNode.unpersist()
-        inEdgesPerNode.unpersist()
-
-        // # of edges per (origIp -> respIp)
-        val outEdgesPerPair = augLog.map(entry => ((entry.origIp, entry.respIp), 1L)).reduceByKey(_ + _)
-        val pairsPerOutEdgeMultiplicity = outEdgesPerPair.map(x => (x._2, 1L)).reduceByKey(_ + _).sortBy(_._2, false).persist()
-        val pairsTotal = pairsPerOutEdgeMultiplicity.map(_._2).reduce(_ + _)
-        outEdgesDistribution = pairsPerOutEdgeMultiplicity.map(x => (x._1, x._2 / pairsTotal.toDouble)).sortBy(_._2, false).collect()
-        pairsPerOutEdgeMultiplicity.unpersist()
-
-        // Distribution of the number of origBytes
-        val edgesPerOrigBytes = augLog.map(entry => (entry.origBytes, 1L)).reduceByKey(_ + _).persist()
-        val origBytesDistributionRDD = edgesPerOrigBytes.map(x => (x._1, x._2 / outEdgesTotal.toDouble)).sortBy(_._2, false)
-
-        origBytesDistribution = origBytesDistributionRDD.collect()
-
-        val origBytesList = origBytesDistributionRDD.map(_._1).collect()
-        var totalsMap: Map[Long, Long] = Map()
-
-        println("origPktsDistributions");
-        {
-
-          /* Conditional distribution of origPkts given the origBytes */
-          //The following computes the sum of the occurrences of the packet counts given the byte counts
-          val reducedByKey = augLog.map(entry => ((entry.origBytes, entry.origPkts), 1)).reduceByKey(_ + _)
-          //The following sorts the count in descending order (it is now mapped as the second entry of the first element of the k,v tuple)
-          val orderedData = reducedByKey.map(entry => ((entry._1._1 , entry._2), entry._1._2)).sortBy(_._1, false).persist()
-          //The following computes the total of occurrences counted for each byte count
-          val occTotalRdd = reducedByKey.map(x => (x._1._1, x._2)).reduceByKey(_ + _)
-          val occTotalArray = occTotalRdd.collect()
-          for (x <- occTotalArray) {
-            totalsMap += (x._1 -> x._2)
-          }
-          for (origBytes <- origBytesList) {
-            val occTotal = totalsMap(origBytes)
-            val filteredOrderedData = orderedData.filter(entry => entry._1._1 == origBytes)
-            origPktsDistributions += (origBytes -> filteredOrderedData.map(x => (x._2, x._1._2 / occTotal.toDouble)).collect())
-          }
-        }
-
-        println("respBytesDistributions");
-        {
-          /* Conditional distribution of respBytes given the origBytes */
-          //The following computes the sum of the occurrences of the packet counts given the byte counts
-          val reducedByKey = augLog.map(entry => ((entry.origBytes, entry.respBytes), 1)).reduceByKey(_ + _)
-          //The following sorts the count in descending order (it is now mapped as the second entry of the first element of the k,v tuple)
-          val orderedData = reducedByKey.map(entry => ((entry._1._1, entry._2), entry._1._2)).sortBy(_._1, false).persist()
-          //The following computes the total of occurrences counted for each byte count
-          val occTotalRdd = reducedByKey.map(x => (x._1._1, x._2)).reduceByKey(_ + _)
-          val occTotalArray = occTotalRdd.collect()
-          for (x <- occTotalArray) {
-            totalsMap += (x._1 -> x._2)
-          }
-          for (origBytes <- origBytesList) {
-            val occTotal = totalsMap(origBytes)
-            val filteredOrderedData = orderedData.filter(entry => entry._1._1 == origBytes)
-            respBytesDistributions += (origBytes -> filteredOrderedData.map(x => (x._2, x._1._2 / occTotal.toDouble)).collect())
-          }
-        }
-
-        /* Conditional distribution of connState given the origBytes */
-
-        println("connStateDistributions");
-        {
-          /* Conditional distribution of respBytes given the origBytes */
-          //The following computes the sum of the occurrences of the packet counts given the byte counts
-          val reducedByKey = augLog.map(entry => ((entry.origBytes, entry.connState), 1)).reduceByKey(_ + _)
-          //The following sorts the count in descending order (it is now mapped as the second entry of the first element of the k,v tuple)
-          val orderedData = reducedByKey.map(entry => ((entry._1._1, entry._2), entry._1._2)).sortBy(_._1, false).persist()
-          //The following computes the total of occurrences counted for each byte count
-          val occTotalRdd = reducedByKey.map(x => (x._1._1, x._2)).reduceByKey(_ + _)
-          val occTotalArray = occTotalRdd.collect()
-          for (x <- occTotalArray) {
-            totalsMap += (x._1 -> x._2)
-          }
-          for (origBytes <- origBytesList) {
-            val occTotal = totalsMap(origBytes)
-            val filteredOrderedData = orderedData.filter(entry => entry._1._1 == origBytes)
-            connStateDistributions += (origBytes -> filteredOrderedData.map(x => (x._2, x._1._2 / occTotal.toDouble)).collect())
-          }
-        }
-
-        /* Conditional distribution of duration given the origBytes */ println("durationDistributions");
-        {
-          //The following computes the sum of the occurrences of the packet counts given the byte counts
-          val reducedByKey = augLog.map(entry => ((entry.origBytes, entry.duration), 1)).reduceByKey(_ + _)
-          //The following sorts the count in descending order (it is now mapped as the second entry of the first element of the k,v tuple)
-          val orderedData = reducedByKey.map(entry => ((entry._1._1, entry._2), entry._1._2)).sortBy(_._1, false).persist()
-          //The following computes the total of occurrences counted for each byte count
-          val occTotalRdd = reducedByKey.map(x => (x._1._1, x._2)).reduceByKey(_ + _)
-          val occTotalArray = occTotalRdd.collect()
-          for (x <- occTotalArray) {
-            totalsMap += (x._1 -> x._2)
-          }
-          for (origBytes <- origBytesList) {
-            val occTotal = totalsMap(origBytes)
-            val filteredOrderedData = orderedData.filter(entry => entry._1._1 == origBytes)
-            durationDistributions += (origBytes -> filteredOrderedData.map(x => (x._2, x._1._2 / occTotal.toDouble)).collect())
-          }
-        }
-
-        /* Conditional distribution of proto given the origBytes */ println("protoDistributions");
-        {
-          //The following computes the sum of the occurrences of the packet counts given the byte counts
-          val reducedByKey = augLog.map(entry => ((entry.origBytes, entry.proto), 1)).reduceByKey(_ + _)
-          //The following sorts the count in descending order (it is now mapped as the second entry of the first element of the k,v tuple)
-          val orderedData = reducedByKey.map(entry => ((entry._1._1, entry._2), entry._1._2)).sortBy(_._1, false).persist()
-          //The following computes the total of occurrences counted for each byte count
-          val occTotalRdd = reducedByKey.map(x => (x._1._1, x._2)).reduceByKey(_ + _)
-          val occTotalArray = occTotalRdd.collect()
-          for (x <- occTotalArray) {
-            totalsMap += (x._1 -> x._2)
-          }
-          for (origBytes <- origBytesList) {
-            val occTotal = totalsMap(origBytes)
-            val filteredOrderedData = orderedData.filter(entry => entry._1._1 == origBytes)
-            protoDistributions += (origBytes -> filteredOrderedData.map(x => (x._2, x._1._2 / occTotal.toDouble)).collect())
-          }
-        }
-
-        /* Conditional distribution of origIPBytes given the origBytes */ println("origIPBytesDistributions");
-        {
-          //The following computes the sum of the occurrences of the packet counts given the byte counts
-          val reducedByKey = augLog.map(entry => ((entry.origBytes, entry.origIpBytes), 1)).reduceByKey(_ + _)
-          //The following sorts the count in descending order (it is now mapped as the second entry of the first element of the k,v tuple)
-          val orderedData = reducedByKey.map(entry => ((entry._1._1, entry._2), entry._1._2)).sortBy(_._1, false).persist()
-          //The following computes the total of occurrences counted for each byte count
-          val occTotalRdd = reducedByKey.map(x => (x._1._1, x._2)).reduceByKey(_ + _)
-          val occTotalArray = occTotalRdd.collect()
-          for (x <- occTotalArray) {
-            totalsMap += (x._1 -> x._2)
-          }
-          for (origBytes <- origBytesList) {
-            val occTotal = totalsMap(origBytes)
-            val filteredOrderedData = orderedData.filter(entry => entry._1._1 == origBytes)
-            origIPBytesDistributions += (origBytes -> filteredOrderedData.map(x => (x._2, x._1._2 / occTotal.toDouble)).collect())
-          }
-        }
-
-        /* Conditional distribution of respIPBytes given the origBytes */ println("respIPBytesDistributions");
-        {
-          //The following computes the sum of the occurrences of the packet counts given the byte counts
-          val reducedByKey = augLog.map(entry => ((entry.origBytes, entry.respIpBytes), 1)).reduceByKey(_ + _)
-          //The following sorts the count in descending order (it is now mapped as the second entry of the first element of the k,v tuple)
-          val orderedData = reducedByKey.map(entry => ((entry._1._1, entry._2), entry._1._2)).sortBy(_._1, false).persist()
-          //The following computes the total of occurrences counted for each byte count
-          val occTotalRdd = reducedByKey.map(x => (x._1._1, x._2)).reduceByKey(_ + _)
-          val occTotalArray = occTotalRdd.collect()
-          for (x <- occTotalArray) {
-            totalsMap += (x._1 -> x._2)
-          }
-          for (origBytes <- origBytesList) {
-            val occTotal = totalsMap(origBytes)
-            val filteredOrderedData = orderedData.filter(entry => entry._1._1 == origBytes)
-            respIPBytesDistributions += (origBytes -> filteredOrderedData.map(x => (x._2, x._1._2 / occTotal.toDouble)).collect())
-          }
-        }
-
-        /* Conditional distribution of respPkts given the origBytes */ println("respPktsDistributions");
-        {
-          //The following computes the sum of the occurrences of the packet counts given the byte counts
-          val reducedByKey = augLog.map(entry => ((entry.origBytes, entry.respPkts), 1)).reduceByKey(_ + _)
-          //The following sorts the count in descending order (it is now mapped as the second entry of the first element of the k,v tuple)
-          val orderedData = reducedByKey.map(entry => ((entry._1._1, entry._2), entry._1._2)).sortBy(_._1, false).persist()
-          //The following computes the total of occurrences counted for each byte count
-          val occTotalRdd = reducedByKey.map(x => (x._1._1, x._2)).reduceByKey(_ + _)
-          val occTotalArray = occTotalRdd.collect()
-          for (x <- occTotalArray) {
-            totalsMap += (x._1 -> x._2)
-          }
-          for (origBytes <- origBytesList) {
-            val occTotal = totalsMap(origBytes)
-            val filteredOrderedData = orderedData.filter(entry => entry._1._1 == origBytes)
-            respPktsDistributions += (origBytes -> filteredOrderedData.map(x => (x._2, x._1._2 / occTotal.toDouble)).collect())
-          }
-        }
-
-        println("descDistributions");
-        {
-          /* Conditional distribution of origPkts given the origBytes */
-          //The following computes the sum of the occurrences of the packet counts given the byte counts
-          val reducedByKey = augLog.map(entry => ((entry.origBytes, entry.desc), 1)).reduceByKey(_ + _)
-          //The following sorts the count in descending order (it is now mapped as the second entry of the first element of the k,v tuple)
-          val orderedData = reducedByKey.map(entry => ((entry._1._1 , entry._2), entry._1._2)).sortBy(_._1, false).persist()
-          //The following computes the total of occurrences counted for each byte count
-          val occTotalRdd = reducedByKey.map(x => (x._1._1, x._2)).reduceByKey(_ + _)
-          val occTotalArray = occTotalRdd.collect()
-          for (x <- occTotalArray) {
-            totalsMap += (x._1 -> x._2)
-          }
-          for (origBytes <- origBytesList) {
-            val occTotal = totalsMap(origBytes)
-            val filteredOrderedData = orderedData.filter(entry => entry._1._1 == origBytes)
-            descriptionDistributions += (origBytes -> filteredOrderedData.map(x => (x._2, x._1._2 / occTotal.toDouble)).collect())
-          }
-        }
-      }
-      writeDistributionsToDisk(fileDir)
-    }
   }
 
   def  writeDistributionsToDisk(fileDir: String) = {

@@ -304,7 +304,8 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
     val logAug = new log_Augment()
     logAug.run(sc, params.alertLog, params.connLog, params.augLog)
 
-    DataDistributions.init(sc, params.augLog, true)
+//    DataDistributions.init(sc, params.augLog, true)
+    new DataDistributions(sc, params.augLog)
 
     val (vRDD, eRDD): (RDD[(VertexId, nodeData)], RDD[Edge[edgeData]]) = readFromConnFile(sc, params.augLog)
 
@@ -323,47 +324,38 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
 
     val seed_edges = theGraph.edges.coalesce(1, true).collect()
     val seed_edge_file = new File(params.seedEdges)
-//
+
     bw = new BufferedWriter(new FileWriter(seed_edge_file))
-//    bw.write("Source,Target,Weight\n")
+
     for (entry <- seed_edges) {
       bw.write(entry.srcId + "," + entry.dstId + "," + entry.attr + "\n")
     }
     bw.close()
 
-    //these functions are repeats of the above code
-//        saveGraphEdges(sc, params.seedEdges)
-//        saveGraphVerts(sc, params.seedVertices)
-
-
     true
   }
 
   def run_ba(sc: SparkContext, params: Params): Boolean = {
-    DataDistributions.init(sc, params.augLog, false)
-
     var graphPs: GraphPersistence = null
     params.backend match {
       case "fs" => graphPs = new SparkPersistence(params.outputGraphPrefix)
       case "neo4j" => graphPs = new Neo4jPersistence(sc)
     }
 
-    val baGraph = new ba_GraphGen(sc, params.partitions, graphPs)
+    val baGraph = new ba_GraphGen(sc, params.partitions, new DataDistributions(sc, params.augLog), graphPs)
     baGraph.run(params.seedVertices, params.seedEdges, params.baIter, params.numNodesPerIter, params.noProp, params.debug)
 
     true
   }
 
   def run_kro(sc: SparkContext, params: Params): Boolean = {
-    DataDistributions.init(sc, params.augLog, false)
-
     var graphPs: GraphPersistence = null
     params.backend match {
       case "fs" => graphPs = new SparkPersistence(params.outputGraphPrefix)
       case "neo4j" => graphPs = new Neo4jPersistence(sc)
     }
 
-    val kroGraph = new kro_GraphGen(sc, params.partitions, graphPs)
+    val kroGraph = new kro_GraphGen(sc, params.partitions, new DataDistributions(sc, params.augLog), graphPs)
     kroGraph.run(params.seedMtx, params.kroIter, params.seedVertices, params.seedEdges, params.noProp, params.debug)
 
     true

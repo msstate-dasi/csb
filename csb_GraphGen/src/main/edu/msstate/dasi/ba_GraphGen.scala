@@ -10,7 +10,7 @@ import scala.util.Random
 /**
   * Created by spencer on 11/3/16.
   */
-class ba_GraphGen(sc: SparkContext, partitions: Int, graphPs: GraphPersistence) extends base_GraphGen with data_Parser {
+class ba_GraphGen(sc: SparkContext, partitions: Int, dataDist: DataDistributions, graphPs: GraphPersistence) extends base_GraphGen with data_Parser {
 
   def run(seedVertFile: String, seedEdgeFile: String, baIter: Long, nodesPerIter: Long, noPropFlag: Boolean, debugFlag: Boolean): Boolean = {
 
@@ -41,26 +41,27 @@ class ba_GraphGen(sc: SparkContext, partitions: Int, graphPs: GraphPersistence) 
     println("\tTotal time elapsed: " + timeSpan.toString)
     println()
 
+    val dataDistBroadcast = sc.broadcast(dataDist)
 
     if(!noPropFlag) {
       println()
       println("Generating Edge and Node properties")
       startTime = System.nanoTime()
       val eRDD: RDD[Edge[edgeData]] = theGraph.edges.map(record => Edge(record.srcId, record.dstId, {
-        val ORIGBYTES = DataDistributions.getOrigBytesSample
-        val ORIGIPBYTE = DataDistributions.getOrigIPBytesSample(ORIGBYTES)
-        val CONNECTSTATE = DataDistributions.getConnectionStateSample(ORIGBYTES)
-        val PROTOCOL = DataDistributions.getProtoSample(ORIGBYTES)
-        val DURATION = DataDistributions.getDurationSample(ORIGBYTES)
-        val ORIGPACKCNT = DataDistributions.getOrigPktsSample(ORIGBYTES)
-        val RESPBYTECNT = DataDistributions.getRespBytesSample(ORIGBYTES)
-        val RESPIPBYTECNT = DataDistributions.getRespIPBytesSample(ORIGBYTES)
-        val RESPPACKCNT = DataDistributions.getRespPktsSample(ORIGBYTES)
-        val DESC        = DataDistributions.getDescSample(ORIGBYTES)
+        val ORIGBYTES = dataDistBroadcast.value.getOrigBytesSample
+        val ORIGIPBYTE = dataDistBroadcast.value.getOrigIPBytesSample(ORIGBYTES)
+        val CONNECTSTATE = dataDistBroadcast.value.getConnectionStateSample(ORIGBYTES)
+        val PROTOCOL = dataDistBroadcast.value.getProtoSample(ORIGBYTES)
+        val DURATION = dataDistBroadcast.value.getDurationSample(ORIGBYTES)
+        val ORIGPACKCNT = dataDistBroadcast.value.getOrigPktsSample(ORIGBYTES)
+        val RESPBYTECNT = dataDistBroadcast.value.getRespBytesSample(ORIGBYTES)
+        val RESPIPBYTECNT = dataDistBroadcast.value.getRespIPBytesSample(ORIGBYTES)
+        val RESPPACKCNT = dataDistBroadcast.value.getRespPktsSample(ORIGBYTES)
+        val DESC        = dataDistBroadcast.value.getDescSample(ORIGBYTES)
         edgeData("", PROTOCOL, DURATION, ORIGBYTES, RESPBYTECNT, CONNECTSTATE, ORIGPACKCNT, ORIGIPBYTE, RESPPACKCNT, RESPIPBYTECNT, DESC)
       }))
       val vRDD: RDD[(VertexId, nodeData)] = theGraph.vertices.map(record => (record._1, {
-        val DATA = DataDistributions.getIpSample
+        val DATA = dataDistBroadcast.value.getIpSample
         nodeData(DATA)
       }))
       theGraph = Graph(vRDD, eRDD, nodeData())
@@ -126,12 +127,12 @@ class ba_GraphGen(sc: SparkContext, partitions: Int, graphPs: GraphPersistence) 
       nPI = iter; 1
     }
 
-    for (i <- 1L to iters) {
+    for (i <- 1 to iters) {
       println(i + "/" + math.ceil(iter.toDouble / partitions).toLong)
-      for (_ <- 1L to nPI) {
+      for (_ <- 1 to nPI) {
         //String is IP:Port ex. "192.168.0.1:80"
         val tempNodeProp: nodeData = if (noPropFlag) nodeData() else {
-          val DATA = DataDistributions.getIpSample
+          val DATA = dataDist.getIpSample
           nodeData(DATA)
         }
         val srcId: VertexId =
@@ -152,7 +153,7 @@ class ba_GraphGen(sc: SparkContext, partitions: Int, graphPs: GraphPersistence) 
         vertToAdd = vertToAdd :+ (srcId, tempNodeProp)
         degList = degList :+ (srcId, 0) //initial degree of 0
 
-        val numEdgesToAdd = DataDistributions.getOutEdgeSample
+        val numEdgesToAdd = dataDist.getOutEdgeSample
 
         for (_ <- 1L to numEdgesToAdd.toLong) {
           val attachTo: Long = (Math.abs(r.nextLong()) % (degSum - 1)) + 1

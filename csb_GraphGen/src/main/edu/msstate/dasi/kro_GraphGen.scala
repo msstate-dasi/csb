@@ -12,7 +12,7 @@ import scala.util.Random
   *
   * edu.msstate.dasi.kro_GraphGen: Kronecker based Graph generation given seed matrix.
   */
-class kro_GraphGen(sc: SparkContext, partitions: Int, graphPs: GraphPersistence) extends base_GraphGen with data_Parser {
+class kro_GraphGen(sc: SparkContext, partitions: Int, dataDist: DataDistributions, graphPs: GraphPersistence) extends base_GraphGen with data_Parser {
   def run(mtxFile: String, genIter: Int, seedVertFile: String, seedEdgeFile: String, noPropFlag: Boolean, debugFlag: Boolean): Boolean = {
 
     //val probMtx: Array[Array[Float]] = Array(Array(0.1f, 0.9f), Array(0.9f, 0.5f))
@@ -37,26 +37,27 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, graphPs: GraphPersistence)
     println("\tTotal time elapsed: " + timeSpan.toString)
     println()
 
+    val dataDistBroadcast = sc.broadcast(dataDist)
 
     if(!noPropFlag) {
       println()
       println("Generating Edge and Node properties")
       startTime = System.nanoTime()
       val eRDD: RDD[Edge[edgeData]] = theGraph.edges.map(record => Edge(record.srcId, record.dstId, {
-        val ORIGBYTES = DataDistributions.getOrigBytesSample
-        val ORIGIPBYTE = DataDistributions.getOrigIPBytesSample(ORIGBYTES)
-        val CONNECTSTATE = DataDistributions.getConnectionStateSample(ORIGBYTES)
-        val PROTOCOL = DataDistributions.getProtoSample(ORIGBYTES)
-        val DURATION = DataDistributions.getDurationSample(ORIGBYTES)
-        val ORIGPACKCNT = DataDistributions.getOrigPktsSample(ORIGBYTES)
-        val RESPBYTECNT = DataDistributions.getRespBytesSample(ORIGBYTES)
-        val RESPIPBYTECNT = DataDistributions.getRespIPBytesSample(ORIGBYTES)
-        val RESPPACKCNT = DataDistributions.getRespPktsSample(ORIGBYTES)
-        val DESC = DataDistributions.getDescSample(ORIGBYTES)
+        val ORIGBYTES = dataDistBroadcast.value.getOrigBytesSample
+        val ORIGIPBYTE = dataDistBroadcast.value.getOrigIPBytesSample(ORIGBYTES)
+        val CONNECTSTATE = dataDistBroadcast.value.getConnectionStateSample(ORIGBYTES)
+        val PROTOCOL = dataDistBroadcast.value.getProtoSample(ORIGBYTES)
+        val DURATION = dataDistBroadcast.value.getDurationSample(ORIGBYTES)
+        val ORIGPACKCNT = dataDistBroadcast.value.getOrigPktsSample(ORIGBYTES)
+        val RESPBYTECNT = dataDistBroadcast.value.getRespBytesSample(ORIGBYTES)
+        val RESPIPBYTECNT = dataDistBroadcast.value.getRespIPBytesSample(ORIGBYTES)
+        val RESPPACKCNT = dataDistBroadcast.value.getRespPktsSample(ORIGBYTES)
+        val DESC = dataDistBroadcast.value.getDescSample(ORIGBYTES)
         edgeData("", PROTOCOL, DURATION, ORIGBYTES, RESPBYTECNT, CONNECTSTATE, ORIGPACKCNT, ORIGIPBYTE, RESPPACKCNT, RESPIPBYTECNT, DESC)
       }))
       val vRDD: RDD[(VertexId, nodeData)] = theGraph.vertices.map(record => (record._1, {
-        val DATA = DataDistributions.getIpSample
+        val DATA = dataDistBroadcast.value.getIpSample
         nodeData(DATA)
       }))
       theGraph = Graph(vRDD, eRDD, nodeData())
@@ -149,20 +150,22 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, graphPs: GraphPersistence)
    *          to the one returned by Kronecker algorithm.
    */
   def getMultiEdgesRDD(edgeList: RDD[Edge[edgeData]]): RDD[Edge[edgeData]] = {
-    val outEdgesDistribution = sc.broadcast(DataDistributions.outEdgesDistribution)
+//    val outEdgesDistribution = sc.broadcast(dataDist)
+    val dataDistBroadcast = sc.broadcast(dataDist)
 
     val multiEdgeList: RDD[Edge[edgeData]] = edgeList.flatMap { edge =>
-      val r = Random.nextDouble()
-      var accumulator :Double= 0
+//      val r = Random.nextDouble()
+//      var accumulator :Double= 0
+//
+//      val iterator = outEdgesDistribution.value.iterator
+//      var outElem : (Long, Double) = null
+//      while (accumulator < r && iterator.hasNext) {
+//        outElem = iterator.next()
+//        accumulator = accumulator + outElem._2
+//      }
 
-      val iterator = outEdgesDistribution.value.iterator
-      var outElem : (Long, Double) = null
-      while (accumulator < r && iterator.hasNext) {
-        outElem = iterator.next()
-        accumulator = accumulator + outElem._2
-      }
-
-      val multiEdgesNum = outElem._1
+//      val multiEdgesNum = outElem._1
+      val multiEdgesNum = dataDistBroadcast.value.getOutEdgeSample
       var multiEdges : Array[Edge[edgeData]] = Array()
 
       for ( _ <- 1L until multiEdgesNum.toLong ) {
