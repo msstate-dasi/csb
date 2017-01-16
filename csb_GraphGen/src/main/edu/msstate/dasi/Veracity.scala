@@ -5,6 +5,7 @@ import java.io.{BufferedWriter, File}
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs._
 import org.apache.spark.SparkContext
+import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.graphx._
 import org.apache.spark.rdd.RDD
 
@@ -26,7 +27,7 @@ object Veracity extends data_Parser {
    */
   private def normDistRDD(keys: VertexRDD[Int], bucketNum :Int = 0 ): RDD[(Double, Double)] = {
     // Computes how many times each key appears
-    val keysCount = keys.map { case (_, key)  => (key, 1L) }.reduceByKey(_ + _).cache()
+    val keysCount = keys.map { case (_, key)  =>  (key, 1L) }.reduceByKey(_ + _).cache()
 
     // Computes the sum of keys and the sum of values
     val keysSum = keysCount.keys.sum()
@@ -142,15 +143,6 @@ object Veracity extends data_Parser {
     override def compareTo(dp: DistanceNodePair): Int = (this.distance - dp.distance).toInt
   }
 
-  class Node(var id: VertexId) extends java.io.Serializable {
-
-    var children: ArrayBuffer[Long] = new ArrayBuffer[Long]()
-
-    def addChildren(c: Long) {
-      children.append(c)
-    }
-  }
-
   class NodeVisitCounter extends java.io.Serializable {
 
     var totalPairs: Long = _
@@ -185,21 +177,34 @@ object Veracity extends data_Parser {
     effectiveDiameter
   }
 
+  /**
+    * This function is call when distance node pairs needs to be computed to compute the effective diameter
+    * @param sc spark context
+    * @param graph the graph to compute the effective diameter
+    * @param partitions number of partitions for spark rdd's
+    * @return
+    */
+  def computeEffectiveDiameter(sc: SparkContext, graph: Graph[nodeData, edgeData], partitions: Int): Double =
+  {
+    val (distanceNodePair, totalPairs) = getNodePairDistances(sc, graph, partitions)
+    return computeEffectiveDiameter(distanceNodePair, totalPairs)
+  }
+
 
   /**
     * Performs a bredth first search.  This algorithm is run in parallel
-    * @param n
-    * @param hashmap
+    * @param nID node id
+    * @param hashmap the hashmap that gives the children for every node
     * @return
     */
-  def BFSNode(n: Node, hashmap: scala.collection.Map[Long, Node]): NodeVisitCounter = {
+  def BFSNode(nID: Long, hashmap: Broadcast[collection.Map[Long, Array[Long]]]): NodeVisitCounter = {
 
 
-    val q = new Queue[Node]()
-    q.enqueue(n)
+    val q = new Queue[Long]()
+    q.enqueue(nID)
     val visited = new mutable.HashSet[VertexId]()
     val levelSize = new mutable.HashMap[Long, Long]()
-    visited.add(n.id)
+    visited.add(nID)
     var totalPairs: Long = 0
     val visitCounter = new NodeVisitCounter()
     var level = 0
@@ -212,25 +217,25 @@ object Veracity extends data_Parser {
         levelSize.put(level, size);
       }
 
-      var list: Array[Node] = new Array[Node](size)
+      var list: Array[Long] = new Array[Long](size)
       for(x <- 0 until size)
       {
         list(x) = q.dequeue()
       }
-      var children: ArrayBuffer[Long] = null
+      var children: Array[Long] = null
       for(x <- list)
       {
 
-        var node: Node = x
+        var node: Long = x
 
-        children = node.children
+        children = hashmap.value.get(x).head
         for(c: Long <- children)
         {
-          val childNode = hashmap.get(c).head
-          if(!visited.contains(childNode.id))
+          val childNode = hashmap.value.get(c).head
+          if(!visited.contains(c))
           {
-            q.enqueue(childNode)
-            visited.add(childNode.id)
+              q.enqueue(c)
+              visited.add(c)
           }
         }
       }
@@ -273,28 +278,67 @@ object Veracity extends data_Parser {
     return merged
   }
 
-  def HopPlot(sc: SparkContext, nodes: Array[(Node, Array[Node])], hashmap: scala.collection.Map[Long, Node], filename: String)
+  /**
+    * performs hop plot
+    * @param sc spark context
+    * @param filename file to save data once computed
+    * @param graph the graph to evaluate the hop plot
+    * @param partitions the number of paritions for spark rdd's
+    */
+  def HopPlot(sc: SparkContext, filename: String, graph: Graph[nodeData, edgeData], partitions: Int)
   {
-    //    var levelSizeMerged = new mutable.HashMap[Long, Long]()
+
+
+    val (distancePairs, totalPairs) = getNodePairDistances(sc, graph, partitions)
+
+    println("Writting to file")
+    val file = new File(filename)
+    val bw = new BufferedWriter(new java.io.FileWriter(file))
+
+    //uncomment if you want to view the data to stdout
+//    for (dp: DistanceNodePair <- distancePairs)
+//    {
+//      bw.write("Distance " + dp.distance + ", " + dp.totalPairs + "\n")
+//    }
+    bw.write("\n")
+    bw.write("Effective Diameter(Average Hop): " + computeEffectiveDiameter(distancePairs, totalPairs).toString)
+    bw.close()
+    println("Done writting to file")
+  }
+
+
+
+
+  /**
+    * This function computes all the distances between nodes in the graph (it does this by running BFS on every node
+    * @param sc spark context
+    * @param graph the graph the get the node distances from
+    * @param partitions the number of paritions for spark rdd's
+    *  @return an array of the distance and number of nodes that can be reached at the distance along with the total number of pairs in the graph
+    */
+  def getNodePairDistances(sc: SparkContext, graph: Graph[nodeData, edgeData], partitions: Int): (ArrayBuffer[DistanceNodePair], Long) =
+  {
+    val allEdges = getAllEdges(sc, graph.edges)
     var totalPairs: Long = 0
+    val broadcastNodeSet = sc.broadcast(allEdges.collectAsMap())
+
+    println("done prepping for hop plot")
+
 
     //paralize doing BFS
     println("doing BFS search please wait....")
-    val BFSNodes = sc.parallelize(nodes).map(record => BFSNode(record._1, hashmap)).persist()
-    BFSNodes.count()
+    val BFSNodes = allEdges.map(record => record._1).repartition(partitions).map(record => BFSNode(record, broadcastNodeSet)).persist()
+    BFSNodes.count() //forces the BFS to execute
     println("done")
-    //get total number of pairs (this number is messed up
+
+
+    //after it is over count all the pairs
     totalPairs = BFSNodes.map(record => record.totalPairs).reduce(_ + _) / 2 //not required but to be correct divide the pairs by two since each pair is counted twice
     println("total pairs " + totalPairs)
+
+
     var levelSizeMerged = BFSNodes.map(record => record.levelSize).reduce((record1, record2) => this.mergeMaps(record1, record2))
 
-    //    for (node <- nodes)
-    //    {
-    //      val counter = BFSNode(node)
-    //      totalPairs += counter.totalPairs
-    //      val merged = mergeMaps(levelSizeMerged, counter.levelSize)
-    //      levelSizeMerged = merged
-    //    }
     println(levelSizeMerged.size)
     var distancePairs = new ArrayBuffer[DistanceNodePair]()
 
@@ -305,64 +349,94 @@ object Veracity extends data_Parser {
       distancePairs.append(dp)
     }
     distancePairs = distancePairs.sortBy(_.distance)
-    //    Collections.sort(distancePairs)
     for (i <- 1 until distancePairs.size)
     {
       val dp = distancePairs(i)
       dp.totalPairs += distancePairs(i - 1).totalPairs
     }
 
-    //write info to file
-//    val fw = new FileWriter(new File("hop-plotData"))
-//    val bw = new BufferedWriter(fw.osw)
+    return (distancePairs, totalPairs)
 
-    val file = new File(filename)
-    val bw = new BufferedWriter(new java.io.FileWriter(file))
-
-    for (dp: DistanceNodePair <- distancePairs)
-    {
-      bw.write("Distance " + dp.distance + ", " + dp.totalPairs + "\n")
-//      println("Distance " + dp.distance + ", " + dp.totalPairs)
-    }
-    bw.write("\n")
-    bw.write(computeEffectiveDiameter(distancePairs, totalPairs).toString)
-    bw.close()
-//    println(computeEffectiveDiameter(distancePairs, totalPairs))
   }
 
-
-  def performHopPlot(sc: SparkContext, seedVertFile: String, seedEdgeFile: String, saveFile: String): Unit =
+  /**
+    * returns a rdd of undirected edges (edges are directed in spark)
+    * @param sc spark context
+    * @param inEdges the edges in a graph
+    * @return
+    */
+  def getAllEdges(sc: SparkContext, inEdges: EdgeRDD[edgeData]): RDD[(Long, Array[Long])]  =
   {
-    println()
-    println("Loading seed graph with vertices file: " + seedVertFile + " and edges file " + seedEdgeFile + " ...")
+    //Here is how this works
+    //first we grab every edge in the list and make it undirected
+    //EXAMPLE: say we have the graph (1,2) the flatmap converts this to (1,2),(2,1) thus making it undirected
+    //Next we group by key which does groups vertices to their out vertices
+    //EXAMPLE: Say we have the graph (1,2), (1,3), (3,1) this will convert it to (1,Array(2,3)), (3,1) (this is an invalid example since the edges are directed but you get the point it groups)
+    //next we count the undirectedEdges for no other reason than to force the RDD in memory
+    val undirectedEdges = inEdges.flatMap(record => Array((record.srcId, record.dstId), (record.dstId, record.srcId)))
+      .groupByKey().map(record => (record._1, record._2.toArray)).persist()
+    undirectedEdges.count()
+    return undirectedEdges
+  }
 
-    var startTime = System.nanoTime()
-    //read in and parse vertices and edges
-    val (inVertices, inEdges) = readFromSeedGraph(sc, seedVertFile,seedEdgeFile)
-    var timeSpan = (System.nanoTime() - startTime) / 1e9
-    println()
-    println("Finished loading seed graph.")
-    println("\tTotal time elapsed: " + timeSpan.toString)
-    println("\tVertices "+inVertices.count())
-    println("\tEdges "+inEdges.count())
-    println()
-    println()
-    println("running hop plot...")
-    println()
+  /**
+    * This is the wrapper function to perform hop plot
+    * @param sc spark context
+    * @param filename the file to save the data
+    * @param seedGraph the seed graph
+    * @param synthGraph the synthetically generated graph
+    * @param partitions the number of paritions to set spark rdd's
+    */
+  def hopPlotMetric(sc: SparkContext, filename: String, seedGraph: Graph[nodeData, edgeData], synthGraph: Graph[nodeData, edgeData], partitions: Int): Unit =
+  {
+    println("performing hop plot on seed graph")
+    HopPlot(sc, "seed_" + filename, seedGraph, partitions)
+    println("done performing hop plot on seed graph")
+    println("performing hop plot on synth graph")
+    HopPlot(sc, "synth_" + filename, synthGraph, partitions)
+    println("done performing hop plot on synth graph")
+  }
 
-    println("prepping for hop plot...")
-    //this gets every edge both directions
-    val undirectedEdges = inEdges.flatMap(record => Array((record.srcId, record.dstId), (record.dstId, record.srcId))).groupByKey().map(record => (record._1, record._2.toArray))
+  /**
+    * The wrapper funtion for computing effective diamter of a graph
+    * @param sc spark context
+    * @param seedGraph the seed graph
+    * @param synthGraph the synthetically generated graph
+    * @param partitions the number of paritions to set spark rdd's
+    */
+  def effectiveDiameterMetric(sc: SparkContext, seedGraph: Graph[nodeData, edgeData], synthGraph: Graph[nodeData, edgeData], partitions: Int, filename: String): Unit =
+  {
+    println("computing effective diameter on seed graph")
+    val seedeffectDia = computeEffectiveDiameter(sc, seedGraph, partitions)
+    println(seedeffectDia)
+    println("computing effective diameter on synth graph")
+    val syntheffectDia = computeEffectiveDiameter(sc, synthGraph, partitions)
+    println(syntheffectDia)
 
-    //this acts as a hashmap where the key in the vertex id and value is the node
-    val hashmap = undirectedEdges.map(record => (record._1, new Node(record._1))).collectAsMap()
+    println("Writing to file")
+    val file = new File(filename)
+    val bw = new BufferedWriter(new java.io.FileWriter(file))
+    bw.write("seed diameter: " + seedeffectDia)
+    bw.write("\nsynth diameter: " + syntheffectDia)
+    bw.close()
+    println("Finished writting to file")
+  }
+  def degreeMetric(sc: SparkContext, seedGraph: Graph[nodeData, edgeData], synthGraph: Graph[nodeData, edgeData], partitions: Int, filename: String): Unit =
+  {
+    val degVeracity = degree(seedGraph.degrees, synthGraph.degrees)
+    val inDegVeracity = degree(seedGraph.inDegrees, synthGraph.inDegrees)
+    val outDegVeracity = degree(seedGraph.outDegrees, synthGraph.outDegrees)
 
-    //this creates the children to point back to the hashmap
-    val completedNodes = undirectedEdges.map(record => (hashmap.get(record._1).head, for(x <- record._2) yield hashmap.get(x).head)).collect()
-    completedNodes.map(record => for(x <- record._2) {record._1.children.append(x.id); hashmap.get(record._1.id).head.children.append(x.id);})
+    println("Finished calculating degrees veracity.\n\tDegree Veracity:" + degVeracity + "\n\tIn Degree Veracity: " +
+      inDegVeracity + "\n\tOut Degree Veracity:" + outDegVeracity)
 
-    println("done prepping for hop plot")
-    //do hop plot
-    HopPlot(sc, completedNodes, hashmap, saveFile)
+    println("writing to file")
+    val file = new File(filename)
+    val bw = new BufferedWriter(new java.io.FileWriter(file))
+    bw.write("Finished calculating degrees veracity.\n\tDegree Veracity:" + degVeracity + "\n\tIn Degree Veracity: " +
+      inDegVeracity + "\n\tOut Degree Veracity:" + outDegVeracity)
+
+    bw.close()
+    println("Finished writting to file")
   }
 }

@@ -61,10 +61,12 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
                          /**
                            * veracity arguements
                            */
-                       veracity_Desc: String = "The veracity metric you want to compute. Options include: hop-plot",
+                       veracity_Desc: String = "The veracity metric you want to compute. Options include: hop-plot, effective-diameter, degree",
                          veracity_File: String = "The file to save the metric information",
                          seed_vertsMetric: String = "Comma-separated vertices file to use as a seed",
-                         seed_edgeMetric: String = "Comma-separated edges file to use as a seed"
+                         seed_edgeMetric: String = "Comma-separated edges file to use as a seed",
+                         synth_vertsMetric: String = "Comma-seperated generated vertices file to test",
+                         synth_edgeMetric: String = "Comma-seperated generated edge file to test"
 
                        )
 
@@ -107,7 +109,9 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
                        * veracity arguements
                        */
                      metric: String = "hop-plot",
-                     metricSave: String = "hop-plotSave"
+                     metricSave: String = "hop-plotSave",
+                     synthVerts: String = "syth_verts",
+                     synthEdges: String = "syth_edges"
 
                    )
 
@@ -236,9 +240,17 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
               .required()
               .action((x,c) => c.copy(seedVertices = x)),
           arg[String]("seed_edges")
-              .text(s"${h.seedEdges_desc} default: ${dP.seedEdges}")
+              .text(s"${h.seed_edgeMetric} default: ${dP.seedEdges}")
               .required()
               .action((x, c) => c.copy(seedEdges = x)),
+          arg[String]("synth_vert")
+              .text(s"${h.synth_vertsMetric}")
+              .required()
+              .action((x,c) => c.copy(synthVerts = x)),
+          arg[String]("syth_edge")
+              .text(s"${h.synth_edgeMetric}")
+              .required()
+              .action((x,c) => c.copy(synthEdges = x)),
           arg[String]("metric")
             .text(s"${h.veracity_Desc}")
             .required()
@@ -301,10 +313,11 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
 
 
   def run_gendist(sc: SparkContext, params: Params): Boolean = {
+    //these two statements create the aug log (conn.log plus alert)
     val logAug = new log_Augment()
     logAug.run(sc, params.alertLog, params.connLog, params.augLog)
 
-//    DataDistributions.init(sc, params.augLog, true)
+  //this is called to read the newly created aug log and create the distributions from it
     new DataDistributions(sc, params.augLog)
 
     val (vRDD, eRDD): (RDD[(VertexId, nodeData)], RDD[Edge[edgeData]]) = readFromConnFile(sc, params.augLog)
@@ -362,9 +375,18 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
   }
 
   def run_ver(sc: SparkContext, params: Params): Boolean = {
+    val (seedVerts, seedEdges) = readFromSeedGraph(sc, params.seedVertices, params.seedEdges)
+    val seedGraph = Graph(seedVerts, seedEdges, nodeData())
+
+    val (synthVerts, sythEdges) = readFromSeedGraph(sc, params.synthVerts, params.synthEdges)
+    val synthGraph = Graph(synthVerts, sythEdges, nodeData())
+
     params.metric match
       {
-      case "hop-plot" => Veracity.performHopPlot(sc, params.seedVertices, params.seedEdges, params.metricSave)
+      case "hop-plot" => Veracity.hopPlotMetric(sc, params.metricSave, seedGraph, synthGraph, params.partitions)
+      case "effective-diameter" => Veracity.effectiveDiameterMetric(sc, seedGraph, synthGraph, params.partitions, params.metricSave)
+      case "degree" => Veracity.degreeMetric(sc, seedGraph, synthGraph, params.partitions, params.metricSave)
+
       case _ => println("Invalid metric " + params.metric)
     }
 
