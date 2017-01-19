@@ -4,7 +4,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.graphx.{Edge, VertexId}
 import org.apache.spark.rdd.RDD
 
-trait data_Parser extends java.io.Serializable {
+trait data_Parser extends Serializable {
 
   def readFromConnFile(sc: SparkContext, connFile: String): (RDD[(VertexId,nodeData)], RDD[Edge[edgeData]]) = {
     //If we are opening a conn.log file

@@ -8,6 +8,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.graphx._
 import org.apache.spark.rdd.RDD
+import org.apache.spark.mllib.rdd.RDDFunctions._
 
 import scala.collection.mutable
 import scala.collection.mutable.{ArrayBuffer, Queue}
@@ -17,30 +18,36 @@ import scala.reflect.ClassTag
  * Helper methods to compute veracity metrics for [[org.apache.spark.graphx.Graph]]
  */
 object Veracity extends data_Parser {
-
+  var globalBucketSize = 0.0
   /**
-   * Computes a normalized distribution given a list of keys
+   * Computes a normalized bucketed distribution given a list of keys
    *
    * @param keys Keys to analyze
-   * @param bucketNum Number of buckets where the keys should fall; if 0, the keys are not bucketed
    * @return RDD containing the normalized distribution
    */
-  private def normDistRDD(keys: VertexRDD[Int], bucketNum :Int = 0 ): RDD[(Double, Double)] = {
-    // Computes how many times each key appears
-    val keysCount = keys.map { case (_, key)  =>  (key, 1L) }.reduceByKey(_ + _).cache()
+  private def normDistRDD(keys: RDD[Double], bucketSize: Double): RDD[(Double, Double)] = {
 
-    // Computes the sum of keys and the sum of values
-    val keysSum = keysCount.keys.sum()
+    // Computes the sum of keys
+    val keysSum = keys.sum()
+
+    // Normalizes keys
+    var normKeys = keys.map { key => key / keysSum }
+
+    if (bucketSize > 0) {
+      val normBucketSize = bucketSize / keysSum
+      // Groups keys in buckets adding their values
+      normKeys = normKeys.map { key => key - key % normBucketSize }
+      globalBucketSize = normBucketSize
+    }
+
+    // Computes how many times each key appears
+    val keysCount = normKeys.map { key =>  (key, 1L) }.reduceByKey(_ + _).cache()
+
+    // Computes the sum of values
     val valuesSum = keysCount.values.sum()
 
-    // Normalizes keys and values
-    var normDist = keysCount.map { case (key, value) => (key / keysSum, value / valuesSum) }
-
-    if (bucketNum > 0) {
-      val bucketSize = 1.0 / bucketNum
-      // Groups keys in buckets adding their values
-      normDist = normDist.map { case (key, value) => (key - key % bucketSize, value) }.reduceByKey(_ + _)
-    }
+    // Normalizes values
+    val normDist = keysCount.map { case (key, value) => (key, value / valuesSum) }
 
     normDist
   }
@@ -111,15 +118,95 @@ object Veracity extends data_Parser {
    */
   def degree(seed: VertexRDD[Int], synth: VertexRDD[Int], saveDistAsCSV : Boolean = false, filePrefix: String = "",
               overwrite :Boolean = false): Double = {
-    val bucketNum = 100000
 
-    val seedRDD = normDistRDD(seed,bucketNum).cache()
-    val synthRDD = normDistRDD(synth, bucketNum).cache()
+    val seedValues = seed.values.map { value => value.toDouble }.cache()
+    val seedBucketSize = seedValues.distinct.sortBy(identity).sliding(2).map { case Array(x, y) => y - x }.min()
+
+    val synthValues = synth.values.map { value => value.toDouble }.cache()
+    val synthBucketSize = synthValues.distinct.sortBy(identity).sliding(2).map { case Array(x, y) => y - x }.min()
+
+    val bucketSize = math.min(seedBucketSize, synthBucketSize)
+
+    val seedRDD = normDistRDD(seedValues, bucketSize).cache()
+    val synthRDD = normDistRDD(synthValues, bucketSize).cache()
 
     if (saveDistAsCSV) {
       RDDtoCSV(seedRDD, filePrefix + "_degrees_dist.seed.csv", overwrite)
       RDDtoCSV(synthRDD, filePrefix + "_degrees_dist.synth.csv", overwrite)
     }
+
+    val bucketNum = 1.0 / globalBucketSize
+
+    euclideanDistance(seedRDD,synthRDD) / bucketNum
+  }
+
+  /**
+   * Returns the shortest directed-edge path from src to dst in the graph. If no path exists, returns
+   * the empty list.
+   */
+  private def bfs[VD, ED](graph: Graph[VD, ED], src: VertexId, dst: VertexId): Seq[VertexId] = {
+    if (src == dst) return List(src)
+
+    // The attribute of each vertex is (dist from src, id of vertex with dist-1)
+    var g = graph.mapVertices((id, _) => (if (id == src) 0 else Int.MaxValue, 0L)).cache()
+
+    // Traverse forward from src
+    var dstAttr = (Int.MaxValue, 0L)
+    while (dstAttr._1 == Int.MaxValue) {
+      val msgs = g.aggregateMessages[(Int, VertexId)](
+        e => if (e.srcAttr._1 != Int.MaxValue && e.srcAttr._1 + 1 < e.dstAttr._1) {
+          e.sendToDst((e.srcAttr._1 + 1, e.srcId))
+        },
+        (a, b) => if (a._1 < b._1) a else b).cache()
+
+      if (msgs.count == 0) return List.empty
+
+      g = g.ops.joinVertices(msgs) {
+        (id, oldAttr, newAttr) =>
+          if (newAttr._1 < oldAttr._1) newAttr else oldAttr
+      }.cache()
+
+      dstAttr = g.vertices.filter(_._1 == dst).first()._2
+    }
+
+    // Traverse backward from dst and collect the path
+    var path: List[VertexId] = dstAttr._2 :: dst :: Nil
+    while (path.head != src) {
+      path = g.vertices.filter(_._1 == path.head).first()._2._2 :: path
+    }
+
+    path
+  }
+
+  /**
+   * Computes the effective diameter of the graph, defined as the minimum number of links (steps/hops) in which some
+   * fraction (or quantile q, say q = 0.9) of all connected pairs of nodes can reach each other
+   *
+   * @return The value of the effective diameter
+   */
+  def pageRank(seed: Graph[nodeData, edgeData], synth: Graph[nodeData, edgeData], saveDistAsCSV : Boolean = false,
+               filePrefix: String = "", overwrite: Boolean = false): Double = {
+    val tolerance = 0.001
+
+    // Computes the bucket size as the minimum difference between any successive pair of ordered values
+
+    val seedPrResult = seed.pageRank(tolerance).vertices.values
+    val seedBucketSize = seedPrResult.distinct.sortBy(identity).sliding(2).map { case Array(x, y) => y - x }.min()
+
+    val synthPrResult = synth.pageRank(tolerance).vertices.values
+    val synthBucketSize = synthPrResult.distinct.sortBy(identity).sliding(2).map { case Array(x, y) => y - x }.min()
+
+    val bucketSize = math.min(seedBucketSize, synthBucketSize)
+
+    val seedRDD = normDistRDD(seedPrResult, bucketSize).cache()
+    val synthRDD = normDistRDD(synthPrResult, bucketSize).cache()
+
+    if (saveDistAsCSV) {
+      RDDtoCSV(seedRDD, filePrefix + "_page_rank_dist.seed.csv", overwrite)
+      RDDtoCSV(synthRDD, filePrefix + "_page_rank_dist.synth.csv", overwrite)
+    }
+
+    val bucketNum = 1.0 / globalBucketSize
 
     euclideanDistance(seedRDD,synthRDD) / bucketNum
   }
@@ -131,12 +218,9 @@ object Veracity extends data_Parser {
 //   * @param graph The graph to analyze
 //   * @return The value of the effective diameter
 //   */
-//  def effectiveDiameter(graph: Graph[nodeData, edgeData]): Long = {
+//  def effectiveDiameter(graph: Graph[nodeData, edgeData]): Double = {
 //    0
 //  }
-
-
-
 
   class DistanceNodePair(var distance: Long, var totalPairs: Long) extends Comparable[DistanceNodePair] {
 
@@ -159,7 +243,7 @@ object Veracity extends data_Parser {
     */
   def computeEffectiveDiameter(distancePairs: ArrayBuffer[DistanceNodePair], totalPairs: Long): Double = {
     var effectiveDiameter = 0.0
-    for (i <- 0 until distancePairs.size) //until stops 1 before distancePairs.size
+    for (i <- distancePairs.indices)
     {
       val dp = distancePairs(i)
       val ratio = dp.totalPairs.toDouble / totalPairs.toDouble
@@ -187,7 +271,7 @@ object Veracity extends data_Parser {
   def computeEffectiveDiameter(sc: SparkContext, graph: Graph[nodeData, edgeData], partitions: Int): Double =
   {
     val (distanceNodePair, totalPairs) = getNodePairDistances(sc, graph, partitions)
-    return computeEffectiveDiameter(distanceNodePair, totalPairs)
+    computeEffectiveDiameter(distanceNodePair, totalPairs)
   }
 
 

@@ -82,19 +82,24 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, dataDist: DataDistribution
     println("Edges: " + seedGraph.edges.count())
 
     startTime = System.nanoTime()
-    val degVeracity = Veracity.degree(seedGraph.degrees, theGraph.degrees)
+    val degVeracity = Veracity.degree(seedGraph.degrees, theGraph.degrees, saveDistAsCSV = true, overwrite = true)
     timeSpan = (System.nanoTime() - startTime) / 1e9
     println(s"\tDegree Veracity: $degVeracity [$timeSpan s]")
 
     startTime = System.nanoTime()
-    val inDegVeracity = Veracity.degree(seedGraph.inDegrees, theGraph.inDegrees)
+    val inDegVeracity = Veracity.degree(seedGraph.inDegrees, theGraph.inDegrees, saveDistAsCSV = true, overwrite = true)
     timeSpan = (System.nanoTime() - startTime) / 1e9
     println(s"\tIn Degree Veracity: $inDegVeracity [$timeSpan s]")
 
     startTime = System.nanoTime()
-    val outDegVeracity = Veracity.degree(seedGraph.outDegrees, theGraph.outDegrees)
+    val outDegVeracity = Veracity.degree(seedGraph.outDegrees, theGraph.outDegrees, saveDistAsCSV = true, overwrite = true)
     timeSpan = (System.nanoTime() - startTime) / 1e9
     println(s"\tOut Degree Veracity: $outDegVeracity [$timeSpan s]")
+
+    startTime = System.nanoTime()
+    val cc = Veracity.pageRank(seedGraph, theGraph, saveDistAsCSV = true, overwrite = true)
+    timeSpan = (System.nanoTime() - startTime) / 1e9
+    println(s"\tPage Rank Veracity: $cc [$timeSpan s]")
 
     true
   }
