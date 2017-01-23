@@ -13,7 +13,7 @@ import org.apache.spark.sql.SparkSession
   * Created by spencer on 11/3/16.
   */
 
-object csb_GraphGen extends base_GraphGen with data_Parser {
+object csb_GraphGen extends base_GraphGen with DataParser {
 
   val versionString = "0.2-DEV"
 
@@ -320,7 +320,7 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
   //this is called to read the newly created aug log and create the distributions from it
     new DataDistributions(sc, params.augLog)
 
-    val (vRDD, eRDD): (RDD[(VertexId, nodeData)], RDD[Edge[edgeData]]) = readFromConnFile(sc, params.augLog)
+    val (vRDD, eRDD): (RDD[(VertexId, nodeData)], RDD[Edge[edgeData]]) = readFromConnFile(sc, params.partitions, params.augLog)
 
     theGraph = Graph(vRDD, eRDD, nodeData())
 
@@ -375,19 +375,39 @@ object csb_GraphGen extends base_GraphGen with data_Parser {
   }
 
   def run_ver(sc: SparkContext, params: Params): Boolean = {
-    val (seedVerts, seedEdges) = readFromSeedGraph(sc, params.seedVertices, params.seedEdges)
-    val seedGraph = Graph(seedVerts, seedEdges, nodeData())
+    val (seedVerts, seedEdges) = readFromSeedGraph(sc, params.partitions, params.seedVertices, params.seedEdges)
+    val seed = Graph(seedVerts, seedEdges, nodeData())
 
-    val (synthVerts, sythEdges) = readFromSeedGraph(sc, params.synthVerts, params.synthEdges)
-    val synthGraph = Graph(synthVerts, sythEdges, nodeData())
+    val (synthVerts, sythEdges) = readFromSeedGraph(sc, params.partitions, params.synthVerts, params.synthEdges)
+    val synth = Graph(synthVerts, sythEdges, nodeData())
 
     params.metric match
       {
-      case "hop-plot" => Veracity.hopPlotMetric(sc, params.metricSave, seedGraph, synthGraph, params.partitions)
-      case "effective-diameter" => Veracity.effectiveDiameterMetric(sc, seedGraph, synthGraph, params.partitions, params.metricSave)
-      case "degree" => Veracity.degreeMetric(sc, seedGraph, synthGraph, params.partitions, params.metricSave)
-
-      case _ => println("Invalid metric " + params.metric)
+      case "degree" => {
+        val startTime = System.nanoTime()
+        val degree = Veracity.degree(seed.degrees, synth.degrees, saveDistAsCSV = true, overwrite = true)
+        val timeSpan = (System.nanoTime() - startTime) / 1e9
+        println(s"\tPage Rank Veracity: $degree [$timeSpan s]")
+      }
+      case "inDegree" => {
+        val startTime = System.nanoTime()
+        val inDegree = Veracity.degree(seed.inDegrees, synth.inDegrees, saveDistAsCSV = true, overwrite = true)
+        val timeSpan = (System.nanoTime() - startTime) / 1e9
+        println(s"\tPage Rank Veracity: $inDegree [$timeSpan s]")
+      }
+      case "outdegree" => {
+        val startTime = System.nanoTime()
+        val outDegree = Veracity.degree(seed.outDegrees, synth.outDegrees, saveDistAsCSV = true, overwrite = true)
+        val timeSpan = (System.nanoTime() - startTime) / 1e9
+        println(s"\tPage Rank Veracity: $outDegree [$timeSpan s]")
+      }
+      case "pageRank" => {
+        val startTime = System.nanoTime()
+        val pageRank = Veracity.pageRank(seed, synth, saveDistAsCSV = true, overwrite = true)
+        val timeSpan = (System.nanoTime() - startTime) / 1e9
+        println(s"\tPage Rank Veracity: $pageRank [$timeSpan s]")
+      }
+      case _ => println("Invalid metric:" + params.metric)
     }
 
     true

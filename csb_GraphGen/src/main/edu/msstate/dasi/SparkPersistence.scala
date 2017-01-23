@@ -5,6 +5,8 @@ import java.io.File
 import org.apache.hadoop.fs.FileUtil
 import org.apache.spark.graphx.Graph
 
+import scala.reflect.ClassTag
+
 /**
  * Created by scordio on 1/4/17.
  */
@@ -19,7 +21,7 @@ class SparkPersistence(path: String, asText : Boolean = false) extends GraphPers
    * @param graph
    * @param overwrite
    */
-  override def saveGraph(graph: Graph[nodeData, edgeData], overwrite :Boolean = false): Unit = {
+  override def saveGraph[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], overwrite :Boolean = false): Unit = {
     if (overwrite) {
       FileUtil.fullyDelete(new File(path + vertices_suffix))
       FileUtil.fullyDelete(new File(path + edges_suffix))

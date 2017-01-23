@@ -10,7 +10,7 @@ import scala.util.Random
 /**
   * Created by spencer on 11/3/16.
   */
-class ba_GraphGen(sc: SparkContext, partitions: Int, dataDist: DataDistributions, graphPs: GraphPersistence) extends base_GraphGen with data_Parser {
+class ba_GraphGen(sc: SparkContext, partitions: Int, dataDist: DataDistributions, graphPs: GraphPersistence) extends base_GraphGen with DataParser {
 
   def run(seedVertFile: String, seedEdgeFile: String, baIter: Long, nodesPerIter: Long, noPropFlag: Boolean, debugFlag: Boolean): Boolean = {
 
@@ -19,7 +19,7 @@ class ba_GraphGen(sc: SparkContext, partitions: Int, dataDist: DataDistributions
 
     var startTime = System.nanoTime()
     //read in and parse vertices and edges
-    val (inVertices, inEdges) = readFromSeedGraph(sc, seedVertFile,seedEdgeFile)
+    val (inVertices, inEdges) = readFromSeedGraph(sc, partitions, seedVertFile,seedEdgeFile)
     var timeSpan = (System.nanoTime() - startTime) / 1e9
     println()
     println("Finished loading seed graph.")

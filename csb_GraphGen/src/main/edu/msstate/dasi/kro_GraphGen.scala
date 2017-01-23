@@ -12,7 +12,7 @@ import scala.util.Random
   *
   * edu.msstate.dasi.kro_GraphGen: Kronecker based Graph generation given seed matrix.
   */
-class kro_GraphGen(sc: SparkContext, partitions: Int, dataDist: DataDistributions, graphPs: GraphPersistence) extends base_GraphGen with data_Parser {
+class kro_GraphGen(sc: SparkContext, partitions: Int, dataDist: DataDistributions, graphPs: GraphPersistence) extends base_GraphGen with DataParser {
   def run(mtxFile: String, genIter: Int, seedVertFile: String, seedEdgeFile: String, noPropFlag: Boolean, debugFlag: Boolean): Boolean = {
 
     //val probMtx: Array[Array[Float]] = Array(Array(0.1f, 0.9f), Array(0.9f, 0.5f))
@@ -75,7 +75,7 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, dataDist: DataDistribution
 
     println("Calculating degrees veracity...")
 
-    val (inVertices, inEdges): (RDD[(VertexId,nodeData)], RDD[Edge[edgeData]]) = readFromSeedGraph(sc, seedVertFile,seedEdgeFile)
+    val (inVertices, inEdges): (RDD[(VertexId,nodeData)], RDD[Edge[edgeData]]) = readFromSeedGraph(sc, partitions, seedVertFile,seedEdgeFile)
 
     val seedGraph = Graph(inVertices, inEdges, nodeData())
 
@@ -87,12 +87,12 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, dataDist: DataDistribution
     println(s"\tDegree Veracity: $degVeracity [$timeSpan s]")
 
     startTime = System.nanoTime()
-    val inDegVeracity = Veracity.degree(seedGraph.inDegrees, theGraph.inDegrees, saveDistAsCSV = true, overwrite = true)
+    val inDegVeracity = Veracity.degree(seedGraph.inDegrees, theGraph.inDegrees, saveDistAsCSV = true, "in", overwrite = true)
     timeSpan = (System.nanoTime() - startTime) / 1e9
     println(s"\tIn Degree Veracity: $inDegVeracity [$timeSpan s]")
 
     startTime = System.nanoTime()
-    val outDegVeracity = Veracity.degree(seedGraph.outDegrees, theGraph.outDegrees, saveDistAsCSV = true, overwrite = true)
+    val outDegVeracity = Veracity.degree(seedGraph.outDegrees, theGraph.outDegrees, saveDistAsCSV = true, "out", overwrite = true)
     timeSpan = (System.nanoTime() - startTime) / 1e9
     println(s"\tOut Degree Veracity: $outDegVeracity [$timeSpan s]")
 
@@ -216,33 +216,25 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, dataDist: DataDistribution
     var curEdges: Long = 0
     var edgeList: RDD[Edge[edgeData]] = sc.emptyRDD
 
-    while ( curEdges < nEdges ) {
-      println("getKroRDD(" + nVerts + ", " + (nEdges-curEdges) + s", $n1, $iter, probToRCPosV_Broadcast)")
+    while (curEdges < nEdges) {
+      println("getKroRDD(" + nVerts + ", " + (nEdges - curEdges) + s", $n1, $iter, probToRCPosV_Broadcast)")
       val newRDD = getKroRDD(nVerts, nEdges - curEdges, n1, iter, probToRCPosV_Broadcast)
 
-      edgeList = edgeList.union(newRDD).map(entry => ((entry.srcId, entry.dstId), entry)).reduceByKey((left,_) => left).map(record => record._2).cache()
+      edgeList = edgeList.union(newRDD).map(entry => ((entry.srcId, entry.dstId), entry)).reduceByKey((left, _) => left).map(record => record._2).cache()
       curEdges = edgeList.count()
       println(s"$curEdges $nEdges")
     }
 
     val newEdges = getMultiEdgesRDD(edgeList)
 
-    println("Number of edges before union: "+edgeList.count())
+    println("Number of edges before union: " + edgeList.count())
     val finalEdgeList = edgeList.union(newEdges).cache()
     println("Total # of Edges (including multi edges): " + finalEdgeList.count())
 
-    val vertList: RDD[(VertexId, nodeData)] = edgeList.flatMap{record =>
-      val srcId: VertexId = record.srcId
-      val dstId: VertexId = record.dstId
-      Array(srcId, dstId)
-    }.distinct().map{record: VertexId =>
-      val tempNodeData: nodeData = nodeData()
-      (record, tempNodeData)
-    }
+    val vertList: RDD[(VertexId, nodeData)] = finalEdgeList.flatMap{ edge => Array(edge.srcId, edge.dstId) }
+      .distinct().map{ record => (record, nodeData()) }
 
-    val vRDD: RDD[(VertexId, nodeData)] = vertList.cache()
-    val eRDD: RDD[Edge[edgeData]] = edgeList.cache()
-    val theGraph = Graph(vRDD, eRDD, nodeData())
+    val theGraph = Graph(vertList, finalEdgeList, nodeData())
 
     theGraph
   }

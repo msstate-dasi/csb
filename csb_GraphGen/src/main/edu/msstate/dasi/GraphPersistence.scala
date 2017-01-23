@@ -2,6 +2,8 @@ package edu.msstate.dasi
 
 import org.apache.spark.graphx.Graph
 
+import scala.reflect.ClassTag
+
 /**
  * Created by scordio on 1/4/17.
  */
@@ -13,5 +15,5 @@ trait GraphPersistence {
    * @param graph
    * @param overwrite
    */
-  def saveGraph(graph: Graph[nodeData, edgeData], overwrite :Boolean = false): Unit
+  def saveGraph[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], overwrite :Boolean = false): Unit
 }

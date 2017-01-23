@@ -4,11 +4,10 @@ import org.apache.spark.SparkContext
 import org.apache.spark.graphx.{Edge, VertexId}
 import org.apache.spark.rdd.RDD
 
-trait data_Parser extends Serializable {
-
-  def readFromConnFile(sc: SparkContext, connFile: String): (RDD[(VertexId,nodeData)], RDD[Edge[edgeData]]) = {
+trait DataParser {
+  def readFromConnFile(sc: SparkContext, partitions: Int, connFile: String): (RDD[(VertexId, nodeData)], RDD[Edge[edgeData]]) = {
     //If we are opening a conn.log file
-    val file = sc.textFile(connFile)
+    val file = sc.textFile(connFile, partitions)
 
     //I get a list of all the lines of the conn.log file in a way for easy parsing
     val lines = file.map(line => line.split("\n")).filter(line => !line(0).contains("#")).map(line => line(0).replaceAll("-","0"))
@@ -32,60 +31,44 @@ trait data_Parser extends Serializable {
       nodeData(line.split("\t")(4) + ":" + line.split("\t")(5))))
 
     //from connPLUSnodes lets grab all the DISTINCT nodes
-    var ALLNODES : RDD[nodeData] = connPLUSnodes.map(record => record._2).union(connPLUSnodes.map(record => record._3)).distinct()
+    val ALLNODES : RDD[nodeData] = connPLUSnodes.map(record => record._2).union(connPLUSnodes.map(record => record._3)).distinct()
 
     //next lets give them numbers and let that number be the "key"(basically index for my use)
-    var vertices: RDD[(VertexId, nodeData)] = ALLNODES.zipWithIndex().map(record => (record._2, record._1))
+    val vertices: RDD[(VertexId, nodeData)] = ALLNODES.zipWithIndex().map(record => (record._2, record._1))
 
     //next I make a hashtable of the nodes with it's given index.
     //I have to do this since RDD transformations cannot happen within
     //other RDD's and hashtables have O(1)
-    var verticesList = ALLNODES.collect()
-    var hashTable = new scala.collection.mutable.HashMap[nodeData, VertexId]
-    for( x<-0 to verticesList.length - 1)
+    val verticesList = ALLNODES.collect()
+    val hashTable = new scala.collection.mutable.HashMap[nodeData, VertexId]
+    for( x <- verticesList.indices)
     {
       hashTable.put(verticesList(x), x.toLong)
     }
 
-
-
     //Next I generate the edge list with the vertices represented by indexes(as it wants it)
-    var Edges: RDD[Edge[edgeData]] = connPLUSnodes.map(record => Edge[edgeData](hashTable.get(record._2).head, hashTable.get(record._3).head, record._1))
+    val Edges: RDD[Edge[edgeData]] = connPLUSnodes.map(record => Edge[edgeData](hashTable.get(record._2).head, hashTable.get(record._3).head, record._1))
 
-
-    return (vertices, Edges)
+    (vertices, Edges)
   }
 
-  def readFromSeedGraph(sc: SparkContext, seedVertFile: String,seedEdgeFile: String): (RDD[(VertexId,nodeData)], RDD[Edge[edgeData]]) = {
+  def readFromSeedGraph(sc: SparkContext, partitions: Int, seedVertFile: String,seedEdgeFile: String): (RDD[(VertexId, nodeData)], RDD[Edge[edgeData]]) = {
 
-    val inVertices: RDD[(VertexId,nodeData)] = sc.textFile(seedVertFile).map(line => line.stripPrefix("(").stripSuffix(")").split(',')).map { record =>
-      val inData = (record)
+    val inVertices: RDD[(VertexId,nodeData)] = sc.textFile(seedVertFile, partitions).map(line => line.stripPrefix("(").stripSuffix(")").split(',')).map { record =>
+      val inData = record
 
-      /*** Parses data for a node out of an array of strings
-        *
-        * @param inData Array strings to parse as node data. First element is the ID of the node, second element is the description of the node
-        * @return Tuple (bool whether the record was successfully parsed, record(VertexID, edu.msstate.dasi.nodeData))
-        */
-      //private def parseNodeData(inData: Array[String]): (Boolean, (Long, nodeData))  = {
       try {
         (true, (inData(0).toLong, nodeData(inData(1).stripPrefix("nodeData(").stripSuffix(")"))))
       } catch {
         case _: Throwable =>
           println("!!! THERE MAY BE ERRORS IN THE DATASET !!!")
-          (false, (0L, nodeData("")))
+          (false, (0L, nodeData()))
       }
-    //}
     }.filter(_._1 != false).map(record => record._2)
 
-    val inEdges: RDD[Edge[edgeData]] = sc.textFile(seedEdgeFile).map(line => line.stripPrefix("Edge(").stripSuffix(")").split(",", 3)).map { record =>
+    val inEdges: RDD[Edge[edgeData]] = sc.textFile(seedEdgeFile, partitions).map(line => line.stripPrefix("Edge(").stripSuffix(")").split(",", 3)).map { record =>
       val inData = record
 
-      /*** Parses Data for an edge out of an array of strings
-        *
-        * @param inData Array of strings to parse as edge data. First element is source ID, second element is destination ID, third element is the edge data
-        * @return (bool whether the record was successfully parsed, record(VertexID, VertexID, edu.msstate.dasi.edgeData))
-        */
-     //private def parseEdgeData(inData: Array[String]): (Boolean, Edge[edgeData]) = {
       try {
         val srcNode = inData(0).toLong
         val dstNode = inData(1).toLong
@@ -127,14 +110,8 @@ trait data_Parser extends Serializable {
           println()
           (false, Edge(0L, 0L, edgeData()))
       }
-    //}
     }.filter(_._1 != false).map(record => record._2)
 
-    return (inVertices,inEdges)
+    (inVertices,inEdges)
   }
-
-
-
-
-
 }
