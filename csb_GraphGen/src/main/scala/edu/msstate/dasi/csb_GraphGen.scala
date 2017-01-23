@@ -351,7 +351,7 @@ object csb_GraphGen extends base_GraphGen with DataParser {
   def run_ba(sc: SparkContext, params: Params): Boolean = {
     var graphPs: GraphPersistence = null
     params.backend match {
-      case "fs" => graphPs = new SparkPersistence(params.outputGraphPrefix)
+      case "fs" => graphPs = new SparkPersistence(sc, params.outputGraphPrefix)
       case "neo4j" => graphPs = new Neo4jPersistence(sc)
     }
 
@@ -364,7 +364,7 @@ object csb_GraphGen extends base_GraphGen with DataParser {
   def run_kro(sc: SparkContext, params: Params): Boolean = {
     var graphPs: GraphPersistence = null
     params.backend match {
-      case "fs" => graphPs = new SparkPersistence(params.outputGraphPrefix)
+      case "fs" => graphPs = new SparkPersistence(sc, params.outputGraphPrefix)
       case "neo4j" => graphPs = new Neo4jPersistence(sc)
     }
 

@@ -3,6 +3,7 @@ package edu.msstate.dasi
 import java.io.File
 
 import org.apache.hadoop.fs.FileUtil
+import org.apache.spark.SparkContext
 import org.apache.spark.graphx.Graph
 
 import scala.reflect.ClassTag
@@ -10,13 +11,21 @@ import scala.reflect.ClassTag
 /**
  * Created by scordio on 1/4/17.
  */
-class SparkPersistence(path: String, asText : Boolean = false) extends GraphPersistence {
-  private val numPartitions = 16
+class SparkPersistence(sc: SparkContext, path: String, asText : Boolean = false) extends GraphPersistence {
   private val vertices_suffix = "_vertices"
   private val edges_suffix = "_edges"
 
   /**
-   * Save the graph
+   * Return the current active executors count excluding the driver.
+   */
+  private def getActiveExecutorsCount = {
+    val allExecutors = sc.getExecutorMemoryStatus.keys
+    val driver = sc.getConf.get("spark.driver.host")
+    allExecutors.filter( ! _.contains(driver) ).toList.length
+  }
+
+  /**
+   * Save the graph.
    *
    * @param graph
    * @param overwrite
@@ -26,6 +35,8 @@ class SparkPersistence(path: String, asText : Boolean = false) extends GraphPers
       FileUtil.fullyDelete(new File(path + vertices_suffix))
       FileUtil.fullyDelete(new File(path + edges_suffix))
     }
+
+    val numPartitions = math.max(getActiveExecutorsCount, sc.defaultMinPartitions)
 
     val coalescedVertices = graph.vertices.coalesce(numPartitions)
     val coalescedEdges = graph.edges.coalesce(numPartitions)
