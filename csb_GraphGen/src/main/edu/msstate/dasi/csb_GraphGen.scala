@@ -61,7 +61,7 @@ object csb_GraphGen extends base_GraphGen with DataParser {
                          /**
                            * veracity arguements
                            */
-                       veracity_Desc: String = "The veracity metric you want to compute. Options include: hop-plot, effective-diameter, degree",
+                       veracity_Desc: String = "The veracity metric you want to compute. Options include: degree, inDegree, outDegree, pageRank",
                          veracity_File: String = "The file to save the metric information",
                          seed_vertsMetric: String = "Comma-separated vertices file to use as a seed",
                          seed_edgeMetric: String = "Comma-separated edges file to use as a seed",
@@ -395,7 +395,7 @@ object csb_GraphGen extends base_GraphGen with DataParser {
         val timeSpan = (System.nanoTime() - startTime) / 1e9
         println(s"\tPage Rank Veracity: $inDegree [$timeSpan s]")
       }
-      case "outdegree" => {
+      case "outDegree" => {
         val startTime = System.nanoTime()
         val outDegree = Veracity.degree(seed.outDegrees, synth.outDegrees, saveDistAsCSV = true, overwrite = true)
         val timeSpan = (System.nanoTime() - startTime) / 1e9

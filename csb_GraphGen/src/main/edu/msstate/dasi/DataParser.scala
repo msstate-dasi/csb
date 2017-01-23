@@ -41,7 +41,7 @@ trait DataParser {
     //other RDD's and hashtables have O(1)
     val verticesList = ALLNODES.collect()
     val hashTable = new scala.collection.mutable.HashMap[nodeData, VertexId]
-    for( x <- verticesList.indices)
+    for( x <- verticesList.indices )
     {
       hashTable.put(verticesList(x), x.toLong)
     }
