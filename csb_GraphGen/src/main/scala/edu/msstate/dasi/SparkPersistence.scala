@@ -16,37 +16,29 @@ class SparkPersistence(sc: SparkContext, path: String, asText : Boolean = false)
   private val edges_suffix = "_edges"
 
   /**
-   * Return the current active executors count excluding the driver.
-   */
-  private def getActiveExecutorsCount = {
-    val allExecutors = sc.getExecutorMemoryStatus.keys
-    val driver = sc.getConf.get("spark.driver.host")
-    allExecutors.filter( ! _.contains(driver) ).toList.length
-  }
-
-  /**
    * Save the graph.
    *
    * @param graph
    * @param overwrite
    */
   override def saveGraph[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], overwrite :Boolean = false): Unit = {
+    val verticesPath = path + vertices_suffix
+    val edgesPath = path + edges_suffix
+
     if (overwrite) {
-      FileUtil.fullyDelete(new File(path + vertices_suffix))
-      FileUtil.fullyDelete(new File(path + edges_suffix))
+      FileUtil.fullyDelete(new File(verticesPath))
+      FileUtil.fullyDelete(new File(edgesPath))
     }
 
-    val numPartitions = math.max(getActiveExecutorsCount, sc.defaultMinPartitions)
-
-    val coalescedVertices = graph.vertices.coalesce(numPartitions)
-    val coalescedEdges = graph.edges.coalesce(numPartitions)
+    val coalescedVertices = graph.vertices.coalesce(sc.defaultParallelism)
+    val coalescedEdges = graph.edges.coalesce(sc.defaultParallelism)
 
     if (asText) {
-      coalescedVertices.saveAsTextFile(path + vertices_suffix)
-      coalescedEdges.saveAsTextFile(path + edges_suffix)
+      coalescedVertices.saveAsTextFile(verticesPath)
+      coalescedEdges.saveAsTextFile(edgesPath)
     } else {
-      coalescedVertices.saveAsObjectFile(path + vertices_suffix)
-      coalescedEdges.saveAsObjectFile(path + edges_suffix)
+      coalescedVertices.saveAsObjectFile(verticesPath)
+      coalescedEdges.saveAsObjectFile(edgesPath)
     }
   }
 }
