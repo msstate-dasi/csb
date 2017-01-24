@@ -381,32 +381,31 @@ object csb_GraphGen extends base_GraphGen with DataParser {
     val (synthVerts, sythEdges) = readFromSeedGraph(sc, params.partitions, params.synthVerts, params.synthEdges)
     val synth = Graph(synthVerts, sythEdges, nodeData())
 
-    params.metric match
-      {
-      case "degree" => {
+    params.metric match {
+      case "degree" =>
         val startTime = System.nanoTime()
-        val degree = Veracity.degree(seed.degrees, synth.degrees, saveDistAsCSV = true, overwrite = true)
+        val degree = Degree.run(seed, synth, saveDistAsCSV = true, overwrite = true)
         val timeSpan = (System.nanoTime() - startTime) / 1e9
         println(s"\tPage Rank Veracity: $degree [$timeSpan s]")
-      }
-      case "inDegree" => {
+
+      case "inDegree" =>
         val startTime = System.nanoTime()
-        val inDegree = Veracity.degree(seed.inDegrees, synth.inDegrees, saveDistAsCSV = true, overwrite = true)
+        val inDegree = InDegree.run(seed, synth, saveDistAsCSV = true, overwrite = true)
         val timeSpan = (System.nanoTime() - startTime) / 1e9
         println(s"\tPage Rank Veracity: $inDegree [$timeSpan s]")
-      }
-      case "outDegree" => {
+
+      case "outDegree" =>
         val startTime = System.nanoTime()
-        val outDegree = Veracity.degree(seed.outDegrees, synth.outDegrees, saveDistAsCSV = true, overwrite = true)
+        val outDegree = OutDegree.run(seed, synth, saveDistAsCSV = true, overwrite = true)
         val timeSpan = (System.nanoTime() - startTime) / 1e9
         println(s"\tPage Rank Veracity: $outDegree [$timeSpan s]")
-      }
-      case "pageRank" => {
+
+      case "pageRank" =>
         val startTime = System.nanoTime()
-        val pageRank = Veracity.pageRank(seed, synth, saveDistAsCSV = true, overwrite = true)
+        val pageRank = PageRank.run(seed, synth, saveDistAsCSV = true, overwrite = true)
         val timeSpan = (System.nanoTime() - startTime) / 1e9
         println(s"\tPage Rank Veracity: $pageRank [$timeSpan s]")
-      }
+
       case _ => println("Invalid metric:" + params.metric)
     }
 

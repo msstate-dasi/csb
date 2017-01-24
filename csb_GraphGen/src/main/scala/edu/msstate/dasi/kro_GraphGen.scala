@@ -82,24 +82,24 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, dataDist: DataDistribution
     println("Edges: " + seedGraph.edges.count())
 
     startTime = System.nanoTime()
-    val degVeracity = Veracity.degree(seedGraph.degrees, theGraph.degrees, saveDistAsCSV = true, overwrite = true)
+    val degVeracity = Degree.run(seedGraph, theGraph)
     timeSpan = (System.nanoTime() - startTime) / 1e9
     println(s"\tDegree Veracity: $degVeracity [$timeSpan s]")
 
     startTime = System.nanoTime()
-    val inDegVeracity = Veracity.degree(seedGraph.inDegrees, theGraph.inDegrees, saveDistAsCSV = true, "in", overwrite = true)
+    val inDegVeracity = InDegree.run(seedGraph, theGraph)
     timeSpan = (System.nanoTime() - startTime) / 1e9
     println(s"\tIn Degree Veracity: $inDegVeracity [$timeSpan s]")
 
     startTime = System.nanoTime()
-    val outDegVeracity = Veracity.degree(seedGraph.outDegrees, theGraph.outDegrees, saveDistAsCSV = true, "out", overwrite = true)
+    val outDegVeracity = OutDegree.run(seedGraph, theGraph)
     timeSpan = (System.nanoTime() - startTime) / 1e9
     println(s"\tOut Degree Veracity: $outDegVeracity [$timeSpan s]")
 
-    startTime = System.nanoTime()
-    val cc = Veracity.pageRank(seedGraph, theGraph, saveDistAsCSV = true, overwrite = true)
-    timeSpan = (System.nanoTime() - startTime) / 1e9
-    println(s"\tPage Rank Veracity: $cc [$timeSpan s]")
+//    startTime = System.nanoTime()
+//    val pageRankVeracity = PageRank.run(seedGraph, theGraph)
+//    timeSpan = (System.nanoTime() - startTime) / 1e9
+//    println(s"\tPage Rank Veracity: $pageRankVeracity  [$timeSpan s]")
 
     true
   }
@@ -220,7 +220,7 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, dataDist: DataDistribution
       println("getKroRDD(" + nVerts + ", " + (nEdges - curEdges) + s", $n1, $iter, probToRCPosV_Broadcast)")
       val newRDD = getKroRDD(nVerts, nEdges - curEdges, n1, iter, probToRCPosV_Broadcast)
 
-      edgeList = edgeList.union(newRDD).map(entry => ((entry.srcId, entry.dstId), entry)).reduceByKey((left, _) => left).map(record => record._2).cache()
+      edgeList = edgeList.union(newRDD).map(entry => ((entry.srcId, entry.dstId), entry)).reduceByKey((left, _) => left).map(record => record._2)
       curEdges = edgeList.count()
       println(s"$curEdges $nEdges")
     }
@@ -228,7 +228,7 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, dataDist: DataDistribution
     val newEdges = getMultiEdgesRDD(edgeList)
 
     println("Number of edges before union: " + edgeList.count())
-    val finalEdgeList = edgeList.union(newEdges).cache()
+    val finalEdgeList = edgeList.union(newEdges)
     println("Total # of Edges (including multi edges): " + finalEdgeList.count())
 
     val vertList: RDD[(VertexId, nodeData)] = finalEdgeList.flatMap{ edge => Array(edge.srcId, edge.dstId) }
