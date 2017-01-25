@@ -31,18 +31,21 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, dataDist: DataDistribution
     //Run Kronecker with the adjacency matrix
     var startTime = System.nanoTime()
     theGraph = generateKroGraph(probMtx, genIter)
+    println("Vertices #: " + theGraph.numVertices + ", Edges #: " + theGraph.numEdges)
+
     var timeSpan = (System.nanoTime() - startTime) / 1e9
     println()
     println("Finished generating Kronecker graph.")
     println("\tTotal time elapsed: " + timeSpan.toString)
     println()
 
-    val dataDistBroadcast = sc.broadcast(dataDist)
-
     if(!noPropFlag) {
       println()
       println("Generating Edge and Node properties")
+
       startTime = System.nanoTime()
+      val dataDistBroadcast = sc.broadcast(dataDist)
+
       val eRDD: RDD[Edge[edgeData]] = theGraph.edges.map(record => Edge(record.srcId, record.dstId, {
         val ORIGBYTES = dataDistBroadcast.value.getOrigBytesSample
         val ORIGIPBYTE = dataDistBroadcast.value.getOrigIPBytesSample(ORIGBYTES)
@@ -113,7 +116,7 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, dataDist: DataDistribution
     val recordsPerPartition = math.min( (nEdges / localPartitions).toInt, Int.MaxValue )
     val i = sc.parallelize(Seq[Char](), localPartitions).mapPartitions( _ =>  (1 to recordsPerPartition).iterator )
 
-    val edgeList = i.flatMap { _ =>
+    val edgeList = i.map { _ =>
 
       var range = nVerts
       var srcId = 0L
@@ -136,10 +139,8 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, dataDist: DataDistribution
         dstId += v * range
         //println("Row " + srcId + ", Col " + dstId)
       }
-
-      Array( ( (srcId, dstId), Edge(srcId, dstId, edgeData()) ) )
-
-    }.reduceByKey((left,_) => left).map(record => record._2)
+      Edge(srcId, dstId, edgeData())
+    }
 
     edgeList
   }
@@ -186,7 +187,7 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, dataDist: DataDistribution
     *
     * @param probMtx Probability Matrix used to generate Kronecker Graph
     * @param iter Number of iterations to perform kronecker
-    * @return Graph containing vertices + edu.msstate.dasi.nodeData, edges + edu.msstate.dasi.edgeData
+    * @return Graph containing vertices + nodeData, edges + edgeData
     */
   def generateKroGraph(probMtx: Array[Array[Double]], iter: Int): Graph[nodeData, edgeData] = {
 
@@ -211,30 +212,45 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, dataDist: DataDistribution
         probToRCPosV_Private = probToRCPosV_Private :+ (cumProb/mtxSum, i.toLong, j.toLong)
     }
 
+    var startTime = System.nanoTime()
+
     val probToRCPosV_Broadcast = sc.broadcast(probToRCPosV_Private)
 
     var curEdges: Long = 0
     var edgeList: RDD[Edge[edgeData]] = sc.emptyRDD
 
     while (curEdges < nEdges) {
-      println("getKroRDD(" + nVerts + ", " + (nEdges - curEdges) + s", $n1, $iter, probToRCPosV_Broadcast)")
-      val newRDD = getKroRDD(nVerts, nEdges - curEdges, n1, iter, probToRCPosV_Broadcast)
+      println("getKroRDD(" + (nEdges - curEdges) + ")")
 
-      edgeList = edgeList.union(newRDD).map(entry => ((entry.srcId, entry.dstId), entry)).reduceByKey((left, _) => left).map(record => record._2)
+      val oldEdgeList = edgeList
+
+      val newRDD = getKroRDD(nVerts, nEdges - curEdges, n1, iter, probToRCPosV_Broadcast)
+      edgeList = oldEdgeList.union(newRDD).distinct().setName("edgeList#" + curEdges).cache()
       curEdges = edgeList.count()
-      println(s"$curEdges $nEdges")
+
+      oldEdgeList.unpersist()
+
+      println(s"Requested/created: $nEdges/$curEdges")
     }
 
-    val newEdges = getMultiEdgesRDD(edgeList)
+    var timeSpan = (System.nanoTime() - startTime) / 1e9
+
+    println(s"All getKroRDD time: $timeSpan s")
 
     println("Number of edges before union: " + edgeList.count())
-    val finalEdgeList = edgeList.union(newEdges)
+
+    startTime = System.nanoTime()
+
+    val newEdges = getMultiEdgesRDD(edgeList).setName("newEdges")
+
+    val finalEdgeList = edgeList.union(newEdges).setName("finalEdgeList")
     println("Total # of Edges (including multi edges): " + finalEdgeList.count())
 
-    val vertList: RDD[(VertexId, nodeData)] = finalEdgeList.flatMap{ edge => Array(edge.srcId, edge.dstId) }
-      .distinct().map{ record => (record, nodeData()) }
+    timeSpan = (System.nanoTime() - startTime) / 1e9
 
-    val theGraph = Graph(vertList, finalEdgeList, nodeData())
+    println(s"MultiEdges time: $timeSpan s")
+
+    val theGraph = Graph.fromEdges(finalEdgeList, nodeData())
 
     theGraph
   }
