@@ -39,19 +39,28 @@ sealed trait Degree extends Veracity {
 }
 
 object Degree extends Degree {
-  override def run[VD: ClassTag, ED: ClassTag](g1: Graph[VD, ED], g2: Graph[VD, ED], saveDistAsCSV: Boolean = false,
+  /**
+   * Computes the degree veracity factor between two graphs.
+   */
+  override def apply[VD: ClassTag, ED: ClassTag](g1: Graph[VD, ED], g2: Graph[VD, ED], saveDistAsCSV: Boolean = false,
                                                filePrefix: String = "", overwrite: Boolean = false): Double = {
     degree(g1.degrees, g2.degrees, saveDistAsCSV, filePrefix, overwrite)
   }
 }
 object InDegree extends Degree {
-  override def run[VD: ClassTag, ED: ClassTag](g1: Graph[VD, ED], g2: Graph[VD, ED], saveDistAsCSV: Boolean = false,
+  /**
+   * Computes the in-degree veracity factor between two graphs.
+   */
+  override def apply[VD: ClassTag, ED: ClassTag](g1: Graph[VD, ED], g2: Graph[VD, ED], saveDistAsCSV: Boolean = false,
                                                filePrefix: String = "", overwrite: Boolean = false): Double = {
     degree(g1.inDegrees, g2.inDegrees, saveDistAsCSV, filePrefix, overwrite)
   }
 }
 object OutDegree extends Degree {
-  override def run[VD: ClassTag, ED: ClassTag](g1: Graph[VD, ED], g2: Graph[VD, ED], saveDistAsCSV: Boolean = false,
+  /**
+   * Computes the out-degree veracity factor between two graphs.
+   */
+  override def apply[VD: ClassTag, ED: ClassTag](g1: Graph[VD, ED], g2: Graph[VD, ED], saveDistAsCSV: Boolean = false,
                                                filePrefix: String = "", overwrite: Boolean = false): Double = {
     degree(g1.outDegrees, g2.outDegrees, saveDistAsCSV, filePrefix, overwrite)
   }

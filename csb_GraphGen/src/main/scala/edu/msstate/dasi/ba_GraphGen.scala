@@ -88,9 +88,9 @@ class ba_GraphGen(sc: SparkContext, partitions: Int, dataDist: DataDistributions
 
     val seedGraph = Graph(inVertices, inEdges, nodeData())
 
-    val degVeracity = Degree.run(seedGraph, theGraph)
-    val inDegVeracity = InDegree.run(seedGraph, theGraph)
-    val outDegVeracity = OutDegree.run(seedGraph, theGraph)
+    val degVeracity = Degree(seedGraph, theGraph)
+    val inDegVeracity = InDegree(seedGraph, theGraph)
+    val outDegVeracity = OutDegree(seedGraph, theGraph)
     println("Finished calculating degrees veracity.\n\tDegree Veracity:" + degVeracity + "\n\tIn Degree Veracity: " +
       inDegVeracity + "\n\tOut Degree Veracity:" + outDegVeracity)
 

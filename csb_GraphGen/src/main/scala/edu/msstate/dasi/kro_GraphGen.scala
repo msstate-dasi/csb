@@ -85,24 +85,24 @@ class kro_GraphGen(sc: SparkContext, partitions: Int, dataDist: DataDistribution
     println("Edges: " + seedGraph.edges.count())
 
     startTime = System.nanoTime()
-    val degVeracity = Degree.run(seedGraph, theGraph)
+    val degVeracity = Degree(seedGraph, theGraph)
     timeSpan = (System.nanoTime() - startTime) / 1e9
     println(s"\tDegree Veracity: $degVeracity [$timeSpan s]")
 
     startTime = System.nanoTime()
-    val inDegVeracity = InDegree.run(seedGraph, theGraph)
+    val inDegVeracity = InDegree(seedGraph, theGraph)
     timeSpan = (System.nanoTime() - startTime) / 1e9
     println(s"\tIn Degree Veracity: $inDegVeracity [$timeSpan s]")
 
     startTime = System.nanoTime()
-    val outDegVeracity = OutDegree.run(seedGraph, theGraph)
+    val outDegVeracity = OutDegree(seedGraph, theGraph)
     timeSpan = (System.nanoTime() - startTime) / 1e9
     println(s"\tOut Degree Veracity: $outDegVeracity [$timeSpan s]")
 
-//    startTime = System.nanoTime()
-//    val pageRankVeracity = PageRank.run(seedGraph, theGraph)
-//    timeSpan = (System.nanoTime() - startTime) / 1e9
-//    println(s"\tPage Rank Veracity: $pageRankVeracity  [$timeSpan s]")
+    startTime = System.nanoTime()
+    val pageRankVeracity = PageRank(seedGraph, theGraph)
+    timeSpan = (System.nanoTime() - startTime) / 1e9
+    println(s"\tPage Rank Veracity: $pageRankVeracity  [$timeSpan s]")
 
     true
   }

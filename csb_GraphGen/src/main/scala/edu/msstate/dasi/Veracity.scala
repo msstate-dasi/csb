@@ -10,13 +10,14 @@ import org.apache.spark.rdd.RDD
 import scala.reflect.ClassTag
 
 trait Veracity {
+  // TODO: we should find a more elegant solution for passing the bucket size to the inheriting class
   protected var globalBucketSize = 0.0
 
   /**
-   * Squashes saveAsTextFile() part files together into a single file using the Hadoop’s merge function
+   * Squashes saveAsTextFile() part files together into a single file using the Hadoop’s merge function.
    *
    * @note This is a better approach rather than rdd.coalesce(1).saveAsTextFile() because the latter will put all
-   *       final data through a single reduce task, with no parallelism and the risk of overloading an executor
+   *       final data through a single reduce task, with no parallelism and the risk of overloading an executor.
    */
   private def merge(srcPath: String, dstPath: String) = {
     val hadoopConfig = new Configuration()
@@ -47,9 +48,7 @@ trait Veracity {
   }
 
   /**
-   * Computes a normalized bucketed distribution given a list of keys
-   *
-   * @return RDD containing the normalized distribution
+   * Computes a normalized bucketed distribution given a list of keys.
    */
   protected def normDistRDD(keys: RDD[Double], bucketSize: Double): RDD[(Double, Double)] = {
 
@@ -79,7 +78,7 @@ trait Veracity {
   }
 
   /**
-   * Computes the Euclidean distance between the values of two (key,value) RDDs
+   * Computes the Euclidean distance between the values of two (key,value) RDDs.
    */
   protected def euclideanDistance[V: ClassTag](rdd1: RDD[(V, Double)], rdd2: RDD[(V, Double)]): Double = {
     math.sqrt(
@@ -93,8 +92,8 @@ trait Veracity {
   }
 
   /**
-   * Computes the Euclidean distance between the values of two (key,value) RDDs
+   * Computes the veracity factor between two graphs.
    */
-  def run[VD: ClassTag, ED: ClassTag](g1: Graph[VD, ED], g2: Graph[VD, ED], saveDistAsCSV: Boolean = false,
+  def apply[VD: ClassTag, ED: ClassTag](g1: Graph[VD, ED], g2: Graph[VD, ED], saveDistAsCSV: Boolean = false,
                                       filePrefix: String = "", overwrite: Boolean = false): Double
 }

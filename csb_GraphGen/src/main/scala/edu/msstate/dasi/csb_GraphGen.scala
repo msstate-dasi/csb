@@ -384,25 +384,25 @@ object csb_GraphGen extends base_GraphGen with DataParser {
     params.metric match {
       case "degree" =>
         val startTime = System.nanoTime()
-        val degree = Degree.run(seed, synth, saveDistAsCSV = true, overwrite = true)
+        val degree = Degree(seed, synth, saveDistAsCSV = true, overwrite = true)
         val timeSpan = (System.nanoTime() - startTime) / 1e9
         println(s"\tPage Rank Veracity: $degree [$timeSpan s]")
 
       case "inDegree" =>
         val startTime = System.nanoTime()
-        val inDegree = InDegree.run(seed, synth, saveDistAsCSV = true, overwrite = true)
+        val inDegree = InDegree(seed, synth, saveDistAsCSV = true, overwrite = true)
         val timeSpan = (System.nanoTime() - startTime) / 1e9
         println(s"\tPage Rank Veracity: $inDegree [$timeSpan s]")
 
       case "outDegree" =>
         val startTime = System.nanoTime()
-        val outDegree = OutDegree.run(seed, synth, saveDistAsCSV = true, overwrite = true)
+        val outDegree = OutDegree(seed, synth, saveDistAsCSV = true, overwrite = true)
         val timeSpan = (System.nanoTime() - startTime) / 1e9
         println(s"\tPage Rank Veracity: $outDegree [$timeSpan s]")
 
       case "pageRank" =>
         val startTime = System.nanoTime()
-        val pageRank = PageRank.run(seed, synth, saveDistAsCSV = true, overwrite = true)
+        val pageRank = PageRank(seed, synth, saveDistAsCSV = true, overwrite = true)
         val timeSpan = (System.nanoTime() - startTime) / 1e9
         println(s"\tPage Rank Veracity: $pageRank [$timeSpan s]")
 
