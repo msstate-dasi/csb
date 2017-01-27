@@ -12,8 +12,8 @@ object PageRank extends Veracity {
   /**
    * Computes the pageRank veracity factor between two graphs.
    */
-  override def apply[VD: ClassTag, ED: ClassTag](g1: Graph[VD, ED], g2: Graph[VD, ED], saveDistAsCSV: Boolean = false,
-                                               filePrefix: String = "", overwrite: Boolean = false): Double = {
+  def apply[VD: ClassTag, ED: ClassTag](g1: Graph[VD, ED], g2: Graph[VD, ED], saveDistAsCSV: Boolean = false,
+                                                 filePrefix: String = "", overwrite: Boolean = false): Double = {
     val pageRankTolerance = 0.001
 
     // Computes the bucket size as the minimum difference between any successive pair of ordered values

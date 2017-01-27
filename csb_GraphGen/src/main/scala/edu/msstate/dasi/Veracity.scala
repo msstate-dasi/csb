@@ -95,5 +95,5 @@ trait Veracity {
    * Computes the veracity factor between two graphs.
    */
   def apply[VD: ClassTag, ED: ClassTag](g1: Graph[VD, ED], g2: Graph[VD, ED], saveDistAsCSV: Boolean = false,
-                                      filePrefix: String = "", overwrite: Boolean = false): Double
+                                        filePrefix: String = "", overwrite: Boolean = false): Double
 }

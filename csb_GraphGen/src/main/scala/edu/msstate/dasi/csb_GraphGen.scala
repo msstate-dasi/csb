@@ -13,7 +13,7 @@ import org.apache.spark.sql.SparkSession
   * Created by spencer on 11/3/16.
   */
 
-object csb_GraphGen extends base_GraphGen with DataParser {
+object csb_GraphGen extends DataParser {
 
   val versionString = "0.2-DEV"
 
@@ -322,7 +322,7 @@ object csb_GraphGen extends base_GraphGen with DataParser {
 
     val (vRDD, eRDD): (RDD[(VertexId, nodeData)], RDD[Edge[edgeData]]) = readFromConnFile(sc, params.partitions, params.augLog)
 
-    theGraph = Graph(vRDD, eRDD, nodeData())
+    val theGraph = Graph(vRDD, eRDD, nodeData())
 
 
     val seed_vert = theGraph.vertices.coalesce(1, true).collect()
@@ -351,12 +351,12 @@ object csb_GraphGen extends base_GraphGen with DataParser {
   def run_ba(sc: SparkContext, params: Params): Boolean = {
     var graphPs: GraphPersistence = null
     params.backend match {
-      case "fs" => graphPs = new SparkPersistence(sc, params.outputGraphPrefix)
+      case "fs" => graphPs = new SparkPersistence(params.outputGraphPrefix)
       case "neo4j" => graphPs = new Neo4jPersistence(sc)
     }
 
-    val baGraph = new ba_GraphGen(sc, params.partitions, new DataDistributions(sc, params.augLog), graphPs)
-    baGraph.run(params.seedVertices, params.seedEdges, params.baIter, params.numNodesPerIter, params.noProp, params.debug)
+    val baGraph = new BaSynth(sc, params.partitions, new DataDistributions(sc, params.augLog), graphPs, params.baIter, params.numNodesPerIter)
+    baGraph.run(params.seedVertices, params.seedEdges, params.noProp)
 
     true
   }
@@ -364,12 +364,12 @@ object csb_GraphGen extends base_GraphGen with DataParser {
   def run_kro(sc: SparkContext, params: Params): Boolean = {
     var graphPs: GraphPersistence = null
     params.backend match {
-      case "fs" => graphPs = new SparkPersistence(sc, params.outputGraphPrefix)
+      case "fs" => graphPs = new SparkPersistence(params.outputGraphPrefix)
       case "neo4j" => graphPs = new Neo4jPersistence(sc)
     }
 
-    val kroGraph = new kro_GraphGen(sc, params.partitions, new DataDistributions(sc, params.augLog), graphPs)
-    kroGraph.run(params.seedMtx, params.kroIter, params.seedVertices, params.seedEdges, params.noProp, params.debug)
+    val kroGraph = new KroSynth(sc, params.partitions, new DataDistributions(sc, params.augLog), graphPs, params.seedMtx, params.kroIter)
+    kroGraph.run(params.seedVertices, params.seedEdges, params.noProp)
 
     true
   }

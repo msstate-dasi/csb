@@ -11,7 +11,7 @@ import scala.reflect.ClassTag
 /**
  * Created by scordio on 1/4/17.
  */
-class SparkPersistence(sc: SparkContext, path: String, asText : Boolean = false) extends GraphPersistence {
+class SparkPersistence(path: String, asText : Boolean = false) extends GraphPersistence {
   private val vertices_suffix = "_vertices"
   private val edges_suffix = "_edges"
 
@@ -21,7 +21,7 @@ class SparkPersistence(sc: SparkContext, path: String, asText : Boolean = false)
    * @param graph
    * @param overwrite
    */
-  override def saveGraph[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], overwrite :Boolean = false): Unit = {
+  def saveGraph[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], overwrite :Boolean = false): Unit = {
     val verticesPath = path + vertices_suffix
     val edgesPath = path + edges_suffix
 
@@ -30,15 +30,12 @@ class SparkPersistence(sc: SparkContext, path: String, asText : Boolean = false)
       FileUtil.fullyDelete(new File(edgesPath))
     }
 
-    val coalescedVertices = graph.vertices.coalesce(sc.defaultParallelism)
-    val coalescedEdges = graph.edges.coalesce(sc.defaultParallelism)
-
     if (asText) {
-      coalescedVertices.saveAsTextFile(verticesPath)
-      coalescedEdges.saveAsTextFile(edgesPath)
+      graph.vertices.saveAsTextFile(verticesPath)
+      graph.edges.saveAsTextFile(edgesPath)
     } else {
-      coalescedVertices.saveAsObjectFile(verticesPath)
-      coalescedEdges.saveAsObjectFile(edgesPath)
+      graph.vertices.saveAsObjectFile(verticesPath)
+      graph.edges.saveAsObjectFile(edgesPath)
     }
   }
 }
