@@ -9,7 +9,7 @@ class KroFitTest extends FunSuite {
 
   test("testGetEdgeLL") {
     val obj = new KroFit(null, 0, "", 0, "")
-    assert(obj.getEdgeLL(30L,31L)===4.87777)
+    obj.run()
   }
 
 }
