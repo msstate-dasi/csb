@@ -118,11 +118,11 @@ class KroFit(sc: SparkContext, partitions: Int, initMtxStr: String, gradIter: In
     val nodeCount = nodes.count()
     for(nid <- 0 until nodeCount.toInt)
       {
-        calcGraph()
+        calcAproxGraphLL()
       }
   }
 
-  def calcEmptyGraph(): Double =
+  def calcEmptyGraphLL(): Double =
   {
     var sum: Double = 0.0
     var sumSq: Double = 0.0
@@ -136,36 +136,53 @@ class KroFit(sc: SparkContext, partitions: Int, initMtxStr: String, gradIter: In
   }
 
 
-  def calcGraph(): Unit =
+  def calcAproxGraphLL(): Double =
   {
-    var loglike = calcEmptyGraph()
+    var loglike = calcEmptyGraphLL()
     println("loglike = " + loglike)
-    val nodeCount = nodes.count()
+    val nodeCount = nodes.count().toInt
     for(nid <- 0 until nodeCount.toInt)
       {
         val degree = edges.lookup(nid).size
+        val dsts = edges.lookup(nid).toArray
         for(e <- 0 until degree)
           {
-            loglike = loglike -
+            loglike = loglike - getAproxNoEdgeLL(nid, dsts(e).toInt) + GetEdgeLL(nid, dsts(e).toInt)
           }
       }
+    return 0.0
+  }
 
+  def GetEdgeLL(NID1: Int, NID2: Int): Double =
+  {
+   return 0.0
+  }
+
+  def getAproxNoEdgeLL(NID1: Int, NID2: Int): Double =
+  {
+    val EdgeLL = getEdgeLL(NID1, NID2)
+    return math.pow(math.E, EdgeLL) - 0.5 * math.pow(math.E, 2 * EdgeLL)
   }
 
   def getEdgeLL(NID1: Long, NID2: Long): Double =
   {
+    var cNID1 = NID1
+    var cNID2 = NID2
     var LL:Double = 0.0
     for(lvl <- 0 until KronIters)
       {
-        val LLVal = computeLLat(NID1.toInt % (mtx.length/2), NID2.toInt % (mtx.length/2))
+        val LLVal = computeLLat(cNID1.toInt % (mtx.length/2), cNID2.toInt % (mtx.length/2))
         LL += LLVal
+        cNID1 = cNID1 / (mtx.length / 2)
+        cNID2 = cNID2 / (mtx.length / 2)
       }
+    println("LL is " + LL)
     return LL
   }
 
   def computeLLat(row: Int, col: Int): Double =
   {
-    return math.log(mtx(mtx.length/2 * row + col))
+    return mtx(mtx.length/2 * row + col)
   }
 
   def run(): Boolean =
