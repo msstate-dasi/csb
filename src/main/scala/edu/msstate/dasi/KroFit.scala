@@ -43,9 +43,9 @@ class KroFit(sc: SparkContext, partitions: Int, initMtxStr: String, gradIter: In
   {
     var sum: Double = 0
     for(x <- mtx)
-      {
-        sum += x.toDouble
-      }
+    {
+      sum += x.toDouble
+    }
     return sum
   }
 
@@ -73,25 +73,25 @@ class KroFit(sc: SparkContext, partitions: Int, initMtxStr: String, gradIter: In
     val edges = rdd._2.flatMap(record => Array((record._1, record._2),(record._2, record._1)))
     var arr = edges.groupByKey().sortBy(record => record._2.size, ascending = false).collect()
     println("before perm")
-//    for(x <- arr)
-//      {
-//        println("Node " + x._1 + " has degree " + x._2.size)
-//      }
+    //    for(x <- arr)
+    //      {
+    //        println("Node " + x._1 + " has degree " + x._2.size)
+    //      }
 
 
     var newNodesID = new mutable.HashMap[Long, Long]()
     println("\n\n\n\n\n\n\n\n\n\nafter perm")
     for(x <- 0L to arr.length - 1)
-      {
-        newNodesID.put(arr(x.toInt)._1, x + 1)
-      }
+    {
+      newNodesID.put(arr(x.toInt)._1, x + 1)
+    }
     var permEdges = edges.map(record => (newNodesID.get(record._1).head, newNodesID.get(record._2).head))//.collect()
-    var permNodes = edges.flatMap(record => Array(record._1, record._2))
-//    var testing = perm.groupByKey().sortBy(record => record._2.size, ascending = false).collect()
-//    for(x <- testing)
-//      {
-//        println("Node " + x._1 + " has degree " + x._2.size)
-//      }
+  var permNodes = edges.flatMap(record => Array(record._1, record._2))
+    //    var testing = perm.groupByKey().sortBy(record => record._2.size, ascending = false).collect()
+    //    for(x <- testing)
+    //      {
+    //        println("Node " + x._1 + " has degree " + x._2.size)
+    //      }
 
     return (permEdges, permNodes)
   }
@@ -104,9 +104,9 @@ class KroFit(sc: SparkContext, partitions: Int, initMtxStr: String, gradIter: In
     var learnRateVec = Array[Double](lrnRate, lrnRate, lrnRate, lrnRate)
     sampGrad(WarmUp, NSamples, CruLL, null)
     for(iter <- 1 to NIter)
-      {
+    {
 
-      }
+    }
   }
 
   def sampGrad(WarmUp: Int, NSamples: Int, AvgLL: Double, AvgGradV: Array[Double]): Unit =
@@ -117,9 +117,10 @@ class KroFit(sc: SparkContext, partitions: Int, initMtxStr: String, gradIter: In
 
     val nodeCount = nodes.count()
     for(nid <- 0 until nodeCount.toInt)
-      {
-        calcAproxGraphLL()
-      }
+    {
+      println(calcAproxGraphLL())
+      sys.exit(0)
+    }
   }
 
   def calcEmptyGraphLL(): Double =
@@ -128,35 +129,47 @@ class KroFit(sc: SparkContext, partitions: Int, initMtxStr: String, gradIter: In
     var sumSq: Double = 0.0
 
     for(i <- 0 until mtx.length)
-      {
-        sum += mtx(i)
-        sumSq += math.pow(mtx(i), 2)
-      }
+    {
+      sum += mtx(i)
+      sumSq += math.pow(mtx(i), 2)
+    }
     return -math.pow(sum, KronIters) - 0.5 * math.pow(sumSq, KronIters)
   }
 
 
   def calcAproxGraphLL(): Double =
   {
+    nodes.persist()
+    edges.persist()
+
+    var tempEdges = edges.groupByKey().map(record => record._2.toArray).collect()
     var loglike = calcEmptyGraphLL()
     println("loglike = " + loglike)
     val nodeCount = nodes.count().toInt
+
+//    nodes.map(record =>
+//    {
+//      val degree = tempEdges(record.toInt)
+//      val dsts = tempEdges(record.toInt).
+//    })
+
     for(nid <- 0 until nodeCount.toInt)
+    {
+      println(nid)
+      val degree = tempEdges(nid).length
+//      val degree = edges.lookup(nid).size
+      val dsts = tempEdges(nid)
+//      val dsts = edges.lookup(nid).toArray
+      for(e <- 0 until degree)
       {
-        val degree = edges.lookup(nid).size
-        val dsts = edges.lookup(nid).toArray
-        for(e <- 0 until degree)
-          {
-            loglike = loglike - getAproxNoEdgeLL(nid, dsts(e).toInt) + GetEdgeLL(nid, dsts(e).toInt)
-          }
+        loglike = loglike - getAproxNoEdgeLL(nid, dsts(e).toInt) + getEdgeLL(nid, dsts(e).toInt)
       }
-    return 0.0
+    }
+    println(loglike)
+    sys.exit(0)
+    return loglike
   }
 
-  def GetEdgeLL(NID1: Int, NID2: Int): Double =
-  {
-   return 0.0
-  }
 
   def getAproxNoEdgeLL(NID1: Int, NID2: Int): Double =
   {
@@ -170,34 +183,34 @@ class KroFit(sc: SparkContext, partitions: Int, initMtxStr: String, gradIter: In
     var cNID2 = NID2
     var LL:Double = 0.0
     for(lvl <- 0 until KronIters)
-      {
-        val LLVal = computeLLat(cNID1.toInt % (mtx.length/2), cNID2.toInt % (mtx.length/2))
-        LL += LLVal
-        cNID1 = cNID1 / (mtx.length / 2)
-        cNID2 = cNID2 / (mtx.length / 2)
-      }
-    println("LL is " + LL)
+    {
+      val LLVal = computeLLat(cNID1.toInt % (mtx.length/2), cNID2.toInt % (mtx.length/2))
+      LL += LLVal
+      cNID1 = cNID1 / (mtx.length / 2)
+      cNID2 = cNID2 / (mtx.length / 2)
+    }
     return LL
   }
 
   def computeLLat(row: Int, col: Int): Double =
   {
-    return mtx(mtx.length/2 * row + col)
+    return math.log(mtx(mtx.length/2 * row + col))
   }
 
   def run(): Boolean =
   {
     mtx = evaluateMtxStr()
+    LLmtx = new Array[Double](4)
     for(x <- mtx)
-      {
-        println(x)
-      }
+    {
+      println(x)
+    }
     mtx = scaleMtx(mtx)
     for(x <- 0 until mtx.length)
-      {
-        if(mtx(x) != 0) LLmtx(x) = math.log(mtx(x))
-        else LLmtx(x) = Int.MinValue
-      }
+    {
+      if(mtx(x) != 0) LLmtx(x) = math.log(mtx(x))
+      else LLmtx(x) = Int.MinValue
+    }
 
     val (permEdges, permNodes) = sortByDegree()
     nodes = permNodes
