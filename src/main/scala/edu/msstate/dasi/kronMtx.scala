@@ -33,8 +33,10 @@ class kronMtx(sc: SparkContext) {
   def dump(): Unit = {
     val iter = seedMtx.iterator
     for (i <- 0 until mtxDim)
-      for (j<- 0 until mtxDim) {
-        print(iter.next().toString + "\t")
+      for (j <- 0 until mtxDim) {
+        if (iter.hasNext) {
+          print(iter.next().toString + "\t")
+        }
       }
       println()
   }
