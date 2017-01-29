@@ -12,9 +12,12 @@ class KroFit(sc: SparkContext, partitions: Int, initMtxStr: String, gradIter: In
 
     def run(): Unit = {
 
-      val edgeList: Array[(Long,Long)] = Array.empty[(Long,Long)]
+      var edgeList: Array[(Long,Long)] = Array.empty[(Long,Long)]
+      var nodeList: Array[Long] = null
       val permSwapNodeProb = 0.2
       val scaleInitMtx = true
+      edgeList = tempReadFromConn(sc, 120, "as20graph.txt")._2.collect()
+      nodeList = tempReadFromConn(sc, 120, "as20graph.txt")._1.collect()
 
       val lrnRate = 0
       val mnStep = 0.005
@@ -27,16 +30,22 @@ class KroFit(sc: SparkContext, partitions: Int, initMtxStr: String, gradIter: In
       println("INIT PARAM")
       initKronMtx.dump()
 
-      val kronLL = new kroneckerLL(sc, edgeList, initKronMtx, permSwapNodeProb)
+      val kronLL = new kroneckerLL(sc, edgeList, nodeList, initKronMtx, permSwapNodeProb)
 
       if(scaleInitMtx)
       {
         initKronMtx.setForEdges(kronLL.nodes, kronLL.edges)
       }
-      kronLL.InitLL(edgeList, initKronMtx)
+      kronLL.InitLL(edgeList, nodeList, initKronMtx)
+
+      initKronMtx.dump()
+
+      kronLL.setPerm()
+
 
       var logLike: Double = 0
-      logLike = kronLL.gradDescent(gradIter, lrnRate, mnStep, mxStep, warmUp, nSamples);
+//      logLike = kronLL.gradDescent(gradIter, lrnRate, mnStep, mxStep, warmUp, nSamples);
+      logLike = kronLL.gradDescent(1, lrnRate, mnStep, mxStep, 10000, 100000);
 
     }
 

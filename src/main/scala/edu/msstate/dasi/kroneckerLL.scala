@@ -3,6 +3,7 @@ package edu.msstate.dasi
 import breeze.numerics.log
 import org.apache.spark.SparkContext
 
+import scala.collection.mutable
 import scala.util.Random
 
 /**
@@ -18,6 +19,7 @@ class kroneckerLL(sc: SparkContext) {
   var permSwapNodeProb = 0.2
   var realNodes = -1
   var realEdges = -1
+  var nodeHash: mutable.HashMap[Int, Int] = null
   val NInf: Double = -Double.MaxValue
   var logLike: Double = 0
   var gradV: Array[Double] = Array.empty[Double]
@@ -33,31 +35,57 @@ class kroneckerLL(sc: SparkContext) {
   var lEdgeList: Array[(Long,Long)] = Array.empty[(Long,Long)]
   var lSelfEdge = 0
 
-  def this(sc: SparkContext, edgeList: Array[(Long,Long)], paramV: Array[Double]) = {
+  def this(sc: SparkContext, edgeList: Array[(Long,Long)], nodeList: Array[Long],  paramV: Array[Double]) = {
     this(sc)
-    InitLL(edgeList, new kronMtx(sc, paramV))
+    InitLL(edgeList, nodeList, new kronMtx(sc, paramV))
   }
-  def this(sc: SparkContext, edgeList: Array[(Long,Long)], paramMtx: kronMtx) = {
+  def this(sc: SparkContext, edgeList: Array[(Long,Long)], nodeList: Array[Long], paramMtx: kronMtx) = {
     this(sc)
-    InitLL(edgeList, paramMtx)
+    InitLL(edgeList, nodeList, paramMtx)
   }
-  def this(sc: SparkContext, edgeList: Array[(Long,Long)], paramMtx: kronMtx, permSwapNodeProb: Double) = {
+  def this(sc: SparkContext, edgeList: Array[(Long,Long)], nodeList: Array[Long], paramMtx: kronMtx, permSwapNodeProb: Double) = {
     this(sc)
     this.permSwapNodeProb = permSwapNodeProb
-    println(paramMtx.Len())
-    InitLL(edgeList, paramMtx)
+//    println(paramMtx.Len())
+    InitLL(edgeList, nodeList, paramMtx)
   }
-  def this(sc: SparkContext, edgeList: Array[(Long,Long)], paramMtx: kronMtx, nodeIdPermV: Array[Long]) = {
-    this(sc)
-    InitLL(edgeList, paramMtx)
-    nodePerm = nodeIdPermV
+//  def this(sc: SparkContext, edgeList: Array[(Long,Long)], nodeList: Array[Long], paramMtx: kronMtx, nodeIdPermV: Array[Long]) = {
+//    this(sc)
+//    InitLL(edgeList, nodeList, paramMtx)
+//    nodePerm = nodeIdPermV
+//    setIPerm(nodePerm)
+//  }
+
+
+  def setPerm(): Unit =
+  {
+
+    var degree = sc.parallelize(edgeList).groupByKey().collect().toMap
+    var DegNIdV = Array.fill(nodeList.length)(0, 0)
+    for(ni <- 0 until nodeList.length)
+      {
+        val nodeID: Int = nodeList(ni).toInt
+        DegNIdV(ni) = (degree.get(nodeID).head.size, nodeID)
+      }
+    DegNIdV = DegNIdV.sortBy(_._1).reverse
+
+//    for(x <- DegNIdV)
+//          {
+//            println("Degree " + x._1 + " nodeID of " + x._2)
+//          }
+    nodePerm = Array.fill(DegNIdV.length)(0)
+    for(i <- 0 until DegNIdV.length)
+      {
+        nodePerm(i) = DegNIdV(i)._2
+      }
+
     setIPerm(nodePerm)
   }
 
-  def InitLL(edgeList: Array[(Long,Long)], paramMtx: kronMtx): Unit = {
+  def InitLL(edgeList: Array[(Long,Long)], nodeList: Array[Long], paramMtx: kronMtx): Unit = {
     probMtx = paramMtx
     LLMtx = probMtx.getLLMtx()
-    setGraph(edgeList)
+    setGraph(edgeList, nodeList)
     logLike = NInf
     if(gradV.length != probMtx.Len()) {
       gradV = Array.fill(probMtx.Len())(0)
@@ -67,20 +95,29 @@ class kroneckerLL(sc: SparkContext) {
   def setIPerm(perm: Array[Long]): Unit = {
     invertPerm = Array.fill(perm.length)(0L)
     for (i<-0 until perm.length) {
-      invertPerm(perm(i).toInt) = i
+      invertPerm(i) = perm(i).toInt                //I SWAPPED THE perm(i).toInt with i
     }
   }
 
-  def setGraph(edgeList: Array[(Long,Long)]): Unit ={
-    nodeList = edgeList.flatMap(record => Array(record._1, record._2)).distinct
+  def setGraph(edgeList: Array[(Long,Long)], nodeList: Array[Long]): Unit ={
+    this.nodeList = nodeList
+    this.nodeHash = new mutable.HashMap[Int, Int]()
+    for(x <- 0 until nodeList.length)
+      {
+        this.nodeHash.put(nodeList(x).toInt, x)
+      }
+
+//    nodeList = edgeList.flatMap(record => Array(record._1, record._2)).distinct
     this.edgeList = edgeList
     nodes = nodeList.length
     edges = edgeList.length
-    adjList = Array.fill(nodes)(0,Array.empty[Long])
+    val biggestNum = nodeList.max.toInt                       //WEIRD BIG ADD
+    adjList = Array.fill(biggestNum)(0L,Array.empty[Long])
 
-    for(edge <- edgeList) {
-      val oldList: Array[Long] = adjList(edge._1.toInt)._2
-      adjList(edge._1.toInt) = (edge._1, oldList :+ edge._2)
+    for(edge <- edgeList)
+    {
+      val oldList: Array[Long] = adjList(edge._1.toInt - 1)._2
+      adjList(edge._1.toInt - 1) = (edge._1, oldList :+ edge._2)
     }
 
     kronIters = (math.ceil(math.log(nodes)) / log(probMtx.mtxDim)).toInt
@@ -110,19 +147,26 @@ class kroneckerLL(sc: SparkContext) {
     var newProbMtx: kronMtx = probMtx
 
     for(i <- 0 until nIter) {
+      println("doing sample Grad")
       val result = sampleGradient(warmUp, nSamples, curLL, curGradV)
+      println(result._1)
+      println("done sample Grad")
       curLL = result._1
       curGradV = result._2
+      println("params = " + getParams())
       for(p <- 0 until getParams()) {
         learnRateV(p) *= 0.95
+        val constant = 0.1 //this value should be 0.9 Im testing here
+        println("doing crazy while loop")
         if (i<1) {
-          while(math.abs(learnRateV(p)*curGradV(p)) > mxStep) {learnRateV(p) *= 0.95}
-          while(math.abs(learnRateV(p)*curGradV(p)) < 0.02) {learnRateV(p) *= 1.0/0.95}
+          while(math.abs(learnRateV(p)*curGradV(p)) > mxStep) {learnRateV(p) *= constant}
+          while(math.abs(learnRateV(p)*curGradV(p)) < 0.02) {learnRateV(p) *= 1.0/constant}
         } else {
-          while(math.abs(learnRateV(p)*curGradV(p)) > mxStep) {learnRateV(p) *= 0.95}
-          while(math.abs(learnRateV(p)*curGradV(p)) < mnStep) {learnRateV(p) *= 1.0/0.95}
-          if(mxStep > 3*mnStep) { mxStep *= 0.95}
+          while(math.abs(learnRateV(p)*curGradV(p)) > mxStep) {learnRateV(p) *= constant}
+          while(math.abs(learnRateV(p)*curGradV(p)) < mnStep) {learnRateV(p) *= 1.0/constant}
+          if(mxStep > 3*mnStep) { mxStep *= constant}
         }
+        println("done crazy while loop")
         newProbMtx.seedMtx(p) = probMtx.At(p) + learnRateV(p) * curGradV(p)
         if(newProbMtx.At(p) > 0.9999) { newProbMtx.seedMtx(p) = 0.9999}
         if(newProbMtx.At(p) < 0.0001) { newProbMtx.seedMtx(p) = 0.0001}
@@ -159,9 +203,12 @@ class kroneckerLL(sc: SparkContext) {
     calcApxGraphDLL()
     avgLL = 0
     avgGradV = Array.fill(LLMtx.Len())(0)
+    println("done with warmup")
+    print("samp")
     for(s <- 0 until nSamples) {
+//      println("sample " + s)
       if (sampleNextPerm(NId1, NId2)) {
-        updateGraphDLL(NId1, NId2) ///!!!
+        updateGraphDLL(NId1, NId2) ///!!! lol
         NAccept += 1
       }
       for(m <- 0 until LLMtx.Len) {
@@ -169,6 +216,7 @@ class kroneckerLL(sc: SparkContext) {
       }
       avgLL += logLike
     }
+    println("ling")
 
     avgLL = avgLL / nSamples.toDouble
 
@@ -204,16 +252,28 @@ class kroneckerLL(sc: SparkContext) {
     var nid2 = inid2
 
     if (Rnd.nextDouble() < permSwapNodeProb) {
-      nid1 = Rnd.nextLong % nodes
-      nid2 = Rnd.nextLong % nodes
-      while(nid2 == nid1) {nid2 = Rnd.nextLong % nodes}
+      nid1 = math.abs(Rnd.nextLong) % nodes
+      nid2 = math.abs(Rnd.nextLong) % nodes
+      while(nid2 == nid1) {nid2 = math.abs(Rnd.nextLong) % nodes}
     } else {
-      val e = Rnd.nextInt % edges
+      val e = math.abs(Rnd.nextInt) % edges
 
       val edge = edgeList(e)
       nid1 = edge._1
       nid2 = edge._2
+      //convert nid1 and nid2 to the array indexes they are at
+          nid1 = nodeHash.get(nid1.toInt).head.toLong
+          nid2 = nodeHash.get(nid2.toInt).head.toLong
+      //    for(x <- 0 until nodeList.length)
+      //      {
+      //        if(nodeList(x) == nid1) nid1 = x
+      //        if(nodeList(x) == nid2) nid2 = x
+      //      }
+      //    println("nid1 = " + nid1 + "  nid2 = " + nid2)
     }
+
+
+
     val u = Rnd.nextDouble()
     val oldLL = logLike
     val newLL = swapNodesLL(nid1, nid2)
@@ -259,8 +319,10 @@ class kroneckerLL(sc: SparkContext) {
     if (!nodeList.contains(nid)) return 0.0
     var delta = 0.0
 
+//    println(nodePerm.length)
     val srcRow = nodePerm(nid.toInt)
     for(e <- 0 until adjList(nid.toInt)._2.length ) {
+//      println("here")
       val dstCol = adjList(nid.toInt)._2(e)
       delta += -LLMtx.getApxNoEdgeLL(srcRow, dstCol, kronIters) + LLMtx.getEdgeLL(srcRow, dstCol, kronIters)
     }
@@ -341,11 +403,15 @@ class kroneckerLL(sc: SparkContext) {
     }
   }
 
+
   def nodeDLLDelta(paramId: Int, nid: Long): Double = {
     if(!nodeList.contains(nid)) return 0.0
     var delta = 0.0
 
+
+    println("nodeDLLDelta")
     val srcRow = nodePerm(nid.toInt)
+    nodeList(nid.toInt)
     for(e <- 0 until adjList(nid.toInt)._2.length ) {
       val dstCol = adjList(nid.toInt)._2(e)
       delta += -LLMtx.getApxNoEdgeDLL(paramId, srcRow, dstCol, kronIters) + LLMtx.getEdgeDLL(paramId, srcRow, dstCol, kronIters)
@@ -360,7 +426,7 @@ class kroneckerLL(sc: SparkContext) {
     if(edgeList.contains((nid, nid))) {
       delta += LLMtx.getApxNoEdgeDLL(paramId, srcRow, srcCol, kronIters) - LLMtx.getEdgeDLL(paramId, srcRow, srcCol, kronIters)
     }
-
+    println("END nodeDLLDelta")
     return delta
 
   }

@@ -66,8 +66,11 @@ class kronMtx(sc: SparkContext) {
 
   def setForEdges(nodes: Int, edges: Int): Unit = {
     val kronIter = getKronIter(nodes)
+    println(kronIter)
     val eZero = math.pow(edges.toDouble, 1.0/kronIter.toDouble)
+    println(eZero)
     val factor: Double = eZero / getMtxSum()
+    println(factor)
     for(i<-0 until Len()) {
       seedMtx(i) *= factor
       if (seedMtx(i) > 1) { seedMtx(i) = 1 }
@@ -75,6 +78,7 @@ class kronMtx(sc: SparkContext) {
   }
 
   def getKronIter(nodes: Int): Int =  {
+    println("number of nodes " + nodes)
     return math.ceil(math.log(nodes.toDouble)/math.log(mtxDim.toDouble)).toInt
   }
 
