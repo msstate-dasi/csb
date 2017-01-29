@@ -21,7 +21,7 @@ class kronMtx(sc: SparkContext) {
   }
   def this(sc: SparkContext, sMtx: Array[Double]) = {
     this(sc)
-    mtxDim = sMtx.length
+    mtxDim = sMtx.length / 2 //Added this since mtxes are squares
     seedMtx = sMtx
   }
   def this(sc: SparkContext, kMtx: kronMtx) = {
@@ -53,6 +53,7 @@ class kronMtx(sc: SparkContext) {
 
   def getLLMtx(): kronMtx = {
     var LLMtx: kronMtx = new kronMtx(sc, mtxDim)
+    println(Len())
     for(i <- 0 until Len()) {
       if (At(i) != 0.0) {
         LLMtx.seedMtx(i) = math.log(At(i))

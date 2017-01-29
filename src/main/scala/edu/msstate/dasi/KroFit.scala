@@ -29,7 +29,8 @@ class KroFit(sc: SparkContext, partitions: Int, initMtxStr: String, gradIter: In
 
       val kronLL = new kroneckerLL(sc, edgeList, initKronMtx, permSwapNodeProb)
 
-      if(scaleInitMtx) {
+      if(scaleInitMtx)
+      {
         initKronMtx.setForEdges(kronLL.nodes, kronLL.edges)
       }
       kronLL.InitLL(edgeList, initKronMtx)

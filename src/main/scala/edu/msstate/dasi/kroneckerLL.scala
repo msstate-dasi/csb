@@ -44,6 +44,7 @@ class kroneckerLL(sc: SparkContext) {
   def this(sc: SparkContext, edgeList: Array[(Long,Long)], paramMtx: kronMtx, permSwapNodeProb: Double) = {
     this(sc)
     this.permSwapNodeProb = permSwapNodeProb
+    println(paramMtx.Len())
     InitLL(edgeList, paramMtx)
   }
   def this(sc: SparkContext, edgeList: Array[(Long,Long)], paramMtx: kronMtx, nodeIdPermV: Array[Long]) = {
