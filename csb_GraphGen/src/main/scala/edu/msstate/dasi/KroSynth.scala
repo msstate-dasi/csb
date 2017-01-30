@@ -93,27 +93,6 @@ class KroSynth(partitions: Int, mtxFile: String, genIter: Int) extends GraphSynt
     multiEdgeList
   }
 
-  /***
-   * Synthesize a graph from a seed graph and its property distributions.
-   */
-  protected def genGraph(sc: SparkContext, seed: Graph[VertexData, EdgeData], seedDists: DataDistributions): Graph[VertexData, Int] = {
-    //val probMtx: Array[Array[Float]] = Array(Array(0.1f, 0.9f), Array(0.9f, 0.5f))
-    val probMtx: Array[Array[Double]] = kronFit(sc, seed)
-
-    println()
-    print("Matrix: ")
-    probMtx.foreach(_.foreach(record => print(record + " ")))
-    println()
-    println()
-
-    println()
-    println(s"Running Kronecker with $genIter iterations.")
-    println()
-
-    //Run Kronecker with the adjacency matrix
-    generateKroGraph(sc, probMtx, seedDists)
-  }
-
   /*** Function to generate and return a kronecker graph
     *
     * @param probMtx Probability Matrix used to generate Kronecker Graph
@@ -192,5 +171,26 @@ class KroSynth(partitions: Int, mtxFile: String, genIter: Int) extends GraphSynt
     )
 
     theGraph
+  }
+
+  /***
+   * Synthesize a graph from a seed graph and its property distributions.
+   */
+  protected def genGraph(sc: SparkContext, seed: Graph[VertexData, EdgeData], seedDists: DataDistributions): Graph[VertexData, Int] = {
+    //val probMtx: Array[Array[Float]] = Array(Array(0.1f, 0.9f), Array(0.9f, 0.5f))
+    val probMtx: Array[Array[Double]] = kronFit(sc, seed)
+
+    println()
+    print("Matrix: ")
+    probMtx.foreach(_.foreach(record => print(record + " ")))
+    println()
+    println()
+
+    println()
+    println(s"Running Kronecker with $genIter iterations.")
+    println()
+
+    //Run Kronecker with the adjacency matrix
+    generateKroGraph(sc, probMtx, seedDists)
   }
 }

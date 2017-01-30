@@ -13,7 +13,7 @@ import org.apache.spark.sql.SparkSession
   * Created by spencer on 11/3/16.
   */
 
-object csb_GraphGen extends DataParser {
+object Benchmark extends DataParser {
 
   val versionString = "0.2-DEV"
 
@@ -119,8 +119,8 @@ object csb_GraphGen extends DataParser {
     val dP = Params()
     val h = ParamsHelp()
 
-    val parser = new OptionParser[Params]("csb_GraphGen") {
-      head(s"csb_GraphGen $versionString: a synthetic Graph Generator for the busy scientist.")
+    val parser = new OptionParser[Params]("Benchmark") {
+      head(s"Benchmark $versionString: a synthetic Graph Generator for the busy scientist.")
 
       /**
         * All Arguments:
