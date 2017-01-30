@@ -355,21 +355,55 @@ object csb_GraphGen extends DataParser {
       case "neo4j" => graphPs = new Neo4jPersistence(sc)
     }
 
-    val baGraph = new BaSynth(sc, params.partitions, new DataDistributions(sc, params.augLog), graphPs, params.baIter, params.numNodesPerIter)
-    baGraph.run(params.seedVertices, params.seedEdges, params.noProp)
+    val baGraph = new BaSynth(params.partitions, new DataDistributions(sc, params.augLog), graphPs, params.baIter, params.numNodesPerIter)
+    baGraph.run(sc, params.seedVertices, params.seedEdges, params.noProp)
 
     true
   }
 
   def run_kro(sc: SparkContext, params: Params): Boolean = {
+    val (inVertices, inEdges): (RDD[(VertexId,VertexData)], RDD[Edge[EdgeData]]) = readFromSeedGraph(sc, params.partitions, params.seedVertices, params.seedEdges)
+    val seed = Graph(inVertices, inEdges, VertexData())
+
+    val seedDists = new DataDistributions(sc, params.augLog)
+
+    val synthesizer: GraphSynth = new KroSynth(params.partitions, params.seedMtx, params.kroIter)
+
+    val synth = synthesizer.synthesize(sc, seed, seedDists, !params.noProp)
+
+    println("Saving Kronecker Graph...")
     var graphPs: GraphPersistence = null
     params.backend match {
       case "fs" => graphPs = new SparkPersistence(params.outputGraphPrefix)
       case "neo4j" => graphPs = new Neo4jPersistence(sc)
     }
 
-    val kroGraph = new KroSynth(sc, params.partitions, new DataDistributions(sc, params.augLog), graphPs, params.seedMtx, params.kroIter)
-    kroGraph.run(params.seedVertices, params.seedEdges, params.noProp)
+    var startTime = System.nanoTime()
+    graphPs.saveGraph(synth, overwrite = true)
+    var timeSpan = (System.nanoTime() - startTime) / 1e9
+
+    println("Finished saving Kronecker Graph. Total time elapsed: " + timeSpan.toString + "s")
+
+    println("Calculating veracity metrics...")
+    startTime = System.nanoTime()
+    val degVeracity = Degree(seed, synth, saveDistAsCSV = true, overwrite = true)
+    timeSpan = (System.nanoTime() - startTime) / 1e9
+    println(s"\tDegree Veracity: $degVeracity [$timeSpan s]")
+
+    startTime = System.nanoTime()
+    val inDegVeracity = InDegree(seed, synth)
+    timeSpan = (System.nanoTime() - startTime) / 1e9
+    println(s"\tIn Degree Veracity: $inDegVeracity [$timeSpan s]")
+
+    startTime = System.nanoTime()
+    val outDegVeracity = OutDegree(seed, synth)
+    timeSpan = (System.nanoTime() - startTime) / 1e9
+    println(s"\tOut Degree Veracity: $outDegVeracity [$timeSpan s]")
+
+    startTime = System.nanoTime()
+    val pageRankVeracity = PageRank(seed, synth)
+    timeSpan = (System.nanoTime() - startTime) / 1e9
+    println(s"\tPage Rank Veracity: $pageRankVeracity  [$timeSpan s]")
 
     true
   }

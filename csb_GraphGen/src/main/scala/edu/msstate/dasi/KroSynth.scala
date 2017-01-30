@@ -2,7 +2,7 @@ package edu.msstate.dasi
 
 import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
-import org.apache.spark.graphx.{Edge, Graph, VertexId}
+import org.apache.spark.graphx.{Graph, VertexId}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
@@ -13,23 +13,34 @@ import scala.util.Random
   *
   * KroSynth: Kronecker based Graph generation given seed matrix.
   */
-class KroSynth(sc: SparkContext, partitions: Int, dataDist: DataDistributions, graphPs: GraphPersistence, mtxFile: String, genIter: Int) extends GraphSynth with DataParser {
+class KroSynth(partitions: Int, mtxFile: String, genIter: Int) extends GraphSynth {
 
-  private def parseMtxDataFromFile(mtxFilePath: String): Array[Array[Double]] = {
+  private def parseMtxDataFromFile(sc: SparkContext, mtxFilePath: String): Array[Array[Double]] = {
     sc.textFile(mtxFilePath)
       .map(line => line.split(" "))
       .map(record => record.map(number => number.toDouble).array)
       .collect()
   }
 
-  private def getKroRDD(nVerts: Long, nEdges: Long, n1: Int, iter: Int, probToRCPosV_Broadcast: Broadcast[Array[(Double, Long, Long)]] ): RDD[(VertexId, VertexId)] = {
+  /**
+   * Generates a small probability matrix from a graph.
+   *
+   * The KronFit algorithm is a gradient descent based algorithm which ensures that the probability of generating the
+   * original graph from the small probability matrix after performing Kronecker multiplications is very high.
+   */
+  private def kronFit(sc: SparkContext, seed: Graph[VertexData, EdgeData]): Array[Array[Double]] = {
+    // TODO: the following acts as a placeholder and should be replaced with the actual algorithm
+    parseMtxDataFromFile(sc, mtxFile)
+  }
+
+  private def getKroRDD(sc: SparkContext, nVerts: Long, nEdges: Long, n1: Int, iter: Int, probToRCPosV_Broadcast: Broadcast[Array[(Double, Long, Long)]] ): RDD[(VertexId, VertexId)] = {
     // TODO: the algorithm must be commented and meaningful variable names must be used
 
     val r = Random
 
     val localPartitions = math.min(nEdges, partitions).toInt
     val recordsPerPartition = math.min( (nEdges / localPartitions).toInt, Int.MaxValue )
-    val i = sc.parallelize(Seq[Char](), localPartitions).mapPartitions( _ =>  (1 to recordsPerPartition).iterator )
+    val i = sc.parallelize(Seq.empty[Char], localPartitions).mapPartitions( _ =>  (1 to recordsPerPartition).iterator )
 
     val edgeList = i.map { _ =>
 
@@ -66,8 +77,8 @@ class KroSynth(sc: SparkContext, partitions: Int, dataDist: DataDistributions, g
    *  @param edgeList The RDD of the edges returned by the Kronecker algorithm.
    *  @return The RDD of the additional edges that should be added to the one returned by Kronecker algorithm.
    */
-  private def getMultiEdgesRDD(edgeList: RDD[(VertexId, VertexId)]): RDD[(VertexId, VertexId)] = {
-    val dataDistBroadcast = sc.broadcast(dataDist)
+  private def getMultiEdgesRDD(sc: SparkContext, edgeList: RDD[(VertexId, VertexId)], seedDists: DataDistributions): RDD[(VertexId, VertexId)] = {
+    val dataDistBroadcast = sc.broadcast(seedDists)
 
     val multiEdgeList = edgeList.flatMap { case (srcId, dstId) =>
       val multiEdgesNum = dataDistBroadcast.value.getOutEdgeSample
@@ -85,9 +96,9 @@ class KroSynth(sc: SparkContext, partitions: Int, dataDist: DataDistributions, g
   /***
    * Synthesize a graph from a seed graph and its property distributions.
    */
-  protected def genGraph(seed: Graph[VertexData, EdgeData], seedDists : DataDistributions): Graph[VertexData, Int] = {
+  protected def genGraph(sc: SparkContext, seed: Graph[VertexData, EdgeData], seedDists: DataDistributions): Graph[VertexData, Int] = {
     //val probMtx: Array[Array[Float]] = Array(Array(0.1f, 0.9f), Array(0.9f, 0.5f))
-    val probMtx: Array[Array[Double]] = parseMtxDataFromFile(mtxFile)
+    val probMtx: Array[Array[Double]] = kronFit(sc, seed)
 
     println()
     print("Matrix: ")
@@ -100,7 +111,7 @@ class KroSynth(sc: SparkContext, partitions: Int, dataDist: DataDistributions, g
     println()
 
     //Run Kronecker with the adjacency matrix
-    generateKroGraph(probMtx)
+    generateKroGraph(sc, probMtx, seedDists)
   }
 
   /*** Function to generate and return a kronecker graph
@@ -108,7 +119,7 @@ class KroSynth(sc: SparkContext, partitions: Int, dataDist: DataDistributions, g
     * @param probMtx Probability Matrix used to generate Kronecker Graph
     * @return Graph containing vertices + VertexData, edges + EdgeData
     */
-  private def generateKroGraph(probMtx: Array[Array[Double]]): Graph[VertexData, Int] = {
+  private def generateKroGraph(sc: SparkContext, probMtx: Array[Array[Double]], seedDists: DataDistributions): Graph[VertexData, Int] = {
 
     val n1 = probMtx.length
     println("n1 = " + n1)
@@ -143,7 +154,7 @@ class KroSynth(sc: SparkContext, partitions: Int, dataDist: DataDistributions, g
 
       val oldEdgeList = edgeList
 
-      val newRDD = getKroRDD(nVerts, nEdges - curEdges, n1, genIter, probToRCPosV_Broadcast)
+      val newRDD = getKroRDD(sc, nVerts, nEdges - curEdges, n1, genIter, probToRCPosV_Broadcast)
       edgeList = oldEdgeList.union(newRDD).distinct()
         .coalesce(partitions).setName("edgeList#" + curEdges).persist(StorageLevel.MEMORY_AND_DISK)
       curEdges = edgeList.count()
@@ -161,7 +172,7 @@ class KroSynth(sc: SparkContext, partitions: Int, dataDist: DataDistributions, g
 
     startTime = System.nanoTime()
 
-    val newEdges = getMultiEdgesRDD(edgeList).setName("newEdges")
+    val newEdges = getMultiEdgesRDD(sc, edgeList, seedDists).setName("newEdges")
 
     // TODO: finalEdgeList should be un-persisted after the next action (but the action will probably be outside this method)
     val finalEdgeList = edgeList.union(newEdges)
@@ -181,80 +192,5 @@ class KroSynth(sc: SparkContext, partitions: Int, dataDist: DataDistributions, g
     )
 
     theGraph
-  }
-
-  def run(seedVertFile: String, seedEdgeFile: String, withProperties: Boolean): Boolean = {
-
-    //val probMtx: Array[Array[Float]] = Array(Array(0.1f, 0.9f), Array(0.9f, 0.5f))
-    val probMtx: Array[Array[Double]] = parseMtxDataFromFile(mtxFile)
-
-    println()
-    print("Matrix: ")
-    probMtx.foreach(_.foreach(record => print(record + " ")))
-    println()
-    println()
-
-    println()
-    println(s"Running Kronecker with $genIter iterations.")
-    println()
-
-    //Run Kronecker with the adjacency matrix
-    var startTime = System.nanoTime()
-    var graph = generateKroGraph(probMtx)
-    println("Vertices #: " + graph.numVertices + ", Edges #: " + graph.numEdges)
-
-    var timeSpan = (System.nanoTime() - startTime) / 1e9
-    println()
-    println("Finished generating Kronecker graph.")
-    println("\tTotal time elapsed: " + timeSpan.toString)
-    println()
-
-    if (withProperties) {
-//      theGraph = genProperties(sc, theGraph, dataDist)
-    }
-
-    println("Saving Kronecker Graph...")
-    //Save the ba graph into a format to be read later
-    startTime = System.nanoTime()
-//    graphPs.saveGraph(theGraph, overwrite = true)
-    timeSpan = (System.nanoTime() - startTime) / 1e9
-
-    println("Finished saving Kronecker Graph. Total time elapsed: " + timeSpan.toString + "s")
-
-    // TODO: the following should be removed
-    val eRDD: RDD[Edge[EdgeData]] = graph.edges.map(record => Edge(record.srcId, record.dstId, EdgeData()))
-    val vRDD: RDD[(VertexId, VertexData)] = graph.vertices.map(record => (record._1, VertexData()))
-    val theGraph = Graph(vRDD, eRDD, VertexData())
-    /////////////////////
-
-    println("Calculating degrees veracity...")
-
-    val (inVertices, inEdges): (RDD[(VertexId,VertexData)], RDD[Edge[EdgeData]]) = readFromSeedGraph(sc, partitions, seedVertFile,seedEdgeFile)
-
-    val seedGraph = Graph(inVertices, inEdges, VertexData())
-
-    println("Edges: " + seedGraph.edges.count())
-
-    startTime = System.nanoTime()
-    val degVeracity = Degree(seedGraph, theGraph)
-    timeSpan = (System.nanoTime() - startTime) / 1e9
-    println(s"\tDegree Veracity: $degVeracity [$timeSpan s]")
-
-    startTime = System.nanoTime()
-    val inDegVeracity = InDegree(seedGraph, theGraph)
-    timeSpan = (System.nanoTime() - startTime) / 1e9
-    println(s"\tIn Degree Veracity: $inDegVeracity [$timeSpan s]")
-
-    startTime = System.nanoTime()
-    val outDegVeracity = OutDegree(seedGraph, theGraph)
-    timeSpan = (System.nanoTime() - startTime) / 1e9
-    println(s"\tOut Degree Veracity: $outDegVeracity [$timeSpan s]")
-
-    startTime = System.nanoTime()
-    val pageRankVeracity = PageRank(seedGraph, theGraph)
-    timeSpan = (System.nanoTime() - startTime) / 1e9
-    println(s"\tPage Rank Veracity: $pageRankVeracity  [$timeSpan s]")
-
-    true
   }
 }

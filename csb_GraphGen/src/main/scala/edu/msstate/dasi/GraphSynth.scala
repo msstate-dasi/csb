@@ -8,11 +8,10 @@ import org.apache.spark.rdd.RDD
   * The GraphSynth trait contains the basic operations available on all synthesis algorithms.
   */
 trait GraphSynth {
-
   /***
-   * Generates a graph with empty properties from a seed graph.
+   * Generates a synthetic graph with no properties starting from a seed graph.
    */
-  protected def genGraph(seed: Graph[VertexData, EdgeData], seedDists : DataDistributions): Graph[VertexData, Int]
+  protected def genGraph(sc: SparkContext, seed: Graph[VertexData, EdgeData], seedDists : DataDistributions): Graph[VertexData, Int]
 
   /***
    * Fills the properties of a synthesized graph using the property distributions of the seed.
@@ -59,7 +58,7 @@ trait GraphSynth {
   def synthesize(sc: SparkContext, seed: Graph[VertexData, EdgeData], seedDists : DataDistributions, withProperties: Boolean): Graph[VertexData, EdgeData] = {
     var startTime = System.nanoTime()
 
-    val synthNoProp = genGraph(seed, seedDists)
+    val synthNoProp = genGraph(sc, seed, seedDists)
     println("Vertices #: " + synthNoProp.numVertices + ", Edges #: " + synthNoProp.numEdges)
 
     var timeSpan = (System.nanoTime() - startTime) / 1e9
@@ -76,7 +75,8 @@ trait GraphSynth {
     if (withProperties) {
       val synth = genProperties(sc, synthNoProp, seedDists)
 
-      // TODO: a RDD action should precede the following in order to have a significant timeSpan
+      println("Vertices #: " + synth.numVertices + ", Edges #: " + synth.numEdges)
+
       timeSpan = (System.nanoTime() - startTime) / 1e9
       println("Finished generating Edge and Node Properties. Total time elapsed: " + timeSpan.toString)
 
@@ -84,7 +84,8 @@ trait GraphSynth {
     } else {
       val synth = genProperties(synthNoProp)
 
-      // TODO: a RDD action should precede the following in order to have a significant timeSpan
+      println("Vertices #: " + synth.numVertices + ", Edges #: " + synth.numEdges)
+
       timeSpan = (System.nanoTime() - startTime) / 1e9
       println("Finished generating Edge and Node Properties. Total time elapsed: " + timeSpan.toString)
 

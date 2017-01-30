@@ -10,7 +10,7 @@ import scala.util.Random
 /**
   * Created by spencer on 11/3/16.
   */
-class BaSynth(sc: SparkContext, partitions: Int, dataDist: DataDistributions, graphPs: GraphPersistence, baIter: Long, nodesPerIter: Long) extends GraphSynth with DataParser {
+class BaSynth(partitions: Int, dataDist: DataDistributions, graphPs: GraphPersistence, baIter: Long, nodesPerIter: Long) extends GraphSynth with DataParser {
 
   /***
     *
@@ -19,7 +19,7 @@ class BaSynth(sc: SparkContext, partitions: Int, dataDist: DataDistributions, gr
     * @param iter Number of iterations to perform BA
     * @return Graph containing vertices + edu.msstate.dasi.VertexData, edges + edu.msstate.dasi.EdgeData
     */
-  def generateBAGraph(inVertices: RDD[(VertexId, VertexData)], inEdges: RDD[Edge[EdgeData]], iter: Long, nodesPerIter: Long, withProperties: Boolean): Graph[VertexData,EdgeData] = {
+  def generateBAGraph(sc: SparkContext, inVertices: RDD[(VertexId, VertexData)], inEdges: RDD[Edge[EdgeData]], iter: Long, nodesPerIter: Long, withProperties: Boolean): Graph[VertexData,EdgeData] = {
     // TODO: this method shouldn't have the withProperties parameter, we have to check why it's used in the algorithm
     val r = Random
 
@@ -105,19 +105,19 @@ class BaSynth(sc: SparkContext, partitions: Int, dataDist: DataDistributions, gr
     theGraph
   }
 
-  protected def genGraph(seed: Graph[VertexData, EdgeData], seedDists : DataDistributions): Graph[VertexData, Int] = {
+  protected def genGraph(sc: SparkContext, seed: Graph[VertexData, EdgeData], seedDists : DataDistributions): Graph[VertexData, Int] = {
     println()
     println("Running BA with " + baIter + " iterations.")
     println()
 
-    val synth = generateBAGraph(seed.vertices, seed.edges, baIter.toLong, nodesPerIter, withProperties = true)
+    val synth = generateBAGraph(sc, seed.vertices, seed.edges, baIter.toLong, nodesPerIter, withProperties = true)
 
     // TODO: the following should be removed, generateBAGraph() should return Graph[VertexData, Int]
     val edges = synth.edges.map(record => Edge(record.srcId, record.dstId, 1))
     Graph(synth.vertices, edges, VertexData())
   }
 
-  def run(seedVertFile: String, seedEdgeFile: String, withProperties: Boolean): Boolean = {
+  def run(sc: SparkContext, seedVertFile: String, seedEdgeFile: String, withProperties: Boolean): Boolean = {
 
     println()
     println("Loading seed graph with vertices file: " + seedVertFile + " and edges file " + seedEdgeFile + " ...")
@@ -139,7 +139,7 @@ class BaSynth(sc: SparkContext, partitions: Int, dataDist: DataDistributions, gr
 
     //Generate a BA Graph with iterations
     startTime = System.nanoTime()
-    var theGraph = generateBAGraph(inVertices, inEdges, baIter.toLong, nodesPerIter, withProperties)
+    var theGraph = generateBAGraph(sc, inVertices, inEdges, baIter.toLong, nodesPerIter, withProperties)
     timeSpan = (System.nanoTime() - startTime) / 1e9
     println()
     println("Finished generating BA graph.")
