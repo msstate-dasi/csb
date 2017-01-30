@@ -85,7 +85,7 @@ class KroSynth(sc: SparkContext, partitions: Int, dataDist: DataDistributions, g
   /***
    * Synthesize a graph from a seed graph and its property distributions.
    */
-  protected def genGraph(seed: Graph[nodeData, edgeData], seedDists : DataDistributions): Graph[nodeData, Int] = {
+  protected def genGraph(seed: Graph[VertexData, EdgeData], seedDists : DataDistributions): Graph[VertexData, Int] = {
     //val probMtx: Array[Array[Float]] = Array(Array(0.1f, 0.9f), Array(0.9f, 0.5f))
     val probMtx: Array[Array[Double]] = parseMtxDataFromFile(mtxFile)
 
@@ -106,9 +106,9 @@ class KroSynth(sc: SparkContext, partitions: Int, dataDist: DataDistributions, g
   /*** Function to generate and return a kronecker graph
     *
     * @param probMtx Probability Matrix used to generate Kronecker Graph
-    * @return Graph containing vertices + nodeData, edges + edgeData
+    * @return Graph containing vertices + VertexData, edges + EdgeData
     */
-  private def generateKroGraph(probMtx: Array[Array[Double]]): Graph[nodeData, Int] = {
+  private def generateKroGraph(probMtx: Array[Array[Double]]): Graph[VertexData, Int] = {
 
     val n1 = probMtx.length
     println("n1 = " + n1)
@@ -174,8 +174,8 @@ class KroSynth(sc: SparkContext, partitions: Int, dataDist: DataDistributions, g
 
     val theGraph = Graph.fromEdgeTuples(
       finalEdgeList,
-      // TODO: vertex properties are not needed at this stage, nodeData() could be replaced with Int to improve memory consumption
-      nodeData(),
+      // TODO: vertex properties are not needed at this stage, VertexData() could be replaced with Int to improve memory consumption
+      VertexData(),
       vertexStorageLevel = StorageLevel.MEMORY_AND_DISK,
       edgeStorageLevel = StorageLevel.MEMORY_AND_DISK
     )
@@ -222,16 +222,16 @@ class KroSynth(sc: SparkContext, partitions: Int, dataDist: DataDistributions, g
     println("Finished saving Kronecker Graph. Total time elapsed: " + timeSpan.toString + "s")
 
     // TODO: the following should be removed
-    val eRDD: RDD[Edge[edgeData]] = graph.edges.map(record => Edge(record.srcId, record.dstId, edgeData()))
-    val vRDD: RDD[(VertexId, nodeData)] = graph.vertices.map(record => (record._1, nodeData()))
-    val theGraph = Graph(vRDD, eRDD, nodeData())
+    val eRDD: RDD[Edge[EdgeData]] = graph.edges.map(record => Edge(record.srcId, record.dstId, EdgeData()))
+    val vRDD: RDD[(VertexId, VertexData)] = graph.vertices.map(record => (record._1, VertexData()))
+    val theGraph = Graph(vRDD, eRDD, VertexData())
     /////////////////////
 
     println("Calculating degrees veracity...")
 
-    val (inVertices, inEdges): (RDD[(VertexId,nodeData)], RDD[Edge[edgeData]]) = readFromSeedGraph(sc, partitions, seedVertFile,seedEdgeFile)
+    val (inVertices, inEdges): (RDD[(VertexId,VertexData)], RDD[Edge[EdgeData]]) = readFromSeedGraph(sc, partitions, seedVertFile,seedEdgeFile)
 
-    val seedGraph = Graph(inVertices, inEdges, nodeData())
+    val seedGraph = Graph(inVertices, inEdges, VertexData())
 
     println("Edges: " + seedGraph.edges.count())
 

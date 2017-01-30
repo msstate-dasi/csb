@@ -320,9 +320,9 @@ object csb_GraphGen extends DataParser {
   //this is called to read the newly created aug log and create the distributions from it
     new DataDistributions(sc, params.augLog)
 
-    val (vRDD, eRDD): (RDD[(VertexId, nodeData)], RDD[Edge[edgeData]]) = readFromConnFile(sc, params.partitions, params.augLog)
+    val (vRDD, eRDD): (RDD[(VertexId, VertexData)], RDD[Edge[EdgeData]]) = readFromConnFile(sc, params.partitions, params.augLog)
 
-    val theGraph = Graph(vRDD, eRDD, nodeData())
+    val theGraph = Graph(vRDD, eRDD, VertexData())
 
 
     val seed_vert = theGraph.vertices.coalesce(1, true).collect()
@@ -376,10 +376,10 @@ object csb_GraphGen extends DataParser {
 
   def run_ver(sc: SparkContext, params: Params): Boolean = {
     val (seedVerts, seedEdges) = readFromSeedGraph(sc, params.partitions, params.seedVertices, params.seedEdges)
-    val seed = Graph(seedVerts, seedEdges, nodeData())
+    val seed = Graph(seedVerts, seedEdges, VertexData())
 
     val (synthVerts, sythEdges) = readFromSeedGraph(sc, params.partitions, params.synthVerts, params.synthEdges)
-    val synth = Graph(synthVerts, sythEdges, nodeData())
+    val synth = Graph(synthVerts, sythEdges, VertexData())
 
     params.metric match {
       case "degree" =>

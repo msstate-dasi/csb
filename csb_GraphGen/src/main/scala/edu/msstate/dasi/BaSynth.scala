@@ -14,16 +14,16 @@ class BaSynth(sc: SparkContext, partitions: Int, dataDist: DataDistributions, gr
 
   /***
     *
-    * @param inVertices RDD of vertices and their edu.msstate.dasi.nodeData
-    * @param inEdges RDD of edges and their edu.msstate.dasi.edgeData
+    * @param inVertices RDD of vertices and their edu.msstate.dasi.VertexData
+    * @param inEdges RDD of edges and their edu.msstate.dasi.EdgeData
     * @param iter Number of iterations to perform BA
-    * @return Graph containing vertices + edu.msstate.dasi.nodeData, edges + edu.msstate.dasi.edgeData
+    * @return Graph containing vertices + edu.msstate.dasi.VertexData, edges + edu.msstate.dasi.EdgeData
     */
-  def generateBAGraph(inVertices: RDD[(VertexId, nodeData)], inEdges: RDD[Edge[edgeData]], iter: Long, nodesPerIter: Long, withProperties: Boolean): Graph[nodeData,edgeData] = {
+  def generateBAGraph(inVertices: RDD[(VertexId, VertexData)], inEdges: RDD[Edge[EdgeData]], iter: Long, nodesPerIter: Long, withProperties: Boolean): Graph[VertexData,EdgeData] = {
     // TODO: this method shouldn't have the withProperties parameter, we have to check why it's used in the algorithm
     val r = Random
 
-    var theGraph = Graph(inVertices, inEdges, nodeData())
+    var theGraph = Graph(inVertices, inEdges, VertexData())
 
     var nodeIndices: mutable.HashMap[String, VertexId] = new mutable.HashMap[String, VertexId]()
     var degList: Array[(VertexId, Int)] = theGraph.degrees.sortBy(_._1).collect()
@@ -32,8 +32,8 @@ class BaSynth(sc: SparkContext, partitions: Int, dataDist: DataDistributions, gr
 
     var degSum: Long = degList.map(_._2).sum
 
-    var edgesToAdd: Array[Edge[edgeData]] = Array.empty[Edge[edgeData]]
-    var vertToAdd: Array[(VertexId, nodeData)] = Array.empty[(VertexId, nodeData)]
+    var edgesToAdd: Array[Edge[EdgeData]] = Array.empty[Edge[EdgeData]]
+    var vertToAdd: Array[(VertexId, VertexData)] = Array.empty[(VertexId, VertexData)]
 
     var nPI = nodesPerIter
 
@@ -46,9 +46,9 @@ class BaSynth(sc: SparkContext, partitions: Int, dataDist: DataDistributions, gr
       println(i + "/" + math.ceil(iter.toDouble / partitions).toLong)
       for (_ <- 1 to nPI.toInt) {
         //String is IP:Port ex. "192.168.0.1:80"
-        val tempNodeProp: nodeData = if (withProperties) nodeData() else {
+        val tempNodeProp: VertexData = if (withProperties) VertexData() else {
           val DATA = dataDist.getIpSample
-          nodeData(DATA)
+          VertexData(DATA)
         }
         val srcId: VertexId =
           if (nodeIndices.contains(tempNodeProp.data))
@@ -84,7 +84,7 @@ class BaSynth(sc: SparkContext, partitions: Int, dataDist: DataDistributions, gr
           //now we know that the node must attach at index
           val dstId: VertexId = degList(dstIndex.toInt)._1
 
-          edgesToAdd = edgesToAdd :+ Edge(srcId, dstId, edgeData())
+          edgesToAdd = edgesToAdd :+ Edge(srcId, dstId, EdgeData())
 
           //This doesn't matter, but to be correct, this code updates the degList dstId's degree
           degList(dstIndex.toInt) = (degList(dstIndex.toInt)._1, degList(dstIndex.toInt)._2 + 1)
@@ -100,21 +100,21 @@ class BaSynth(sc: SparkContext, partitions: Int, dataDist: DataDistributions, gr
     theGraph = Graph(
       inVertices.union(sc.parallelize(vertToAdd, partitions)),
       inEdges.union(sc.parallelize(edgesToAdd, partitions)),
-      nodeData()
+      VertexData()
     )
     theGraph
   }
 
-  protected def genGraph(seed: Graph[nodeData, edgeData], seedDists : DataDistributions): Graph[nodeData, Int] = {
+  protected def genGraph(seed: Graph[VertexData, EdgeData], seedDists : DataDistributions): Graph[VertexData, Int] = {
     println()
     println("Running BA with " + baIter + " iterations.")
     println()
 
     val synth = generateBAGraph(seed.vertices, seed.edges, baIter.toLong, nodesPerIter, withProperties = true)
 
-    // TODO: the following should be removed, generateBAGraph() should return Graph[nodeData, Int]
+    // TODO: the following should be removed, generateBAGraph() should return Graph[VertexData, Int]
     val edges = synth.edges.map(record => Edge(record.srcId, record.dstId, 1))
-    Graph(synth.vertices, edges, nodeData())
+    Graph(synth.vertices, edges, VertexData())
   }
 
   def run(seedVertFile: String, seedEdgeFile: String, withProperties: Boolean): Boolean = {
@@ -164,7 +164,7 @@ class BaSynth(sc: SparkContext, partitions: Int, dataDist: DataDistributions, gr
     println("\tTotal time elapsed: " + timeSpan.toString)
     println()
 
-    val seedGraph = Graph(inVertices, inEdges, nodeData())
+    val seedGraph = Graph(inVertices, inEdges, VertexData())
 
     val degVeracity = Degree(seedGraph, theGraph)
     val inDegVeracity = InDegree(seedGraph, theGraph)

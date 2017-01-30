@@ -5,7 +5,7 @@ import org.apache.spark.graphx.{Edge, VertexId}
 import org.apache.spark.rdd.RDD
 
 trait DataParser {
-  def readFromConnFile(sc: SparkContext, partitions: Int, connFile: String): (RDD[(VertexId, nodeData)], RDD[Edge[edgeData]]) = {
+  def readFromConnFile(sc: SparkContext, partitions: Int, connFile: String): (RDD[(VertexId, VertexData)], RDD[Edge[EdgeData]]) = {
     //If we are opening a conn.log file
     val file = sc.textFile(connFile, partitions)
 
@@ -14,7 +14,7 @@ trait DataParser {
 
     //Next I get each line in a list of the edge that line in conn.log represents and the vertices that make that edge up
     //NOTE: There will be many copies of the vertices which will be reduced later
-    val connPLUSnodes = lines.map(line => (edgeData(
+    val connPLUSnodes = lines.map(line => (EdgeData(
       line.split("\t")(0),
       line.split("\t")(6),
       line.split("\t")(8).toDouble,
@@ -27,46 +27,46 @@ trait DataParser {
       line.split("\t")(19).toLong,
       try { line.split("\t")(21) } catch {case _: Throwable => ""}
       ),
-      nodeData(line.split("\t")(2) + ":" + line.split("\t")(3)),
-      nodeData(line.split("\t")(4) + ":" + line.split("\t")(5))))
+      VertexData(line.split("\t")(2) + ":" + line.split("\t")(3)),
+      VertexData(line.split("\t")(4) + ":" + line.split("\t")(5))))
 
     //from connPLUSnodes lets grab all the DISTINCT nodes
-    val ALLNODES : RDD[nodeData] = connPLUSnodes.map(record => record._2).union(connPLUSnodes.map(record => record._3)).distinct()
+    val ALLNODES : RDD[VertexData] = connPLUSnodes.map(record => record._2).union(connPLUSnodes.map(record => record._3)).distinct()
 
     //next lets give them numbers and let that number be the "key"(basically index for my use)
-    val vertices: RDD[(VertexId, nodeData)] = ALLNODES.zipWithIndex().map(record => (record._2, record._1))
+    val vertices: RDD[(VertexId, VertexData)] = ALLNODES.zipWithIndex().map(record => (record._2, record._1))
 
     //next I make a hashtable of the nodes with it's given index.
     //I have to do this since RDD transformations cannot happen within
     //other RDD's and hashtables have O(1)
     val verticesList = ALLNODES.collect()
-    val hashTable = new scala.collection.mutable.HashMap[nodeData, VertexId]
+    val hashTable = new scala.collection.mutable.HashMap[VertexData, VertexId]
     for( x <- verticesList.indices )
     {
       hashTable.put(verticesList(x), x.toLong)
     }
 
     //Next I generate the edge list with the vertices represented by indexes(as it wants it)
-    val Edges: RDD[Edge[edgeData]] = connPLUSnodes.map(record => Edge[edgeData](hashTable.get(record._2).head, hashTable.get(record._3).head, record._1))
+    val Edges: RDD[Edge[EdgeData]] = connPLUSnodes.map(record => Edge[EdgeData](hashTable.get(record._2).head, hashTable.get(record._3).head, record._1))
 
     (vertices, Edges)
   }
 
-  def readFromSeedGraph(sc: SparkContext, partitions: Int, seedVertFile: String,seedEdgeFile: String): (RDD[(VertexId, nodeData)], RDD[Edge[edgeData]]) = {
+  def readFromSeedGraph(sc: SparkContext, partitions: Int, seedVertFile: String,seedEdgeFile: String): (RDD[(VertexId, VertexData)], RDD[Edge[EdgeData]]) = {
 
-    val inVertices: RDD[(VertexId,nodeData)] = sc.textFile(seedVertFile, partitions).map(line => line.stripPrefix("(").stripSuffix(")").split(',')).map { record =>
+    val inVertices: RDD[(VertexId,VertexData)] = sc.textFile(seedVertFile, partitions).map(line => line.stripPrefix("(").stripSuffix(")").split(',')).map { record =>
       val inData = record
 
       try {
-        (true, (inData(0).toLong, nodeData(inData(1).stripPrefix("nodeData(").stripSuffix(")"))))
+        (true, (inData(0).toLong, VertexData(inData(1).stripPrefix("VertexData(").stripSuffix(")"))))
       } catch {
         case _: Throwable =>
           println("!!! THERE MAY BE ERRORS IN THE DATASET !!!")
-          (false, (0L, nodeData()))
+          (false, (0L, VertexData()))
       }
     }.filter(_._1 != false).map(record => record._2)
 
-    val inEdges: RDD[Edge[edgeData]] = sc.textFile(seedEdgeFile, partitions).map(line => line.stripPrefix("Edge(").stripSuffix(")").split(",", 3)).map { record =>
+    val inEdges: RDD[Edge[EdgeData]] = sc.textFile(seedEdgeFile, partitions).map(line => line.stripPrefix("Edge(").stripSuffix(")").split(",", 3)).map { record =>
       val inData = record
 
       try {
@@ -74,9 +74,9 @@ trait DataParser {
         val dstNode = inData(1).toLong
 
         //Just a bunch of string formatting and splitting
-        val edgeStrs = inData(2).stripPrefix("edgeData(").stripSuffix(")").split(',')
-        //println(inData(2).stripPrefix("edgeData(").stripSuffix(")"))
-        val dP = edgeData()
+        val edgeStrs = inData(2).stripPrefix("EdgeData(").stripSuffix(")").split(',')
+        //println(inData(2).stripPrefix("EdgeData(").stripSuffix(")"))
+        val dP = EdgeData()
         val TS: String = try { edgeStrs(0) } catch { case _: Throwable => dP.TS}
         //println("TS: \"" + TS + "\"")
         val PROTOCOL: String =try { edgeStrs(1) } catch { case _: Throwable => dP.PROTOCOL}
@@ -103,12 +103,12 @@ trait DataParser {
         //println("DESC: \"" + DESC + "\"")
         //println()
 
-        (true, Edge(srcNode, dstNode, edgeData(TS, PROTOCOL, DURATION, ORIG_BYTES, RESP_BYTES, CONN_STATE, ORIG_PKTS, ORIG_IP_BYTES, RESP_PKTS, RESP_IP_BYTES, DESC)))
+        (true, Edge(srcNode, dstNode, EdgeData(TS, PROTOCOL, DURATION, ORIG_BYTES, RESP_BYTES, CONN_STATE, ORIG_PKTS, ORIG_IP_BYTES, RESP_PKTS, RESP_IP_BYTES, DESC)))
       } catch {
         case _: Throwable =>
           println("!!! THERE MAY BE ERRORS IN THE DATASET !!!")
           println()
-          (false, Edge(0L, 0L, edgeData()))
+          (false, Edge(0L, 0L, EdgeData()))
       }
     }.filter(_._1 != false).map(record => record._2)
 

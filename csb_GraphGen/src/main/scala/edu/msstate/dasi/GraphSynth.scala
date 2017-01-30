@@ -12,15 +12,15 @@ trait GraphSynth {
   /***
    * Generates a graph with empty properties from a seed graph.
    */
-  protected def genGraph(seed: Graph[nodeData, edgeData], seedDists : DataDistributions): Graph[nodeData, Int]
+  protected def genGraph(seed: Graph[VertexData, EdgeData], seedDists : DataDistributions): Graph[VertexData, Int]
 
   /***
    * Fills the properties of a synthesized graph using the property distributions of the seed.
    */
-  private def genProperties(sc: SparkContext, synthNoProp: Graph[nodeData, Int], seedDists : DataDistributions): Graph[nodeData, edgeData] = {
+  private def genProperties(sc: SparkContext, synthNoProp: Graph[VertexData, Int], seedDists : DataDistributions): Graph[VertexData, EdgeData] = {
     val dataDistBroadcast = sc.broadcast(seedDists)
 
-    val eRDD: RDD[Edge[edgeData]] = synthNoProp.edges.map(record => Edge(record.srcId, record.dstId, {
+    val eRDD: RDD[Edge[EdgeData]] = synthNoProp.edges.map(record => Edge(record.srcId, record.dstId, {
       val ORIGBYTES = dataDistBroadcast.value.getOrigBytesSample
       val ORIGIPBYTE = dataDistBroadcast.value.getOrigIPBytesSample(ORIGBYTES)
       val CONNECTSTATE = dataDistBroadcast.value.getConnectionStateSample(ORIGBYTES)
@@ -31,13 +31,13 @@ trait GraphSynth {
       val RESPIPBYTECNT = dataDistBroadcast.value.getRespIPBytesSample(ORIGBYTES)
       val RESPPACKCNT = dataDistBroadcast.value.getRespPktsSample(ORIGBYTES)
       val DESC = dataDistBroadcast.value.getDescSample(ORIGBYTES)
-      edgeData("", PROTOCOL, DURATION, ORIGBYTES, RESPBYTECNT, CONNECTSTATE, ORIGPACKCNT, ORIGIPBYTE, RESPPACKCNT, RESPIPBYTECNT, DESC)
+      EdgeData("", PROTOCOL, DURATION, ORIGBYTES, RESPBYTECNT, CONNECTSTATE, ORIGPACKCNT, ORIGIPBYTE, RESPPACKCNT, RESPIPBYTECNT, DESC)
     }))
-    val vRDD: RDD[(VertexId, nodeData)] = synthNoProp.vertices.map(record => (record._1, {
+    val vRDD: RDD[(VertexId, VertexData)] = synthNoProp.vertices.map(record => (record._1, {
       val DATA = dataDistBroadcast.value.getIpSample
-      nodeData(DATA)
+      VertexData(DATA)
     }))
-    val synth = Graph(vRDD, eRDD, nodeData())
+    val synth = Graph(vRDD, eRDD, VertexData())
 
     synth
   }
@@ -45,10 +45,10 @@ trait GraphSynth {
   /***
    * Fills the properties of a synthesized graph using empty data.
    */
-  private def genProperties(synthNoProp: Graph[nodeData, Int]): Graph[nodeData, edgeData] = {
-    val eRDD: RDD[Edge[edgeData]] = synthNoProp.edges.map(record => Edge(record.srcId, record.dstId, edgeData()))
-    val vRDD: RDD[(VertexId, nodeData)] = synthNoProp.vertices.map(record => (record._1, nodeData()))
-    val synth = Graph(vRDD, eRDD, nodeData())
+  private def genProperties(synthNoProp: Graph[VertexData, Int]): Graph[VertexData, EdgeData] = {
+    val eRDD: RDD[Edge[EdgeData]] = synthNoProp.edges.map(record => Edge(record.srcId, record.dstId, EdgeData()))
+    val vRDD: RDD[(VertexId, VertexData)] = synthNoProp.vertices.map(record => (record._1, VertexData()))
+    val synth = Graph(vRDD, eRDD, VertexData())
 
     synth
   }
@@ -56,7 +56,7 @@ trait GraphSynth {
   /***
    * Synthesizes a graph from a seed graph and its properties distributions.
    */
-  def synthesize(sc: SparkContext, seed: Graph[nodeData, edgeData], seedDists : DataDistributions, withProperties: Boolean): Graph[nodeData, edgeData] = {
+  def synthesize(sc: SparkContext, seed: Graph[VertexData, EdgeData], seedDists : DataDistributions, withProperties: Boolean): Graph[VertexData, EdgeData] = {
     var startTime = System.nanoTime()
 
     val synthNoProp = genGraph(seed, seedDists)

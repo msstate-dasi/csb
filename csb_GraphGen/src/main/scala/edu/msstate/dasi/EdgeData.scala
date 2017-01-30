@@ -13,7 +13,7 @@ package edu.msstate.dasi
   * @param RESP_IP_BYTES  Response IP Bytes sent from destination to source
   * @param DESC           Connection description
   */
-case class edgeData(TS: String = "",
+case class EdgeData(TS: String = "",
                     PROTOCOL: String = "",
                     DURATION: Double = 0,
                     ORIG_BYTES: Long = 0,
