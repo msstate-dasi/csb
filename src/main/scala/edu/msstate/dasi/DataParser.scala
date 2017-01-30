@@ -3,6 +3,9 @@ package edu.msstate.dasi
 import org.apache.spark.SparkContext
 import org.apache.spark.graphx.{Edge, VertexId}
 import org.apache.spark.rdd.RDD
+import spire.std.map
+
+import scala.collection.mutable
 
 trait DataParser {
   def readFromConnFile(sc: SparkContext, partitions: Int, connFile: String): (RDD[(VertexId, nodeData)], RDD[Edge[edgeData]]) = {
@@ -47,17 +50,71 @@ trait DataParser {
     }
 
     //Next I generate the edge list with the vertices represented by indexes(as it wants it)
-    val Edges: RDD[Edge[edgeData]] = connPLUSnodes.map(record => Edge[edgeData](hashTable.get(record._2).head, hashTable.get(record._3).head, record._1))
 
+    //NOTE FROM JUSTIN: I changed this line so that it would be undirected.  Soneone check me on this.
+    val Edges: RDD[Edge[edgeData]] = connPLUSnodes.flatMap(record => Array(Edge[edgeData](hashTable.get(record._2).head, hashTable.get(record._3).head, record._1),
+      Edge[edgeData](hashTable.get(record._3).head, hashTable.get(record._2).head, record._1)))
     (vertices, Edges)
   }
 
-  def tempReadFromConn(sc: SparkContext, partitions: Int, connFile: String): (RDD[Long], RDD[(Long,Long)]) =
+  def tempReadFromConn(sc: SparkContext, partitions: Int, connFile: String): (Array[Long], Array[(Long, Long)]) =
   {
-    val rdd = sc.textFile(connFile, partitions)
-    val edges = rdd.filter(record => !record.contains("#")).map(record => (record.split("\t")(0).toLong, record.split("\t")(1).toLong))
-    val nodes = edges.flatMap(record => Array(record._2, record._1)).distinct()
-    return (nodes, edges)
+    val combined = readFromConnFile(sc, partitions, connFile)
+
+    val edges = combined._2.map(record => (record.srcId, record.dstId))
+    val vertices = edges.flatMap(record => Array(record._1, record._2)).distinct()
+    var hash = new mutable.HashMap[Int, Int]()
+
+
+    val nodeArr = vertices.collect()
+
+
+        for(x <- 0 until nodeArr.length)
+          {
+//            println("making " + x + " = " + nodeArr(x))
+            hash.put(nodeArr(x).toInt, x)
+          }
+
+    val nodeCount = vertices.count()
+        val permEdges = edges.map(record => (hash.get(record._1.toInt).head.toLong, hash.get(record._2.toInt).head.toLong)).collect()
+        val PermNodes = for(x <- 0L until nodeCount) yield x
+        for(x <- permEdges)
+          {
+    //        println("node " + x._1 + " to node " + x._2)
+    //        if(x._1 == 1)
+    //          {
+    //            sys.exit(1)
+    //          }
+          }
+    println("nodeList " + nodeCount + "edge count " + edges.count())
+        return (PermNodes.toArray, permEdges)
+
+    //this code was used to load the file provided by snap
+//    val rdd = sc.textFile(connFile, partitions)
+//    val edges = rdd.filter(record => !record.contains("#")).map(record => (record.split("\t")(0).toLong, record.split("\t")(1).toLong))
+//    val nodes = edges.flatMap(record => Array(record._2, record._1)).distinct().map(record => (record, record))
+//      .sortByKey(ascending = true).map(record => record._1)
+//    val nodeArr = nodes.collect()
+//    var hash = new mutable.HashMap[Int, Int]()
+//
+//    for(x <- 0 until nodeArr.length)
+//      {
+//        println("making " + x + " = " + nodeArr(x))
+//        hash.put(nodeArr(x).toInt, x)
+//      }
+//
+//    val nodeCount = nodes.count()
+//    val permEdges = edges.map(record => (hash.get(record._1.toInt).head.toLong, hash.get(record._2.toInt).head.toLong)).collect()
+//    val PermNodes = for(x <- 0L until nodeCount) yield x
+//    for(x <- permEdges)
+//      {
+////        println("node " + x._1 + " to node " + x._2)
+////        if(x._1 == 1)
+////          {
+////            sys.exit(1)
+////          }
+//      }
+//    return (PermNodes.toArray, permEdges)
   }
 
   def readFromSeedGraph(sc: SparkContext, partitions: Int, seedVertFile: String,seedEdgeFile: String): (RDD[(VertexId, nodeData)], RDD[Edge[edgeData]]) = {

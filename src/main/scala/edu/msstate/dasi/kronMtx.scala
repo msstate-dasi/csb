@@ -92,7 +92,10 @@ class kronMtx(sc: SparkContext) {
   }
 
   def getApxNoEdgeLL(nid1: Long, nid2: Long, nKronIters: Int): Double = {
+//    println("node " + nid1 + " and node " + nid2)
     val edgeLL = getEdgeLL(nid1, nid2, nKronIters)
+//    println("no edge = " + edgeLL)
+//    sys.exit(1)
     return -math.exp(edgeLL) - 0.5*math.exp(2*edgeLL)
   }
 
