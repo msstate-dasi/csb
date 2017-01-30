@@ -64,7 +64,7 @@ class kronMtx(sc: SparkContext) {
     return LLMtx
   }
 
-  def setForEdges(nodes: Int, edges: Int): Unit = {
+  def setForEdges(nodes: Int, edges: Int): Int = {
     val kronIter = getKronIter(nodes)
     println(kronIter)
     val eZero = math.pow(edges.toDouble, 1.0/kronIter.toDouble)
@@ -75,6 +75,7 @@ class kronMtx(sc: SparkContext) {
       seedMtx(i) *= factor
       if (seedMtx(i) > 1) { seedMtx(i) = 1 }
     }
+    return kronIter
   }
 
   def getKronIter(nodes: Int): Int =  {

@@ -19,7 +19,7 @@ class KroFit(sc: SparkContext, partitions: Int, initMtxStr: String, gradIter: In
       edgeList = tempReadFromConn(sc, 120, "as20graph.txt")._2.collect()
       nodeList = tempReadFromConn(sc, 120, "as20graph.txt")._1.collect()
 
-      val lrnRate = 0
+      val lrnRate = 0.00005
       val mnStep = 0.005
       val mxStep = 0.05
       val warmUp = 10000
@@ -34,7 +34,8 @@ class KroFit(sc: SparkContext, partitions: Int, initMtxStr: String, gradIter: In
 
       if(scaleInitMtx)
       {
-        initKronMtx.setForEdges(kronLL.nodes, kronLL.edges)
+
+        kronLL.kronIters = initKronMtx.setForEdges(kronLL.nodes, kronLL.edges) //we very much need this
       }
       kronLL.InitLL(edgeList, nodeList, initKronMtx)
 

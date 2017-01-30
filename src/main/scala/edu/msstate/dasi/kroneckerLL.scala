@@ -20,6 +20,7 @@ class kroneckerLL(sc: SparkContext) {
   var realNodes = -1
   var realEdges = -1
   var nodeHash: mutable.HashMap[Int, Int] = null
+  var edgeHash: mutable.HashMap[(Int, Int), Boolean] = null
   val NInf: Double = -Double.MaxValue
   var logLike: Double = 0
   var gradV: Array[Double] = Array.empty[Double]
@@ -102,9 +103,14 @@ class kroneckerLL(sc: SparkContext) {
   def setGraph(edgeList: Array[(Long,Long)], nodeList: Array[Long]): Unit ={
     this.nodeList = nodeList
     this.nodeHash = new mutable.HashMap[Int, Int]()
+    this.edgeHash = new mutable.HashMap[(Int, Int), Boolean]()
     for(x <- 0 until nodeList.length)
       {
         this.nodeHash.put(nodeList(x).toInt, x)
+      }
+    for(x <- edgeList)
+      {
+        edgeHash.put((x._1.toInt, x._2.toInt), true)
       }
 
 //    nodeList = edgeList.flatMap(record => Array(record._1, record._2)).distinct
@@ -120,7 +126,7 @@ class kroneckerLL(sc: SparkContext) {
       adjList(edge._1.toInt - 1) = (edge._1, oldList :+ edge._2)
     }
 
-    kronIters = (math.ceil(math.log(nodes)) / log(probMtx.mtxDim)).toInt
+//    kronIters = (math.ceil(math.log(nodes)) / log(probMtx.mtxDim)).toInt computed eariler
 
     realNodes = nodes
     realEdges = edgeList.length
@@ -151,17 +157,26 @@ class kroneckerLL(sc: SparkContext) {
       val result = sampleGradient(warmUp, nSamples, curLL, curGradV)
       println(result._1)
       println("done sample Grad")
+      println("current log like = " + this.logLike)
+      println("curLL = " + result._1)
+
       curLL = result._1
       curGradV = result._2
-      println("params = " + getParams())
+      println("curGradV" + curGradV(0) + " " + curGradV(1) + " " + curGradV(2) + " " + curGradV(3))
+//      println("params = " + getParams())
       for(p <- 0 until getParams()) {
         learnRateV(p) *= 0.95
-        val constant = 0.1 //this value should be 0.9 Im testing here
-        println("doing crazy while loop")
+        val constant = 0.95 //this value should be 0.9 Im testing here
+//        println("doing crazy while loop")
+
         if (i<1) {
-          while(math.abs(learnRateV(p)*curGradV(p)) > mxStep) {learnRateV(p) *= constant}
-          while(math.abs(learnRateV(p)*curGradV(p)) < 0.02) {learnRateV(p) *= 1.0/constant}
-        } else {
+//          while(math.abs(learnRateV(p)*curGradV(p)) > mxStep) {learnRateV(p) *= constant}
+//          while(math.abs(learnRateV(p)*curGradV(p)) < 0.02) {learnRateV(p) *= 1.0/constant}
+          while(math.abs(learnRateV(p)*curGradV(p)) > 0.1) {learnRateV(p) *= constant}
+          while(math.abs(learnRateV(p)*curGradV(p)) < 0.01) {learnRateV(p) *= 1.0/constant}
+        }
+        else
+        {
           while(math.abs(learnRateV(p)*curGradV(p)) > mxStep) {learnRateV(p) *= constant}
           while(math.abs(learnRateV(p)*curGradV(p)) < mnStep) {learnRateV(p) *= 1.0/constant}
           if(mxStep > 3*mnStep) { mxStep *= constant}
@@ -171,7 +186,8 @@ class kroneckerLL(sc: SparkContext) {
         if(newProbMtx.At(p) > 0.9999) { newProbMtx.seedMtx(p) = 0.9999}
         if(newProbMtx.At(p) < 0.0001) { newProbMtx.seedMtx(p) = 0.0001}
       }
-      if (i+1 < nIter) {
+      if (i+1 < nIter)
+      {
         probMtx = newProbMtx
         LLMtx = probMtx.getLLMtx()
       }
@@ -207,11 +223,14 @@ class kroneckerLL(sc: SparkContext) {
     print("samp")
     for(s <- 0 until nSamples) {
 //      println("sample " + s)
-      if (sampleNextPerm(NId1, NId2)) {
-        updateGraphDLL(NId1, NId2) ///!!! lol
+      val (temp1, temp2) = sampleNextPerm(NId1, NId2)
+//      println(" temp1 = " + temp1 + "  temp2 = " + temp2)
+      if (temp1 != -1) {
+        updateGraphDLL(temp1, temp2) ///!!! lol
         NAccept += 1
       }
-      for(m <- 0 until LLMtx.Len) {
+      for(m <- 0 until LLMtx.Len)
+      {
         avgGradV(m) += gradV(m)
       }
       avgLL += logLike
@@ -231,9 +250,12 @@ class kroneckerLL(sc: SparkContext) {
     logLike = getApxEmptyGraphLL()
     for ((nid, outNids) <- adjList) {
       for (oNid <- outNids) {
-        logLike = logLike - LLMtx.getApxNoEdgeLL(nid, oNid, kronIters) + LLMtx.getEdgeLL(nid, oNid, kronIters)
+
+//        println("NODE PERM " + nodePerm(nodeHash(nid.toInt)))
+        logLike = logLike - LLMtx.getApxNoEdgeLL(nodePerm(nodeHash(nid.toInt)), nodePerm(nodeHash(oNid.toInt)), kronIters) + LLMtx.getEdgeLL(nodePerm(nodeHash(nid.toInt)), nodePerm(nodeHash(oNid.toInt)), kronIters)
       }
     }
+
     return logLike
   }
 
@@ -244,14 +266,16 @@ class kroneckerLL(sc: SparkContext) {
       sum+=probMtx.At(i)
       sumSq+=math.pow(probMtx.At(i), 2)
     }
+//    println("sum " + sum + " sumsq = " + sumSq + " kronIters = " + kronIters)
     return -math.pow(sum, kronIters) - 0.5*math.pow(sumSq, kronIters)
   }
 
-  def sampleNextPerm(inid1: Long, inid2: Long): Boolean = {
+  def sampleNextPerm(inid1: Long, inid2: Long): (Int, Int) = {
     var nid1 = inid1
     var nid2 = inid2
 
-    if (Rnd.nextDouble() < permSwapNodeProb) {
+    if (Rnd.nextDouble() < permSwapNodeProb)
+    {
       nid1 = math.abs(Rnd.nextLong) % nodes
       nid2 = math.abs(Rnd.nextLong) % nodes
       while(nid2 == nid1) {nid2 = math.abs(Rnd.nextLong) % nodes}
@@ -283,19 +307,23 @@ class kroneckerLL(sc: SparkContext) {
       logLike = oldLL
       swapNodesNodePerm(nid2, nid1)
       swapNodesInvertPerm(nodePerm(nid2.toInt), nodePerm(nid1.toInt))
-      return false
+      return (-1,-1)
     }
-    return true
+    return (nid1.toInt, nid2.toInt)
   }
 
   def swapNodesLL(nid1: Long, nid2: Long): Double = {
     logLike = logLike - nodeLLDelta(nid1) - nodeLLDelta(nid2)
     val (pid1, pid2) = (nodePerm(nid1.toInt), nodePerm(nid2.toInt))
 
-    if(edgeList.contains((nid1, nid2))) {
+//    if(edgeList.contains((nid1, nid2)))
+    if(edgeHash.contains(nid1.toInt, nid2.toInt))
+    {
       logLike += -LLMtx.getApxNoEdgeLL(pid1, pid2, kronIters) + LLMtx.getEdgeLL(pid1, pid2, kronIters)
     }
-    if(edgeList.contains((nid2, nid1))) {
+//    if(edgeList.contains((nid2, nid1)))
+    if(edgeHash.contains(nid2.toInt, nid1.toInt))
+    {
       logLike += -LLMtx.getApxNoEdgeLL(pid2, pid1, kronIters) + LLMtx.getEdgeLL(pid2, pid1, kronIters)
     }
 
@@ -305,10 +333,14 @@ class kroneckerLL(sc: SparkContext) {
     logLike = logLike + nodeLLDelta(nid1) + nodeLLDelta(nid2)
     val (nnid1, nnid2) = (nodePerm(nid1.toInt),nodePerm(nid2.toInt))
 
-    if(edgeList.contains((nid1, nid2))) {
+//    if(edgeList.contains((nid1, nid2)))
+    if(edgeHash.contains(nid1.toInt, nid2.toInt))
+    {
       logLike += -LLMtx.getApxNoEdgeLL(nnid1, nnid2, kronIters) + LLMtx.getEdgeLL(nnid1, nnid2, kronIters)
     }
-    if(edgeList.contains((nid2, nid1))) {
+//    if(edgeList.contains((nid2, nid1)))
+    if(edgeHash.contains(nid2.toInt, nid1.toInt))
+    {
       logLike += -LLMtx.getApxNoEdgeLL(nnid2, nnid1, kronIters) + LLMtx.getEdgeLL(nnid2, nnid1, kronIters)
     }
 
@@ -374,8 +406,16 @@ class kroneckerLL(sc: SparkContext) {
     return -kronIters*math.pow(sum, kronIters - 1) - kronIters*math.pow(sumSq, kronIters-1)*probMtx.At(paramId)
   }
 
+
+  /**
+    * I THINK THIS METHOD IS WHAT IS KEEPING US SO SLOW
+    * the contains method is O(n)
+    * This function also does not ever get inside the if statements
+
+    */
   def updateGraphDLL(snid1: Long, snid2: Long): Unit = {
     for(paramId <- 0 until LLMtx.Len()) {
+
       swapNodesNodePerm(snid1, snid2)
 
       var DLL = gradV(paramId)
@@ -383,10 +423,16 @@ class kroneckerLL(sc: SparkContext) {
 
       val (pid1,pid2) = (nodePerm(snid1.toInt), nodePerm(snid2.toInt))
 
-      if(edgeList.contains((snid1,snid2))) {
+//      if(edgeList.contains((snid1,snid2)))
+      if(edgeHash.contains(snid1.toInt, snid2.toInt))
+      {
+//        println("OMG WE DID IT")
         DLL += -LLMtx.getApxNoEdgeDLL(paramId, pid1, pid2, kronIters) + LLMtx.getEdgeDLL(paramId, pid1, pid2, kronIters)
       }
-      if(edgeList.contains((snid2,snid1))) {
+//      if(edgeList.contains((snid2,snid1)))
+      if(edgeHash.contains(snid2.toInt, snid1.toInt))
+      {
+//        println("OMG WE DID IT AGAIN")
         DLL += -LLMtx.getApxNoEdgeDLL(paramId, pid2, pid1, kronIters) + LLMtx.getEdgeDLL(paramId, pid2, pid1, kronIters)
       }
 
@@ -394,10 +440,14 @@ class kroneckerLL(sc: SparkContext) {
       DLL = DLL + nodeDLLDelta(paramId, snid1) + nodeDLLDelta(paramId, snid2)
       val (nnid1,nnid2) = (nodePerm(snid1.toInt), nodePerm(snid2.toInt))
 
-      if(edgeList.contains((snid1,snid2))) {
+//      if(edgeList.contains((snid1,snid2)))
+      if(edgeHash.contains(snid1.toInt, snid2.toInt))
+      {
         DLL += -LLMtx.getApxNoEdgeDLL(paramId, nnid1, nnid2, kronIters) + LLMtx.getEdgeDLL(paramId, nnid1, nnid2, kronIters)
       }
-      if(edgeList.contains((snid2,snid1))) {
+//      if(edgeList.contains((snid2,snid1)))
+      if(edgeHash.contains(snid2.toInt, snid1.toInt))
+      {
         DLL += -LLMtx.getApxNoEdgeDLL(paramId, nnid2, nnid1, kronIters) + LLMtx.getEdgeDLL(paramId, nnid2, nnid1, kronIters)
       }
     }
@@ -409,24 +459,28 @@ class kroneckerLL(sc: SparkContext) {
     var delta = 0.0
 
 
-    println("nodeDLLDelta")
+//    println("nodeDLLDelta")
     val srcRow = nodePerm(nid.toInt)
     nodeList(nid.toInt)
-    for(e <- 0 until adjList(nid.toInt)._2.length ) {
+    for(e <- 0 until adjList(nid.toInt)._2.length )
+    {
       val dstCol = adjList(nid.toInt)._2(e)
       delta += -LLMtx.getApxNoEdgeDLL(paramId, srcRow, dstCol, kronIters) + LLMtx.getEdgeDLL(paramId, srcRow, dstCol, kronIters)
     }
 
     val srcCol = nodePerm(nid.toInt)
-    for(e <- 0 until adjList(nid.toInt)._2.length ) {
+    for(e <- 0 until adjList(nid.toInt)._2.length )
+    {
       val dstRow = adjList(nid.toInt)._2(e)
       delta += -LLMtx.getApxNoEdgeDLL(paramId, dstRow, srcCol, kronIters) + LLMtx.getEdgeDLL(paramId, dstRow, srcCol, kronIters)
     }
 
-    if(edgeList.contains((nid, nid))) {
+//    if(edgeList.contains((nid, nid)))
+    if(edgeHash.contains(nid.toInt, nid.toInt))
+    {
       delta += LLMtx.getApxNoEdgeDLL(paramId, srcRow, srcCol, kronIters) - LLMtx.getEdgeDLL(paramId, srcRow, srcCol, kronIters)
     }
-    println("END nodeDLLDelta")
+//    println("END nodeDLLDelta")
     return delta
 
   }
