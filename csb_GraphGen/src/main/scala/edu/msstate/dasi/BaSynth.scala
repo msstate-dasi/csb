@@ -1,7 +1,7 @@
 package edu.msstate.dasi
 
 import org.apache.spark.SparkContext
-import org.apache.spark.graphx.{Graph, _}
+import org.apache.spark.graphx.{Graph, VertexId, Edge}
 import org.apache.spark.rdd.RDD
 
 import scala.collection.mutable
@@ -10,16 +10,16 @@ import scala.util.Random
 /**
   * Created by spencer on 11/3/16.
   */
-class BaSynth(partitions: Int, dataDist: DataDistributions, graphPs: GraphPersistence, baIter: Long, nodesPerIter: Long) extends GraphSynth with DataParser {
+class BaSynth(partitions: Int, baIter: Long, nodesPerIter: Long) extends GraphSynth with DataParser {
 
-  /***
-    *
-    * @param inVertices RDD of vertices and their edu.msstate.dasi.VertexData
-    * @param inEdges RDD of edges and their edu.msstate.dasi.EdgeData
-    * @param iter Number of iterations to perform BA
-    * @return Graph containing vertices + edu.msstate.dasi.VertexData, edges + edu.msstate.dasi.EdgeData
-    */
-  def generateBAGraph(sc: SparkContext, inVertices: RDD[(VertexId, VertexData)], inEdges: RDD[Edge[EdgeData]], iter: Long, nodesPerIter: Long, withProperties: Boolean): Graph[VertexData,EdgeData] = {
+  /**
+   *
+   * @param inVertices RDD of vertices and their edu.msstate.dasi.VertexData
+   * @param inEdges RDD of edges and their edu.msstate.dasi.EdgeData
+   * @param iter Number of iterations to perform BA
+   * @return Graph containing vertices + edu.msstate.dasi.VertexData, edges + edu.msstate.dasi.EdgeData
+   */
+  def generateBAGraph(sc: SparkContext, inVertices: RDD[(VertexId, VertexData)], inEdges: RDD[Edge[EdgeData]], seedDists: DataDistributions, iter: Long, nodesPerIter: Long, withProperties: Boolean): Graph[VertexData,EdgeData] = {
     // TODO: this method shouldn't have the withProperties parameter, we have to check why it's used in the algorithm
     val r = Random
 
@@ -47,7 +47,7 @@ class BaSynth(partitions: Int, dataDist: DataDistributions, graphPs: GraphPersis
       for (_ <- 1 to nPI.toInt) {
         //String is IP:Port ex. "192.168.0.1:80"
         val tempNodeProp: VertexData = if (withProperties) VertexData() else {
-          val DATA = dataDist.getIpSample
+          val DATA = seedDists.getIpSample
           VertexData(DATA)
         }
         val srcId: VertexId =
@@ -68,7 +68,7 @@ class BaSynth(partitions: Int, dataDist: DataDistributions, graphPs: GraphPersis
         vertToAdd = vertToAdd :+ (srcId, tempNodeProp)
         degList = degList :+ (srcId, 0) //initial degree of 0
 
-        val numEdgesToAdd = dataDist.getOutEdgeSample
+        val numEdgesToAdd = seedDists.getOutEdgeSample
 
         for (_ <- 1L to numEdgesToAdd.toLong) {
           val attachTo: Long = (Math.abs(r.nextLong()) % (degSum - 1)) + 1
@@ -110,68 +110,10 @@ class BaSynth(partitions: Int, dataDist: DataDistributions, graphPs: GraphPersis
     println("Running BA with " + baIter + " iterations.")
     println()
 
-    val synth = generateBAGraph(sc, seed.vertices, seed.edges, baIter.toLong, nodesPerIter, withProperties = true)
+    val synth = generateBAGraph(sc, seed.vertices, seed.edges, seedDists, baIter.toLong, nodesPerIter, withProperties = true)
 
     // TODO: the following should be removed, generateBAGraph() should return Graph[VertexData, Int]
     val edges = synth.edges.map(record => Edge(record.srcId, record.dstId, 1))
     Graph(synth.vertices, edges, VertexData())
-  }
-
-  def run(sc: SparkContext, seedVertFile: String, seedEdgeFile: String, withProperties: Boolean): Boolean = {
-
-    println()
-    println("Loading seed graph with vertices file: " + seedVertFile + " and edges file " + seedEdgeFile + " ...")
-
-    var startTime = System.nanoTime()
-    //read in and parse vertices and edges
-    val (inVertices, inEdges) = readFromSeedGraph(sc, partitions, seedVertFile,seedEdgeFile)
-    var timeSpan = (System.nanoTime() - startTime) / 1e9
-    println()
-    println("Finished loading seed graph.")
-    println("\tTotal time elapsed: " + timeSpan.toString)
-    println("\tVertices "+inVertices.count())
-    println("\tEdges "+inEdges.count())
-    println()
-    println()
-    println("Running BA with " + baIter + " iterations.")
-    println()
-
-
-    //Generate a BA Graph with iterations
-    startTime = System.nanoTime()
-    var theGraph = generateBAGraph(sc, inVertices, inEdges, baIter.toLong, nodesPerIter, withProperties)
-    timeSpan = (System.nanoTime() - startTime) / 1e9
-    println()
-    println("Finished generating BA graph.")
-    println("\tTotal time elapsed: " + timeSpan.toString)
-    println()
-
-    if (withProperties) {
-//      theGraph = genProperties(sc, theGraph, dataDist)
-    }
-
-    println()
-    println("Saving BA Graph and Veracity measurements.....")
-    println()
-
-    //Save the ba graph into a format to be read later
-    startTime = System.nanoTime()
-    graphPs.saveGraph(theGraph, overwrite = true)
-    timeSpan = (System.nanoTime() - startTime) / 1e9
-
-    println()
-    println("Finished saving BA graph.")
-    println("\tTotal time elapsed: " + timeSpan.toString)
-    println()
-
-    val seedGraph = Graph(inVertices, inEdges, VertexData())
-
-    val degVeracity = Degree(seedGraph, theGraph)
-    val inDegVeracity = InDegree(seedGraph, theGraph)
-    val outDegVeracity = OutDegree(seedGraph, theGraph)
-    println("Finished calculating degrees veracity.\n\tDegree Veracity:" + degVeracity + "\n\tIn Degree Veracity: " +
-      inDegVeracity + "\n\tOut Degree Veracity:" + outDegVeracity)
-
-    true
   }
 }

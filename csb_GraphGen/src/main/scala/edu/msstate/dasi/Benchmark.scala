@@ -301,8 +301,8 @@ object Benchmark extends DataParser {
 
     params.mode match {
       case "gen_dist" => run_gendist(sc, params)
-      case "ba" => run_ba(sc, params)
-      case "kro" => run_kro(sc, params)
+      case "ba" => run_synth(sc, params)
+      case "kro" => run_synth(sc, params)
       case "ver" => run_ver(sc, params)
       case _ => sys.exit(1)
     }
@@ -348,26 +348,17 @@ object Benchmark extends DataParser {
     true
   }
 
-  def run_ba(sc: SparkContext, params: Params): Boolean = {
-    var graphPs: GraphPersistence = null
-    params.backend match {
-      case "fs" => graphPs = new SparkPersistence(params.outputGraphPrefix)
-      case "neo4j" => graphPs = new Neo4jPersistence(sc)
-    }
-
-    val baGraph = new BaSynth(params.partitions, new DataDistributions(sc, params.augLog), graphPs, params.baIter, params.numNodesPerIter)
-    baGraph.run(sc, params.seedVertices, params.seedEdges, params.noProp)
-
-    true
-  }
-
-  def run_kro(sc: SparkContext, params: Params): Boolean = {
+  def run_synth(sc: SparkContext, params: Params): Boolean = {
     val (inVertices, inEdges): (RDD[(VertexId,VertexData)], RDD[Edge[EdgeData]]) = readFromSeedGraph(sc, params.partitions, params.seedVertices, params.seedEdges)
     val seed = Graph(inVertices, inEdges, VertexData())
 
     val seedDists = new DataDistributions(sc, params.augLog)
 
-    val synthesizer: GraphSynth = new KroSynth(params.partitions, params.seedMtx, params.kroIter)
+    var synthesizer: GraphSynth = null
+    params.mode match {
+      case "ba" => synthesizer = new BaSynth (params.partitions, params.baIter, params.numNodesPerIter)
+      case "kro" => synthesizer = new KroSynth (params.partitions, params.seedMtx, params.kroIter)
+    }
 
     val synth = synthesizer.synthesize(sc, seed, seedDists, !params.noProp)
 
@@ -386,7 +377,7 @@ object Benchmark extends DataParser {
 
     println("Calculating veracity metrics...")
     startTime = System.nanoTime()
-    val degVeracity = Degree(seed, synth, saveDistAsCSV = true, overwrite = true)
+    val degVeracity = Degree(seed, synth)
     timeSpan = (System.nanoTime() - startTime) / 1e9
     println(s"\tDegree Veracity: $degVeracity [$timeSpan s]")
 
