@@ -19,7 +19,7 @@ class BaSynth(partitions: Int, baIter: Long, nodesPerIter: Long) extends GraphSy
    * @param iter Number of iterations to perform BA
    * @return Graph containing vertices + edu.msstate.dasi.VertexData, edges + edu.msstate.dasi.EdgeData
    */
-  def generateBAGraph(sc: SparkContext, inVertices: RDD[(VertexId, VertexData)], inEdges: RDD[Edge[EdgeData]], seedDists: DataDistributions, iter: Long, nodesPerIter: Long, withProperties: Boolean): Graph[VertexData,EdgeData] = {
+  private def generateBAGraph(sc: SparkContext, inVertices: RDD[(VertexId, VertexData)], inEdges: RDD[Edge[EdgeData]], seedDists: DataDistributions, iter: Long, nodesPerIter: Long, withProperties: Boolean): Graph[VertexData,EdgeData] = {
     // TODO: this method shouldn't have the withProperties parameter, we have to check why it's used in the algorithm
     val r = Random
 
