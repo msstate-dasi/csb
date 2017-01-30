@@ -105,12 +105,16 @@ class BaSynth(sc: SparkContext, partitions: Int, dataDist: DataDistributions, gr
     theGraph
   }
 
-  protected def genGraph(seed: Graph[nodeData, edgeData], seedDists : DataDistributions): Graph[nodeData, edgeData] = {
+  protected def genGraph(seed: Graph[nodeData, edgeData], seedDists : DataDistributions): Graph[nodeData, Int] = {
     println()
     println("Running BA with " + baIter + " iterations.")
     println()
 
-    generateBAGraph(seed.vertices, seed.edges, baIter.toLong, nodesPerIter, withProperties = true)
+    val synth = generateBAGraph(seed.vertices, seed.edges, baIter.toLong, nodesPerIter, withProperties = true)
+
+    // TODO: the following should be removed, generateBAGraph() should return Graph[nodeData, Int]
+    val edges = synth.edges.map(record => Edge(record.srcId, record.dstId, 1))
+    Graph(synth.vertices, edges, nodeData())
   }
 
   def run(seedVertFile: String, seedEdgeFile: String, withProperties: Boolean): Boolean = {

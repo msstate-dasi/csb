@@ -22,7 +22,7 @@ class KroSynth(sc: SparkContext, partitions: Int, dataDist: DataDistributions, g
       .collect()
   }
 
-  private def getKroRDD(nVerts: Long, nEdges: Long, n1: Int, iter: Int, probToRCPosV_Broadcast: Broadcast[Array[(Double, Long, Long)]] ): RDD[Edge[edgeData]] = {
+  private def getKroRDD(nVerts: Long, nEdges: Long, n1: Int, iter: Int, probToRCPosV_Broadcast: Broadcast[Array[(Double, Long, Long)]] ): RDD[(VertexId, VertexId)] = {
     // TODO: the algorithm must be commented and meaningful variable names must be used
 
     val r = Random
@@ -54,7 +54,7 @@ class KroSynth(sc: SparkContext, partitions: Int, dataDist: DataDistributions, g
         dstId += v * range
         //println("Row " + srcId + ", Col " + dstId)
       }
-      Edge(srcId, dstId, edgeData())
+      (srcId, dstId)
     }
 
     edgeList
@@ -66,15 +66,15 @@ class KroSynth(sc: SparkContext, partitions: Int, dataDist: DataDistributions, g
    *  @param edgeList The RDD of the edges returned by the Kronecker algorithm.
    *  @return The RDD of the additional edges that should be added to the one returned by Kronecker algorithm.
    */
-  private def getMultiEdgesRDD(edgeList: RDD[Edge[edgeData]]): RDD[Edge[edgeData]] = {
+  private def getMultiEdgesRDD(edgeList: RDD[(VertexId, VertexId)]): RDD[(VertexId, VertexId)] = {
     val dataDistBroadcast = sc.broadcast(dataDist)
 
-    val multiEdgeList: RDD[Edge[edgeData]] = edgeList.flatMap { edge =>
+    val multiEdgeList = edgeList.flatMap { case (srcId, dstId) =>
       val multiEdgesNum = dataDistBroadcast.value.getOutEdgeSample
-      var multiEdges : Array[Edge[edgeData]] = Array.empty
+      var multiEdges = Array.empty[(VertexId, VertexId)]
 
       for ( _ <- 1L until multiEdgesNum.toLong ) {
-        multiEdges :+= Edge(edge.srcId, edge.dstId, edge.attr)
+        multiEdges :+= (srcId, dstId)
       }
 
       multiEdges
@@ -85,7 +85,7 @@ class KroSynth(sc: SparkContext, partitions: Int, dataDist: DataDistributions, g
   /***
    * Synthesize a graph from a seed graph and its property distributions.
    */
-  protected def genGraph(seed: Graph[nodeData, edgeData], seedDists : DataDistributions): Graph[nodeData, edgeData] = {
+  protected def genGraph(seed: Graph[nodeData, edgeData], seedDists : DataDistributions): Graph[nodeData, Int] = {
     //val probMtx: Array[Array[Float]] = Array(Array(0.1f, 0.9f), Array(0.9f, 0.5f))
     val probMtx: Array[Array[Double]] = parseMtxDataFromFile(mtxFile)
 
@@ -108,7 +108,7 @@ class KroSynth(sc: SparkContext, partitions: Int, dataDist: DataDistributions, g
     * @param probMtx Probability Matrix used to generate Kronecker Graph
     * @return Graph containing vertices + nodeData, edges + edgeData
     */
-  private def generateKroGraph(probMtx: Array[Array[Double]]): Graph[nodeData, edgeData] = {
+  private def generateKroGraph(probMtx: Array[Array[Double]]): Graph[nodeData, Int] = {
 
     val n1 = probMtx.length
     println("n1 = " + n1)
@@ -136,7 +136,7 @@ class KroSynth(sc: SparkContext, partitions: Int, dataDist: DataDistributions, g
     val probToRCPosV_Broadcast = sc.broadcast(probToRCPosV_Private)
 
     var curEdges: Long = 0
-    var edgeList: RDD[Edge[edgeData]] = sc.emptyRDD
+    var edgeList = sc.emptyRDD[(VertexId, VertexId)]
 
     while (curEdges < nEdges) {
       println("getKroRDD(" + (nEdges - curEdges) + ")")
@@ -144,7 +144,8 @@ class KroSynth(sc: SparkContext, partitions: Int, dataDist: DataDistributions, g
       val oldEdgeList = edgeList
 
       val newRDD = getKroRDD(nVerts, nEdges - curEdges, n1, genIter, probToRCPosV_Broadcast)
-      edgeList = oldEdgeList.union(newRDD).distinct().coalesce(partitions).setName("edgeList#" + curEdges).persist(StorageLevel.MEMORY_AND_DISK)
+      edgeList = oldEdgeList.union(newRDD).distinct()
+        .coalesce(partitions).setName("edgeList#" + curEdges).persist(StorageLevel.MEMORY_AND_DISK)
       curEdges = edgeList.count()
 
       oldEdgeList.unpersist()
@@ -162,18 +163,21 @@ class KroSynth(sc: SparkContext, partitions: Int, dataDist: DataDistributions, g
 
     val newEdges = getMultiEdgesRDD(edgeList).setName("newEdges")
 
-    val finalEdgeList = edgeList.union(newEdges).coalesce(partitions).setName("finalEdgeList").persist(StorageLevel.MEMORY_AND_DISK)
+    // TODO: finalEdgeList should be un-persisted after the next action (but the action will probably be outside this method)
+    val finalEdgeList = edgeList.union(newEdges)
+      .coalesce(partitions).setName("finalEdgeList").persist(StorageLevel.MEMORY_AND_DISK)
     println("Total # of Edges (including multi edges): " + finalEdgeList.count())
 
     timeSpan = (System.nanoTime() - startTime) / 1e9
 
     println(s"MultiEdges time: $timeSpan s")
 
-    val theGraph = Graph.fromEdges(
+    val theGraph = Graph.fromEdgeTuples(
       finalEdgeList,
+      // TODO: vertex properties are not needed at this stage, nodeData() could be replaced with Int to improve memory consumption
       nodeData(),
-      StorageLevel.MEMORY_AND_DISK,
-      StorageLevel.MEMORY_AND_DISK
+      vertexStorageLevel = StorageLevel.MEMORY_AND_DISK,
+      edgeStorageLevel = StorageLevel.MEMORY_AND_DISK
     )
 
     theGraph
@@ -196,8 +200,8 @@ class KroSynth(sc: SparkContext, partitions: Int, dataDist: DataDistributions, g
 
     //Run Kronecker with the adjacency matrix
     var startTime = System.nanoTime()
-    var theGraph = generateKroGraph(probMtx)
-    println("Vertices #: " + theGraph.numVertices + ", Edges #: " + theGraph.numEdges)
+    var graph = generateKroGraph(probMtx)
+    println("Vertices #: " + graph.numVertices + ", Edges #: " + graph.numEdges)
 
     var timeSpan = (System.nanoTime() - startTime) / 1e9
     println()
@@ -216,6 +220,12 @@ class KroSynth(sc: SparkContext, partitions: Int, dataDist: DataDistributions, g
     timeSpan = (System.nanoTime() - startTime) / 1e9
 
     println("Finished saving Kronecker Graph. Total time elapsed: " + timeSpan.toString + "s")
+
+    // TODO: the following should be removed
+    val eRDD: RDD[Edge[edgeData]] = graph.edges.map(record => Edge(record.srcId, record.dstId, edgeData()))
+    val vRDD: RDD[(VertexId, nodeData)] = graph.vertices.map(record => (record._1, nodeData()))
+    val theGraph = Graph(vRDD, eRDD, nodeData())
+    /////////////////////
 
     println("Calculating degrees veracity...")
 

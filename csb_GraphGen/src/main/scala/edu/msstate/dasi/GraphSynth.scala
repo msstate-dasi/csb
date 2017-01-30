@@ -12,15 +12,15 @@ trait GraphSynth {
   /***
    * Generates a graph with empty properties from a seed graph.
    */
-  protected def genGraph(seed: Graph[nodeData, edgeData], seedDists : DataDistributions): Graph[nodeData, edgeData]
+  protected def genGraph(seed: Graph[nodeData, edgeData], seedDists : DataDistributions): Graph[nodeData, Int]
 
   /***
    * Fills the properties of a synthesized graph using the property distributions of the seed.
    */
-  private def genProperties(sc: SparkContext, synth: Graph[nodeData, edgeData], seedDists : DataDistributions): Graph[nodeData, edgeData] = {
+  private def genProperties(sc: SparkContext, synthNoProp: Graph[nodeData, Int], seedDists : DataDistributions): Graph[nodeData, edgeData] = {
     val dataDistBroadcast = sc.broadcast(seedDists)
 
-    val eRDD: RDD[Edge[edgeData]] = synth.edges.map(record => Edge(record.srcId, record.dstId, {
+    val eRDD: RDD[Edge[edgeData]] = synthNoProp.edges.map(record => Edge(record.srcId, record.dstId, {
       val ORIGBYTES = dataDistBroadcast.value.getOrigBytesSample
       val ORIGIPBYTE = dataDistBroadcast.value.getOrigIPBytesSample(ORIGBYTES)
       val CONNECTSTATE = dataDistBroadcast.value.getConnectionStateSample(ORIGBYTES)
@@ -33,13 +33,24 @@ trait GraphSynth {
       val DESC = dataDistBroadcast.value.getDescSample(ORIGBYTES)
       edgeData("", PROTOCOL, DURATION, ORIGBYTES, RESPBYTECNT, CONNECTSTATE, ORIGPACKCNT, ORIGIPBYTE, RESPPACKCNT, RESPIPBYTECNT, DESC)
     }))
-    val vRDD: RDD[(VertexId, nodeData)] = synth.vertices.map(record => (record._1, {
+    val vRDD: RDD[(VertexId, nodeData)] = synthNoProp.vertices.map(record => (record._1, {
       val DATA = dataDistBroadcast.value.getIpSample
       nodeData(DATA)
     }))
-    val newSynth = Graph(vRDD, eRDD, nodeData())
+    val synth = Graph(vRDD, eRDD, nodeData())
 
-    newSynth
+    synth
+  }
+
+  /***
+   * Fills the properties of a synthesized graph using empty data.
+   */
+  private def genProperties(synthNoProp: Graph[nodeData, Int]): Graph[nodeData, edgeData] = {
+    val eRDD: RDD[Edge[edgeData]] = synthNoProp.edges.map(record => Edge(record.srcId, record.dstId, edgeData()))
+    val vRDD: RDD[(VertexId, nodeData)] = synthNoProp.vertices.map(record => (record._1, nodeData()))
+    val synth = Graph(vRDD, eRDD, nodeData())
+
+    synth
   }
 
   /***
@@ -48,8 +59,8 @@ trait GraphSynth {
   def synthesize(sc: SparkContext, seed: Graph[nodeData, edgeData], seedDists : DataDistributions, withProperties: Boolean): Graph[nodeData, edgeData] = {
     var startTime = System.nanoTime()
 
-    var synth = genGraph(seed, seedDists)
-    println("Vertices #: " + synth.numVertices + ", Edges #: " + synth.numEdges)
+    val synthNoProp = genGraph(seed, seedDists)
+    println("Vertices #: " + synthNoProp.numVertices + ", Edges #: " + synthNoProp.numEdges)
 
     var timeSpan = (System.nanoTime() - startTime) / 1e9
     println()
@@ -57,19 +68,27 @@ trait GraphSynth {
     println("\tTotal time elapsed: " + timeSpan.toString)
     println()
 
-    if (withProperties) {
-      startTime = System.nanoTime()
-      println()
-      println("Generating Edge and Node properties")
 
-      synth = genProperties(sc, synth, seedDists)
+    startTime = System.nanoTime()
+    println()
+    println("Generating Edge and Node properties")
+
+    if (withProperties) {
+      val synth = genProperties(sc, synthNoProp, seedDists)
 
       // TODO: a RDD action should precede the following in order to have a significant timeSpan
       timeSpan = (System.nanoTime() - startTime) / 1e9
-
       println("Finished generating Edge and Node Properties. Total time elapsed: " + timeSpan.toString)
-    }
 
-    synth
+      synth
+    } else {
+      val synth = genProperties(synthNoProp)
+
+      // TODO: a RDD action should precede the following in order to have a significant timeSpan
+      timeSpan = (System.nanoTime() - startTime) / 1e9
+      println("Finished generating Edge and Node Properties. Total time elapsed: " + timeSpan.toString)
+
+      synth
+    }
   }
 }
