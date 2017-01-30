@@ -10,7 +10,7 @@ import scala.util.Random
 /**
   * Created by spencer on 11/3/16.
   */
-class BaSynth(partitions: Int, baIter: Long, nodesPerIter: Long) extends GraphSynth with DataParser {
+class BaSynth(partitions: Int, baIter: Long, nodesPerIter: Long) extends GraphSynth {
 
   /**
    *
