@@ -105,15 +105,11 @@ class BaSynth(partitions: Int, baIter: Long, nodesPerIter: Long) extends GraphSy
     theGraph
   }
 
-  protected def genGraph(sc: SparkContext, seed: Graph[VertexData, EdgeData], seedDists : DataDistributions): Graph[VertexData, Int] = {
+  protected def genGraph(sc: SparkContext, seed: Graph[VertexData, EdgeData], seedDists : DataDistributions): Graph[VertexData, EdgeData] = {
     println()
     println("Running BA with " + baIter + " iterations.")
     println()
 
-    val synth = generateBAGraph(sc, seed.vertices, seed.edges, seedDists, baIter.toLong, nodesPerIter, withProperties = true)
-
-    // TODO: the following should be removed, generateBAGraph() should return Graph[VertexData, Int]
-    val edges = synth.edges.map(record => Edge(record.srcId, record.dstId, 1))
-    Graph(synth.vertices, edges, VertexData())
+    generateBAGraph(sc, seed.vertices, seed.edges, seedDists, baIter.toLong, nodesPerIter, withProperties = true)
   }
 }
