@@ -2,7 +2,6 @@ package edu.msstate.dasi.csb
 
 import org.apache.spark.SparkContext
 import org.apache.spark.graphx.Graph
-import org.neo4j.spark._
 
 import scala.reflect.ClassTag
 
@@ -21,6 +20,6 @@ class Neo4jPersistence(sc: SparkContext) extends GraphPersistence {
       // delete existing graph in the DB
     }
 
-    Neo4jGraph.saveGraph(sc, graph)
+    // save graph to the DB
   }
 }

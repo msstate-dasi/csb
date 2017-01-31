@@ -17,13 +17,6 @@ object Benchmark extends DataParser {
 
   val versionString = "0.2-DEV"
 
-  val neo4jBoltHost     = "localhost"
-  val neo4jBoltPort     = "7687"
-  val neo4jBoltUser     = "neo4j"
-  val neo4jBoltPassword = "stefano"
-  val neo4jBoltUrl: String =
-    "bolt://" + neo4jBoltUser + ":" + neo4jBoltPassword + "@" + neo4jBoltHost + ":" + neo4jBoltPort
-
   case class ParamsHelp(
                          /**
                            * Any Arguments
@@ -294,7 +287,6 @@ object Benchmark extends DataParser {
       .builder()
       .appName("Cyber Security Benchmark")
       .config("spark.sql.warehouse.dir", warehouseLocation)
-      .config("spark.neo4j.bolt.url", neo4jBoltUrl)
       .getOrCreate()
     val sc = spark.sparkContext
 
