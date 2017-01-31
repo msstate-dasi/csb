@@ -1,9 +1,8 @@
-package edu.msstate.dasi
+package edu.msstate.dasi.csb
 
 import java.io.File
 
 import org.apache.hadoop.fs.FileUtil
-import org.apache.spark.SparkContext
 import org.apache.spark.graphx.Graph
 
 import scala.reflect.ClassTag

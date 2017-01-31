@@ -1,4 +1,4 @@
-package edu.msstate.dasi
+package edu.msstate.dasi.csb
 
 import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast

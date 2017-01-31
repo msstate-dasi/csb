@@ -1,4 +1,4 @@
-package edu.msstate.dasi
+package edu.msstate.dasi.csb
 
 import org.apache.spark.graphx.{Graph, VertexRDD}
 import org.apache.spark.mllib.rdd.RDDFunctions._

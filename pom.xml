@@ -58,7 +58,7 @@
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
-                            <mainClass>edu.msstate.dasi.Benchmark</mainClass>
+                            <mainClass>edu.msstate.dasi.csb.Benchmark</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
