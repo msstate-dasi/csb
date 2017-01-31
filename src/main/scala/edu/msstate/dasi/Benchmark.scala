@@ -373,7 +373,7 @@ object Benchmark extends DataParser {
     graphPs.saveGraph(synth, overwrite = true)
     var timeSpan = (System.nanoTime() - startTime) / 1e9
 
-    println("Finished saving Kronecker Graph. Total time elapsed: " + timeSpan.toString + "s")
+    println("Finished saving Kronecker Graph. Total time elapsed: " + timeSpan.toString + " s")
 
     println("Calculating veracity metrics...")
     startTime = System.nanoTime()
