@@ -1,6 +1,5 @@
 package edu.msstate.dasi.csb
 
-import org.apache.spark.SparkContext
 import org.apache.spark.graphx.Graph
 
 /**
@@ -10,12 +9,12 @@ trait GraphSynth {
   /**
    * Generates a synthetic graph with no properties starting from a seed graph.
    */
-  protected def genGraph(sc: SparkContext, seed: Graph[VertexData, EdgeData], seedDists : DataDistributions): Graph[VertexData, EdgeData]
+  protected def genGraph(seed: Graph[VertexData, EdgeData], seedDists : DataDistributions): Graph[VertexData, EdgeData]
 
   /**
    * Fills the properties of a synthesized graph using the property distributions of the seed.
    */
-  private def genProperties(sc: SparkContext, synth: Graph[VertexData, EdgeData], seedDists : DataDistributions): Graph[VertexData, EdgeData] = {
+  private def genProperties(synth: Graph[VertexData, EdgeData], seedDists : DataDistributions): Graph[VertexData, EdgeData] = {
     val dataDistBroadcast = sc.broadcast(seedDists)
 
     synth
@@ -51,10 +50,10 @@ trait GraphSynth {
   /**
    * Synthesizes a graph from a seed graph and its properties distributions.
    */
-  def synthesize(sc: SparkContext, seed: Graph[VertexData, EdgeData], seedDists : DataDistributions, withProperties: Boolean): Graph[VertexData, EdgeData] = {
+  def synthesize(seed: Graph[VertexData, EdgeData], seedDists : DataDistributions, withProperties: Boolean): Graph[VertexData, EdgeData] = {
     var startTime = System.nanoTime()
 
-    var synth = genGraph(sc, seed, seedDists)
+    var synth = genGraph(seed, seedDists)
     println("Vertices #: " + synth.numVertices + ", Edges #: " + synth.numEdges)
 
     var timeSpan = (System.nanoTime() - startTime) / 1e9
@@ -68,7 +67,7 @@ trait GraphSynth {
       println()
       println("Generating Edge and Node properties")
 
-      synth = genProperties(sc, synth, seedDists)
+      synth = genProperties(synth, seedDists)
 
       println("Vertices #: " + synth.numVertices + ", Edges #: " + synth.numEdges)
 

@@ -1,6 +1,5 @@
 package edu.msstate.dasi.csb
 
-import org.apache.spark.SparkContext
 import org.apache.spark.graphx.{Graph, VertexId, Edge}
 import org.apache.spark.rdd.RDD
 
@@ -19,7 +18,7 @@ class BaSynth(partitions: Int, baIter: Long, nodesPerIter: Long) extends GraphSy
    * @param iter Number of iterations to perform BA
    * @return Graph containing vertices + edu.msstate.dasi.VertexData, edges + edu.msstate.dasi.EdgeData
    */
-  private def generateBAGraph(sc: SparkContext, inVertices: RDD[(VertexId, VertexData)], inEdges: RDD[Edge[EdgeData]], seedDists: DataDistributions, iter: Long, nodesPerIter: Long, withProperties: Boolean): Graph[VertexData,EdgeData] = {
+  private def generateBAGraph(inVertices: RDD[(VertexId, VertexData)], inEdges: RDD[Edge[EdgeData]], seedDists: DataDistributions, iter: Long, nodesPerIter: Long, withProperties: Boolean): Graph[VertexData,EdgeData] = {
     // TODO: this method shouldn't have the withProperties parameter, we have to check why it's used in the algorithm
     val r = Random
 
@@ -105,11 +104,11 @@ class BaSynth(partitions: Int, baIter: Long, nodesPerIter: Long) extends GraphSy
     theGraph
   }
 
-  protected def genGraph(sc: SparkContext, seed: Graph[VertexData, EdgeData], seedDists : DataDistributions): Graph[VertexData, EdgeData] = {
+  protected def genGraph(seed: Graph[VertexData, EdgeData], seedDists : DataDistributions): Graph[VertexData, EdgeData] = {
     println()
     println("Running BA with " + baIter + " iterations.")
     println()
 
-    generateBAGraph(sc, seed.vertices, seed.edges, seedDists, baIter.toLong, nodesPerIter, withProperties = true)
+    generateBAGraph(seed.vertices, seed.edges, seedDists, baIter.toLong, nodesPerIter, withProperties = true)
   }
 }

@@ -15,7 +15,7 @@ import scala.util.Random
   */
 class KroSynth(partitions: Int, mtxFile: String, genIter: Int) extends GraphSynth {
 
-  private def parseMtxDataFromFile(sc: SparkContext, mtxFilePath: String): Array[Array[Double]] = {
+  private def parseMtxDataFromFile(mtxFilePath: String): Array[Array[Double]] = {
     sc.textFile(mtxFilePath)
       .map(line => line.split(" "))
       .map(record => record.map(number => number.toDouble).array)
@@ -28,12 +28,12 @@ class KroSynth(partitions: Int, mtxFile: String, genIter: Int) extends GraphSynt
    * The KronFit algorithm is a gradient descent based algorithm which ensures that the probability of generating the
    * original graph from the small probability matrix after performing Kronecker multiplications is very high.
    */
-  private def kronFit(sc: SparkContext, seed: Graph[VertexData, EdgeData]): Array[Array[Double]] = {
+  private def kronFit(seed: Graph[VertexData, EdgeData]): Array[Array[Double]] = {
     // TODO: the following acts as a placeholder and should be replaced with the actual algorithm
-    parseMtxDataFromFile(sc, mtxFile)
+    parseMtxDataFromFile(mtxFile)
   }
 
-  private def getKroRDD(sc: SparkContext, nVerts: Long, nEdges: Long, n1: Int, iter: Int, probToRCPosV_Broadcast: Broadcast[Array[(Double, Long, Long)]] ): RDD[Edge[EdgeData]] = {
+  private def getKroRDD(nVerts: Long, nEdges: Long, n1: Int, iter: Int, probToRCPosV_Broadcast: Broadcast[Array[(Double, Long, Long)]] ): RDD[Edge[EdgeData]] = {
     // TODO: the algorithm must be commented and meaningful variable names must be used
 
     val r = Random
@@ -77,7 +77,7 @@ class KroSynth(partitions: Int, mtxFile: String, genIter: Int) extends GraphSynt
    *  @param edgeList The RDD of the edges returned by the Kronecker algorithm.
    *  @return The RDD of the additional edges that should be added to the one returned by Kronecker algorithm.
    */
-  private def getMultiEdgesRDD(sc: SparkContext, edgeList: RDD[Edge[EdgeData]], seedDists: DataDistributions): RDD[Edge[EdgeData]] = {
+  private def getMultiEdgesRDD(edgeList: RDD[Edge[EdgeData]], seedDists: DataDistributions): RDD[Edge[EdgeData]] = {
     val dataDistBroadcast = sc.broadcast(seedDists)
 
     val multiEdgeList = edgeList.flatMap { edge =>
@@ -98,7 +98,7 @@ class KroSynth(partitions: Int, mtxFile: String, genIter: Int) extends GraphSynt
     * @param probMtx Probability Matrix used to generate Kronecker Graph
     * @return Graph containing vertices + VertexData, edges + EdgeData
     */
-  private def generateKroGraph(sc: SparkContext, probMtx: Array[Array[Double]], seedDists: DataDistributions): Graph[VertexData, EdgeData] = {
+  private def generateKroGraph(probMtx: Array[Array[Double]], seedDists: DataDistributions): Graph[VertexData, EdgeData] = {
 
     val n1 = probMtx.length
     println("n1 = " + n1)
@@ -133,7 +133,7 @@ class KroSynth(partitions: Int, mtxFile: String, genIter: Int) extends GraphSynt
 
       val oldEdgeList = edgeList
 
-      val newRDD = getKroRDD(sc, nVerts, nEdges - curEdges, n1, genIter, probToRCPosV_Broadcast)
+      val newRDD = getKroRDD(nVerts, nEdges - curEdges, n1, genIter, probToRCPosV_Broadcast)
       edgeList = oldEdgeList.union(newRDD).distinct()
         .coalesce(partitions).setName("edgeList#" + curEdges).persist(StorageLevel.MEMORY_AND_DISK)
       curEdges = edgeList.count()
@@ -151,7 +151,7 @@ class KroSynth(partitions: Int, mtxFile: String, genIter: Int) extends GraphSynt
 
     startTime = System.nanoTime()
 
-    val newEdges = getMultiEdgesRDD(sc, edgeList, seedDists).setName("newEdges")
+    val newEdges = getMultiEdgesRDD(edgeList, seedDists).setName("newEdges")
 
     // TODO: finalEdgeList should be un-persisted after the next action (but the action will probably be outside this method)
     val finalEdgeList = edgeList.union(newEdges)
@@ -165,17 +165,17 @@ class KroSynth(partitions: Int, mtxFile: String, genIter: Int) extends GraphSynt
     Graph.fromEdges(
       finalEdgeList,
       null.asInstanceOf[VertexData],
-      vertexStorageLevel = StorageLevel.MEMORY_AND_DISK,
-      edgeStorageLevel = StorageLevel.MEMORY_AND_DISK
+      StorageLevel.MEMORY_AND_DISK,
+      StorageLevel.MEMORY_AND_DISK
     )
   }
 
   /***
    * Synthesize a graph from a seed graph and its property distributions.
    */
-  protected def genGraph(sc: SparkContext, seed: Graph[VertexData, EdgeData], seedDists: DataDistributions): Graph[VertexData, EdgeData] = {
+  protected def genGraph(seed: Graph[VertexData, EdgeData], seedDists: DataDistributions): Graph[VertexData, EdgeData] = {
     //val probMtx: Array[Array[Float]] = Array(Array(0.1f, 0.9f), Array(0.9f, 0.5f))
-    val probMtx: Array[Array[Double]] = kronFit(sc, seed)
+    val probMtx: Array[Array[Double]] = kronFit(seed)
 
     println()
     print("Matrix: ")
@@ -188,6 +188,6 @@ class KroSynth(partitions: Int, mtxFile: String, genIter: Int) extends GraphSynt
     println()
 
     //Run Kronecker with the adjacency matrix
-    generateKroGraph(sc, probMtx, seedDists)
+    generateKroGraph(probMtx, seedDists)
   }
 }

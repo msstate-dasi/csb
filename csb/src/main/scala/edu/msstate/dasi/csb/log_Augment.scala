@@ -1,9 +1,7 @@
 package edu.msstate.dasi.csb
 
 import java.io.{BufferedWriter, File, FileWriter}
-import java.nio.file.{Files, StandardCopyOption}
-import java.text.{DateFormat, SimpleDateFormat}
-import java.util.Date
+import java.text.SimpleDateFormat
 
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
@@ -11,41 +9,40 @@ import org.apache.spark.rdd.RDD
 /**
   * Created by B1nary on 12/8/2016.
   */
-case class alertBlock(
-                       attackName: String = "",
-                       srcIP: String = "",
-                       srcPort: Int = 0,
-                       dstIP: String = "",
-                       dstPort: Int = 0,
-                       timeStamp: String = ""
-                     )
-
-case class connLogEntry(TS: String = "",
-                        UID: String = "",
-                        SRCADDR: String = "",
-                        SRCPORT: Int = 0,
-                        DESTADDR: String = "",
-                        DESTPORT: Int = 0,
-                        PROTOCOL: String = "",
-                        SERVICE: String = "-",
-                        DURATION: Double = 0,
-                        ORIG_BYTES: Long = 0,
-                        RESP_BYTES: Long = 0,
-                        CONN_STATE: String = "",
-                        LOCAL_ORIG: String = "-",
-                        LOCAL_RESP: String = "-",
-                        MISSED_BYTES: Long = 0,
-                        HISTORY: String = "",
-                        ORIG_PKTS: Long = 0,
-                        ORIG_IP_BYTES: Long = 0,
-                        RESP_PKTS: Long = 0,
-                        RESP_IP_BYTES: Long = 0,
-                        TUNNEL_PARENT: String = "(empty)",
-                        DESC: String = ""
-                       )
-
 class log_Augment extends Serializable {
 
+  case class alertBlock(
+                         attackName: String = "",
+                         srcIP: String = "",
+                         srcPort: Int = 0,
+                         dstIP: String = "",
+                         dstPort: Int = 0,
+                         timeStamp: String = ""
+                       )
+
+  case class connLogEntry(TS: String = "",
+                          UID: String = "",
+                          SRCADDR: String = "",
+                          SRCPORT: Int = 0,
+                          DESTADDR: String = "",
+                          DESTPORT: Int = 0,
+                          PROTOCOL: String = "",
+                          SERVICE: String = "-",
+                          DURATION: Double = 0,
+                          ORIG_BYTES: Long = 0,
+                          RESP_BYTES: Long = 0,
+                          CONN_STATE: String = "",
+                          LOCAL_ORIG: String = "-",
+                          LOCAL_RESP: String = "-",
+                          MISSED_BYTES: Long = 0,
+                          HISTORY: String = "",
+                          ORIG_PKTS: Long = 0,
+                          ORIG_IP_BYTES: Long = 0,
+                          RESP_PKTS: Long = 0,
+                          RESP_IP_BYTES: Long = 0,
+                          TUNNEL_PARENT: String = "(empty)",
+                          DESC: String = ""
+                         )
 
   def getDate(in: Array[String]): String = {
     val pattern = "MM/dd/yy-HH:mm:ss"
@@ -55,7 +52,7 @@ class log_Augment extends Serializable {
     dateTime.getTime.toString
   }
 
-  def getSnortAlertInfo(sc: SparkContext, alertLog: String): RDD[alertBlock] = {
+  def getSnortAlertInfo(alertLog: String): RDD[alertBlock] = {
     println(sc.wholeTextFiles(alertLog).flatMap(x => x._2.split("\n\n")).count())
 
     sc.wholeTextFiles(alertLog).flatMap(x => x._2.split("\n\n")).map { block =>
@@ -83,7 +80,7 @@ class log_Augment extends Serializable {
     }.filter(_.timeStamp != "")
   }
 
-  def getBroLogInfo(sc: SparkContext, connLog: String): RDD[connLogEntry] = {
+  def getBroLogInfo(connLog: String): RDD[connLogEntry] = {
     sc.textFile(connLog).map { line =>
       try {
         if (line.contains("#")) connLogEntry()
@@ -221,7 +218,7 @@ class log_Augment extends Serializable {
     return null
   }
 
-  def getAugLogInfo(sc: SparkContext, snortEntries: RDD[alertBlock], broEntries: RDD[connLogEntry], augLog: String): Unit = {
+  def getAugLogInfo(snortEntries: RDD[alertBlock], broEntries: RDD[connLogEntry], augLog: String): Unit = {
     //println(snortEntries.count())
 
     broEntries.count()
@@ -259,7 +256,7 @@ class log_Augment extends Serializable {
       .leftOuterJoin(keyedBroEntries.map(entry => ((entry._1._1, entry._1._3), entry._2)))
         .filter(record => record._2._2.isDefined)
         .flatMap(record => for(x <- record._2._2) yield (record._1, record._2._1, x))
-      .map(record => (record._1, reducePortScanRecords((record._2.TS.toDouble / 1000), record._3, record._2.DESC)))
+      .map(record => (record._1, reducePortScanRecords(record._2.TS.toDouble / 1000, record._3, record._2.DESC)))
         .filter(record => record._2  != null)
 
 
@@ -330,11 +327,11 @@ class log_Augment extends Serializable {
       case _: Throwable => false
     }
 
-  def run(sc: SparkContext, alertLog: String, connLog: String, augLog: String): Unit = {
-    val snortEntries = getSnortAlertInfo(sc, alertLog).cache()
-    val broEntries = getBroLogInfo(sc, connLog).cache()
+  def run(alertLog: String, connLog: String, augLog: String): Unit = {
+    val snortEntries = getSnortAlertInfo(alertLog).cache()
+    val broEntries = getBroLogInfo(connLog).cache()
 
-    getAugLogInfo(sc: SparkContext, snortEntries, broEntries, augLog)
+    getAugLogInfo(snortEntries, broEntries, augLog)
 
   }
 }

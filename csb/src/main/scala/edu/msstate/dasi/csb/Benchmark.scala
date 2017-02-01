@@ -41,8 +41,7 @@ object Benchmark {
                            */
                          noProp_desc: String = "Specify whether to generate random properties during generation or not.",
                          numNodesPerIter_desc: String = "The number of nodes to add to the graph per iteration.",
-                         seedVertices_desc: String = "Comma-separated vertices file to use as a seed for BA Graph Generation.",
-                         seedEdges_desc: String = "Comma-separated edges file to use as a seed for BA Graph Generation.",
+                         seed_desc: String = "Serialized file to use as a seed for BA Graph Generation.",
                          baIter_desc: String = "Number of iterations for Barabasi–Albert model.",
 
                          /**
@@ -56,11 +55,8 @@ object Benchmark {
                            */
                        veracity_Desc: String = "The veracity metric you want to compute. Options include: degree, inDegree, outDegree, pageRank",
                          veracity_File: String = "The file to save the metric information",
-                         seed_vertsMetric: String = "Comma-separated vertices file to use as a seed",
-                         seed_edgeMetric: String = "Comma-separated edges file to use as a seed",
-                         synth_vertsMetric: String = "Comma-seperated generated vertices file to test",
-                         synth_edgeMetric: String = "Comma-seperated generated edge file to test"
-
+                         seed_Metric: String = "Serialized file to use as a seed",
+                         synth_Metric: String = "Serialized file to use as a synth"
                        )
 
   case class Params(
@@ -88,8 +84,7 @@ object Benchmark {
                        */
                      noProp: Boolean = false,
                      numNodesPerIter: Long = 120,
-                     seedVertices: String = "seed_vert",
-                     seedEdges: String = "seed_edges",
+                     seed: String = "seed",
                      baIter: Long = 1000,
 
                      /**
@@ -103,8 +98,7 @@ object Benchmark {
                        */
                      metric: String = "hop-plot",
                      metricSave: String = "hop-plotSave",
-                     synthVerts: String = "syth_verts",
-                     synthEdges: String = "syth_edges"
+                     synth: String = "synth"
 
                    )
 
@@ -159,14 +153,10 @@ object Benchmark {
             .text(s"${h.augLog_desc} default: ${dP.augLog}")
             .required()
             .action((x, c) => c.copy(augLog = x)),
-          arg[String]("seed_vert")
-            .text(s"Output file for ${h.seedVertices_desc} default: ${dP.seedVertices}")
+          arg[String]("seed")
+            .text(s"Output file for ${h.seed_desc} default: ${dP.seed}")
             .required()
-            .action((x, c) => c.copy(seedVertices = x)),
-          arg[String]("seed_edges")
-            .text(s"Output file for ${h.seedEdges_desc} default: ${dP.seedEdges}")
-            .required()
-            .action((x, c) => c.copy(seedEdges = x))
+            .action((x, c) => c.copy(seed = x))
         )
 
       /**
@@ -183,13 +173,9 @@ object Benchmark {
             .text(s"${h.numNodesPerIter_desc} default: ${dP.numNodesPerIter}")
             .action((x, c) => c.copy(numNodesPerIter = x)),
           arg[String]("seed_vert")
-            .text(s"${h.seedVertices_desc} default: ${dP.seedVertices}")
+            .text(s"${h.seed_desc} default: ${dP.seed}")
             .required()
-            .action((x, c) => c.copy(seedVertices = x)),
-          arg[String]("seed_edges")
-            .text(s"${h.seedEdges_desc} default: ${dP.seedEdges}")
-            .required()
-            .action((x, c) => c.copy(seedEdges = x)),
+            .action((x, c) => c.copy(seed = x)),
           arg[Int]("<# of Iterations>")
             .text(s"${h.baIter_desc} default: ${dP.baIter}")
             .validate(x => if (x > 0) success else failure("Iteration count must be greater than 0."))
@@ -211,13 +197,9 @@ object Benchmark {
             .required()
             .action((x, c) => c.copy(seedMtx = x)),
           arg[String]("seed_vert")
-            .text(s"${h.seedVertices_desc} default: ${dP.seedVertices}")
+            .text(s"${h.seed_desc} default: ${dP.seed}")
             .required()
-            .action((x, c) => c.copy(seedVertices = x)),
-          arg[String]("seed_edges")
-            .text(s"${h.seedEdges_desc} default: ${dP.seedEdges}")
-            .required()
-            .action((x, c) => c.copy(seedEdges = x)),
+            .action((x, c) => c.copy(seed = x)),
           arg[Int]("<# of Iterations>")
             .text(s"${h.kroIter_desc} default: ${dP.kroIter}")
             .validate(x => if (x > 0) success else failure("Iteration count must be greater than 0."))
@@ -228,22 +210,14 @@ object Benchmark {
       cmd("ver").action((_, c) => c.copy(mode = "ver"))
         .text(s"Compute veracity metrics on a given vertices and edge seed files")
         .children(
-          arg[String]("seed_vert")
-              .text(s"${h.seed_vertsMetric} default: ${dP.seedVertices}")
+          arg[String]("seed")
+              .text(s"${h.seed_Metric} default: ${dP.seed}")
               .required()
-              .action((x,c) => c.copy(seedVertices = x)),
-          arg[String]("seed_edges")
-              .text(s"${h.seed_edgeMetric} default: ${dP.seedEdges}")
+              .action((x,c) => c.copy(seed = x)),
+          arg[String]("synth")
+              .text(s"${h.synth_Metric}")
               .required()
-              .action((x, c) => c.copy(seedEdges = x)),
-          arg[String]("synth_vert")
-              .text(s"${h.synth_vertsMetric}")
-              .required()
-              .action((x,c) => c.copy(synthVerts = x)),
-          arg[String]("syth_edge")
-              .text(s"${h.synth_edgeMetric}")
-              .required()
-              .action((x,c) => c.copy(synthEdges = x)),
+              .action((x,c) => c.copy(synth = x)),
           arg[String]("metric")
             .text(s"${h.veracity_Desc}")
             .required()
@@ -280,22 +254,22 @@ object Benchmark {
     }
 
 
-    // Create a SparkSession. No need to create SparkContext
-    // You automatically get it as part of the SparkSession
-    val warehouseLocation = "spark-warehouse"
-    val spark = SparkSession
-      .builder()
-      .appName("Cyber Security Benchmark")
-      .config("spark.sql.warehouse.dir", warehouseLocation)
-      .getOrCreate()
-    val sc = spark.sparkContext
+//    // Create a SparkSession. No need to create SparkContext
+//    // You automatically get it as part of the SparkSession
+//    val warehouseLocation = "spark-warehouse"
+//    val spark = SparkSession
+//      .builder()
+//      .appName("Cyber Security Benchmark")
+//      .config("spark.sql.warehouse.dir", warehouseLocation)
+//      .getOrCreate()
+//    val sc = spark.sparkContext
 
 
     params.mode match {
-      case "gen_dist" => run_gendist(sc, params)
-      case "ba" => run_synth(sc, params)
-      case "kro" => run_synth(sc, params)
-      case "ver" => run_ver(sc, params)
+      case "gen_dist" => run_gendist(params)
+      case "ba" => run_synth(params)
+      case "kro" => run_synth(params)
+      case "ver" => run_ver(params)
       case _ => sys.exit(1)
     }
 
@@ -303,48 +277,43 @@ object Benchmark {
     true
   }
 
-
-  def run_gendist(sc: SparkContext, params: Params): Boolean = {
+  def run_gendist(params: Params): Boolean = {
     //these two statements create the aug log (conn.log plus alert)
     val logAug = new log_Augment()
-    logAug.run(sc, params.alertLog, params.connLog, params.augLog)
+    logAug.run(params.alertLog, params.connLog, params.augLog)
 
-  //this is called to read the newly created aug log and create the distributions from it
-    new DataDistributions(sc, params.augLog)
+    val seed = DataParser.readFromConnFile(params.partitions, params.augLog)
 
-    val (vRDD, eRDD): (RDD[(VertexId, VertexData)], RDD[Edge[EdgeData]]) = DataParser.readFromConnFile(sc, params.partitions, params.augLog)
+    println("Vertices #: " + seed.numVertices + ", Edges #: " + seed.numEdges)
 
-    val theGraph = Graph(vRDD, eRDD, VertexData())
+    //this is called to read the newly created aug log and create the distributions from it
+    new DataDistributions(params.augLog)
 
-
-    val seed_vert = theGraph.vertices.coalesce(1, true).collect()
-    val seed_vert_file = new File(params.seedVertices)
-
-    var bw = new BufferedWriter(new FileWriter(seed_vert_file))
-//    bw.write("ID,Desc\n")
-    for (entry <- seed_vert) {
-      bw.write(entry._1 + "," + entry._2 + "\n")
+    println("Saving the seed graph...")
+    var graphPs = null.asInstanceOf[GraphPersistence]
+    params.backend match {
+      case "fs" => graphPs = new SparkPersistence()
+      case "neo4j" => graphPs = new Neo4jPersistence()
     }
-    bw.flush()
 
-    val seed_edges = theGraph.edges.coalesce(1, true).collect()
-    val seed_edge_file = new File(params.seedEdges)
+    graphPs.saveGraph(seed, "seed", overwrite = true)
 
-    bw = new BufferedWriter(new FileWriter(seed_edge_file))
-
-    for (entry <- seed_edges) {
-      bw.write(entry.srcId + "," + entry.dstId + "," + entry.attr + "\n")
-    }
-    bw.close()
+    println("Finished saving the synthetic graph.")
 
     true
   }
 
-  def run_synth(sc: SparkContext, params: Params): Boolean = {
-    val (inVertices, inEdges): (RDD[(VertexId,VertexData)], RDD[Edge[EdgeData]]) = DataParser.readFromSeedGraph(sc, params.partitions, params.seedVertices, params.seedEdges)
-    val seed = Graph(inVertices, inEdges, VertexData())
+  def run_synth(params: Params): Boolean = {
+    var graphPs = null.asInstanceOf[GraphPersistence]
+    params.backend match {
+      case "fs" => graphPs = new SparkPersistence()
+      case "neo4j" => graphPs = new Neo4jPersistence()
+    }
 
-    val seedDists = new DataDistributions(sc, params.augLog)
+    val seed = graphPs.loadGraph[VertexData, EdgeData]("seed")
+    println("Vertices #: " + seed.numVertices + ", Edges #: " + seed.numEdges)
+
+    val seedDists = new DataDistributions(params.augLog)
 
     var synthesizer: GraphSynth = null
     params.mode match {
@@ -352,20 +321,15 @@ object Benchmark {
       case "kro" => synthesizer = new KroSynth (params.partitions, params.seedMtx, params.kroIter)
     }
 
-    val synth = synthesizer.synthesize(sc, seed, seedDists, !params.noProp)
+    val synth = synthesizer.synthesize(seed, seedDists, !params.noProp)
 
-    println("Saving Kronecker Graph...")
-    var graphPs: GraphPersistence = null
-    params.backend match {
-      case "fs" => graphPs = new SparkPersistence(params.outputGraphPrefix)
-      case "neo4j" => graphPs = new Neo4jPersistence(sc)
-    }
+    println("Saving the synthetic graph...")
 
     var startTime = System.nanoTime()
-    graphPs.saveGraph(synth, overwrite = true)
+    graphPs.saveGraph(synth, params.outputGraphPrefix, overwrite = true)
     var timeSpan = (System.nanoTime() - startTime) / 1e9
 
-    println("Finished saving Kronecker Graph. Total time elapsed: " + timeSpan.toString + " s")
+    println("Finished saving the synthetic graph. Total time elapsed: " + timeSpan.toString + " s")
 
     println("Calculating veracity metrics...")
     startTime = System.nanoTime()
@@ -391,12 +355,16 @@ object Benchmark {
     true
   }
 
-  def run_ver(sc: SparkContext, params: Params): Boolean = {
-    val (seedVerts, seedEdges) = DataParser.readFromSeedGraph(sc, params.partitions, params.seedVertices, params.seedEdges)
-    val seed = Graph(seedVerts, seedEdges, VertexData())
+  def run_ver(params: Params): Boolean = {
+    var graphPs = null.asInstanceOf[GraphPersistence]
+    params.backend match {
+      case "fs" => graphPs = new SparkPersistence()
+      case "neo4j" => graphPs = new Neo4jPersistence()
+    }
 
-    val (synthVerts, sythEdges) = DataParser.readFromSeedGraph(sc, params.partitions, params.synthVerts, params.synthEdges)
-    val synth = Graph(synthVerts, sythEdges, VertexData())
+    val seed = graphPs.loadGraph[VertexData, EdgeData](params.seed)
+
+    val synth = graphPs.loadGraph[VertexData, EdgeData](params.synth)
 
     params.metric match {
       case "degree" =>

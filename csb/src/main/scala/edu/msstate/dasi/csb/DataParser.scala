@@ -1,11 +1,11 @@
 package edu.msstate.dasi.csb
 
-import org.apache.spark.SparkContext
-import org.apache.spark.graphx.{Edge, VertexId}
+import org.apache.spark.graphx.{Edge, Graph, VertexId}
 import org.apache.spark.rdd.RDD
+import org.apache.spark.storage.StorageLevel
 
 object DataParser {
-  def readFromConnFile(sc: SparkContext, partitions: Int, connFile: String): (RDD[(VertexId, VertexData)], RDD[Edge[EdgeData]]) = {
+  def readFromConnFile(partitions: Int, connFile: String): Graph[VertexData, EdgeData] = {
     //If we are opening a conn.log file
     val file = sc.textFile(connFile, partitions)
 
@@ -49,69 +49,12 @@ object DataParser {
     //Next I generate the edge list with the vertices represented by indexes(as it wants it)
     val Edges: RDD[Edge[EdgeData]] = connPLUSnodes.map(record => Edge[EdgeData](hashTable.get(record._2).head, hashTable.get(record._3).head, record._1))
 
-    (vertices, Edges)
-  }
-
-  def readFromSeedGraph(sc: SparkContext, partitions: Int, seedVertFile: String,seedEdgeFile: String): (RDD[(VertexId, VertexData)], RDD[Edge[EdgeData]]) = {
-
-    val inVertices: RDD[(VertexId,VertexData)] = sc.textFile(seedVertFile, partitions).map(line => line.stripPrefix("(").stripSuffix(")").split(',')).map { record =>
-      val inData = record
-
-      try {
-        (true, (inData(0).toLong, VertexData(inData(1).stripPrefix("VertexData(").stripSuffix(")"))))
-      } catch {
-        case _: Throwable =>
-          println("!!! THERE MAY BE ERRORS IN THE DATASET !!!")
-          (false, (0L, VertexData()))
-      }
-    }.filter(_._1 != false).map(record => record._2)
-
-    val inEdges: RDD[Edge[EdgeData]] = sc.textFile(seedEdgeFile, partitions).map(line => line.stripPrefix("Edge(").stripSuffix(")").split(",", 3)).map { record =>
-      val inData = record
-
-      try {
-        val srcNode = inData(0).toLong
-        val dstNode = inData(1).toLong
-
-        //Just a bunch of string formatting and splitting
-        val edgeStrs = inData(2).stripPrefix("EdgeData(").stripSuffix(")").split(',')
-        //println(inData(2).stripPrefix("EdgeData(").stripSuffix(")"))
-        val dP = EdgeData()
-        val TS: String = try { edgeStrs(0) } catch { case _: Throwable => dP.TS}
-        //println("TS: \"" + TS + "\"")
-        val PROTOCOL: String =try { edgeStrs(1) } catch { case _: Throwable => dP.PROTOCOL}
-        //println("PROTOCOL: \"" + PROTOCOL + "\"")
-        val DURATION: Double = try { edgeStrs(2).toDouble } catch { case _: Throwable => dP.DURATION}
-        //println("DURATION: \"" + DURATION + "\"")
-        val ORIG_BYTES: Long = try { edgeStrs(3).toLong } catch { case _: Throwable => dP.ORIG_BYTES}
-        //println("ORIG_BYTES: \"" + ORIG_BYTES + "\"")
-        val RESP_BYTES: Long = try { edgeStrs(4).toLong } catch { case _: Throwable => dP.RESP_BYTES}
-        //println("RESP_BYTES: \"" + RESP_BYTES + "\"")
-        val CONN_STATE: String = try { edgeStrs(5) } catch { case _: Throwable => dP.CONN_STATE}
-        //println("CONN_STATE: \"" + CONN_STATE + "\"")
-        val ORIG_PKTS: Long = try { edgeStrs(6).toLong } catch { case _: Throwable => dP.ORIG_PKTS}
-        //println("ORIG_PKTS: \"" + ORIG_PKTS + "\"")
-        val ORIG_IP_BYTES: Long = try { edgeStrs(7).toLong } catch { case _: Throwable => dP.ORIG_IP_BYTES}
-        //println("ORIG_IP_BYTES: \"" + ORIG_IP_BYTES + "\"")
-        val RESP_PKTS: Long = try { edgeStrs(8).toLong } catch { case _: Throwable => dP.RESP_PKTS}
-        //println("RESP_PKTS: \"" + RESP_PKTS + "\"")
-        val RESP_IP_BYTES: Long = try { edgeStrs(9).toLong } catch { case _: Throwable => dP.RESP_IP_BYTES}
-        //println("RESP_IP_BYTES: \"" + RESP_IP_BYTES + "\"")
-
-        val DESC: String = if (edgeStrs.length > 9) edgeStrs(0) else ""
-
-        //println("DESC: \"" + DESC + "\"")
-        //println()
-
-        (true, Edge(srcNode, dstNode, EdgeData(TS, PROTOCOL, DURATION, ORIG_BYTES, RESP_BYTES, CONN_STATE, ORIG_PKTS, ORIG_IP_BYTES, RESP_PKTS, RESP_IP_BYTES, DESC)))
-      } catch {
-        case _: Throwable =>
-          println("!!! THERE MAY BE ERRORS IN THE DATASET !!!")
-          println()
-          (false, Edge(0L, 0L, EdgeData()))
-      }
-    }.filter(_._1 != false).map(record => record._2)
-
-    (inVertices,inEdges)
+    Graph(
+      vertices,
+      Edges,
+      null.asInstanceOf[VertexData],
+      vertexStorageLevel = StorageLevel.MEMORY_AND_DISK,
+      edgeStorageLevel = StorageLevel.MEMORY_AND_DISK
+    )
   }
 }

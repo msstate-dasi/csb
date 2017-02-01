@@ -10,10 +10,12 @@ import scala.reflect.ClassTag
 trait GraphPersistence {
 
   /**
-   * Save the graph
-   *
-   * @param graph
-   * @param overwrite
+   * Load a graph
    */
-  def saveGraph[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], overwrite :Boolean = false): Unit
+  def loadGraph[VD: ClassTag, ED: ClassTag](name: String): Graph[VD, ED]
+
+  /**
+   * Save a graph
+   */
+  def saveGraph[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], name: String, overwrite :Boolean = false): Unit
 }

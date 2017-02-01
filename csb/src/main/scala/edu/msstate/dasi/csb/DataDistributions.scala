@@ -9,7 +9,7 @@ import org.apache.spark.SparkContext
 /**
  * Created by scordio on 12/17/16.
  */
-class DataDistributions(sc: SparkContext, augLogPath: String) extends Serializable{
+class DataDistributions(augLogPath: String) extends Serializable{
   private val bucketSize = 10
 
   private val fileDir = "."
@@ -64,7 +64,8 @@ class DataDistributions(sc: SparkContext, augLogPath: String) extends Serializab
 
       val augLogFiltered = augLogFile.mapPartitionsWithIndex { (idx, lines) => if (idx == 0) lines.drop(8) else lines }.filter(isTcpUdp)
 
-      /* Cache augLog because it is the basis for any distribution computation */ val augLog = augLogFiltered.map(line => parseAugLog(line)).persist()
+      /* Cache augLog because it is the basis for any distribution computation */
+      val augLog = augLogFiltered.map(line => parseAugLog(line)).persist()
 
       // # of incoming edges per vertex
       val inEdgesPerNode = augLog.map(entry => (entry.respIp, 1L)).reduceByKey(_ + _).persist()
