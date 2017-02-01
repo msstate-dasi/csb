@@ -4,7 +4,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.graphx.{Edge, VertexId}
 import org.apache.spark.rdd.RDD
 
-trait DataParser {
+object DataParser {
   def readFromConnFile(sc: SparkContext, partitions: Int, connFile: String): (RDD[(VertexId, VertexData)], RDD[Edge[EdgeData]]) = {
     //If we are opening a conn.log file
     val file = sc.textFile(connFile, partitions)

@@ -13,7 +13,7 @@ import org.apache.spark.sql.SparkSession
   * Created by spencer on 11/3/16.
   */
 
-object Benchmark extends DataParser {
+object Benchmark {
 
   val versionString = "0.2-DEV"
 
@@ -312,7 +312,7 @@ object Benchmark extends DataParser {
   //this is called to read the newly created aug log and create the distributions from it
     new DataDistributions(sc, params.augLog)
 
-    val (vRDD, eRDD): (RDD[(VertexId, VertexData)], RDD[Edge[EdgeData]]) = readFromConnFile(sc, params.partitions, params.augLog)
+    val (vRDD, eRDD): (RDD[(VertexId, VertexData)], RDD[Edge[EdgeData]]) = DataParser.readFromConnFile(sc, params.partitions, params.augLog)
 
     val theGraph = Graph(vRDD, eRDD, VertexData())
 
@@ -341,7 +341,7 @@ object Benchmark extends DataParser {
   }
 
   def run_synth(sc: SparkContext, params: Params): Boolean = {
-    val (inVertices, inEdges): (RDD[(VertexId,VertexData)], RDD[Edge[EdgeData]]) = readFromSeedGraph(sc, params.partitions, params.seedVertices, params.seedEdges)
+    val (inVertices, inEdges): (RDD[(VertexId,VertexData)], RDD[Edge[EdgeData]]) = DataParser.readFromSeedGraph(sc, params.partitions, params.seedVertices, params.seedEdges)
     val seed = Graph(inVertices, inEdges, VertexData())
 
     val seedDists = new DataDistributions(sc, params.augLog)
@@ -392,10 +392,10 @@ object Benchmark extends DataParser {
   }
 
   def run_ver(sc: SparkContext, params: Params): Boolean = {
-    val (seedVerts, seedEdges) = readFromSeedGraph(sc, params.partitions, params.seedVertices, params.seedEdges)
+    val (seedVerts, seedEdges) = DataParser.readFromSeedGraph(sc, params.partitions, params.seedVertices, params.seedEdges)
     val seed = Graph(seedVerts, seedEdges, VertexData())
 
-    val (synthVerts, sythEdges) = readFromSeedGraph(sc, params.partitions, params.synthVerts, params.synthEdges)
+    val (synthVerts, sythEdges) = DataParser.readFromSeedGraph(sc, params.partitions, params.synthVerts, params.synthEdges)
     val synth = Graph(synthVerts, sythEdges, VertexData())
 
     params.metric match {
