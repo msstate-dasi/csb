@@ -1,9 +1,8 @@
 package edu.msstate.dasi.csb
 
-import org.apache.spark.graphx.{Graph, VertexId, Edge}
+import org.apache.spark.graphx.{Graph, Edge, VertexId}
 import org.apache.spark.rdd.RDD
 
-import scala.collection.mutable
 import scala.util.Random
 
 /**
@@ -24,10 +23,11 @@ class BaSynth(partitions: Int, baIter: Long, nodesPerIter: Long) extends GraphSy
 
     var theGraph = Graph(inVertices, inEdges, VertexData())
 
-    var nodeIndices: mutable.HashMap[String, VertexId] = new mutable.HashMap[String, VertexId]()
+    var nodeIndices = Array.empty[VertexId]
+//    var nodeIndices: mutable.HashMap[String, VertexId] = new mutable.HashMap[String, VertexId]()
     var degList: Array[(VertexId, Int)] = theGraph.degrees.sortBy(_._1).collect()
 
-    inVertices.foreach(record => nodeIndices += record._2.data -> record._1)
+    inVertices.foreach(record => nodeIndices :+= record._1)
 
     var degSum: Long = degList.map(_._2).sum
 
@@ -44,21 +44,9 @@ class BaSynth(partitions: Int, baIter: Long, nodesPerIter: Long) extends GraphSy
     for (i <- 1 to iters) {
       println(i + "/" + math.ceil(iter.toDouble / partitions).toLong)
       for (_ <- 1 to nPI.toInt) {
-        //String is IP:Port ex. "192.168.0.1:80"
-        val tempNodeProp: VertexData = if (withProperties) VertexData() else {
-          val DATA = seedDists.getIpSample
-          VertexData(DATA)
-        }
-        val srcId: VertexId =
-          if (nodeIndices.contains(tempNodeProp.data))
-            nodeIndices.get(tempNodeProp.data).head
-          else
-            degList.last._1.toLong + 1
-        var srcIndex =
-          if (nodeIndices.contains(tempNodeProp.data))
-            nodeIndices.get(tempNodeProp.data).head.toLong
-          else
-            degList.length
+        val tempNodeProp = VertexData()
+        val srcId: VertexId = degList.last._1.toLong + 1
+        var srcIndex = degList.length
         if (degList.head._1 != 0L) {
           srcIndex -= 1
         }
@@ -72,22 +60,22 @@ class BaSynth(partitions: Int, baIter: Long, nodesPerIter: Long) extends GraphSy
         for (_ <- 1L to numEdgesToAdd.toLong) {
           val attachTo: Long = (Math.abs(r.nextLong()) % (degSum - 1)) + 1
 
-          var dstIndex: Long = 0
+          var dstIndex = 0
           var tempDegSum: Long = 0
           while (tempDegSum < attachTo) {
-            tempDegSum += degList(dstIndex.toInt)._2
+            tempDegSum += degList(dstIndex)._2
             dstIndex += 1
           }
 
           dstIndex = dstIndex - 1
           //now we know that the node must attach at index
-          val dstId: VertexId = degList(dstIndex.toInt)._1
+          val dstId: VertexId = degList(dstIndex)._1
 
-          edgesToAdd = edgesToAdd :+ Edge(srcId, dstId, EdgeData())
+          edgesToAdd = edgesToAdd :+ Edge[EdgeData](srcId, dstId)
 
           //This doesn't matter, but to be correct, this code updates the degList dstId's degree
-          degList(dstIndex.toInt) = (degList(dstIndex.toInt)._1, degList(dstIndex.toInt)._2 + 1)
-          degList(srcIndex.toInt) = (degList(srcIndex.toInt)._1, degList(srcIndex.toInt)._2 + 1)
+          degList(dstIndex) = (degList(dstIndex)._1, degList(dstIndex)._2 + 1)
+          degList(srcIndex) = (degList(srcIndex)._1, degList(srcIndex)._2 + 1)
 
           degSum += 2
 

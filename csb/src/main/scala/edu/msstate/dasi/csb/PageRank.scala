@@ -5,9 +5,6 @@ import org.apache.spark.mllib.rdd.RDDFunctions._
 
 import scala.reflect.ClassTag
 
-/**
- * Created by scordio on 1/24/17.
- */
 object PageRank extends Veracity {
   /**
    * Computes the pageRank veracity factor between two graphs.
@@ -29,8 +26,8 @@ object PageRank extends Veracity {
     val synthRDD = normDistRDD(synthPrRDD, bucketSize)
 
     if (saveDistAsCSV) {
-      RDDtoCSV(seedRDD, filePrefix + "_page_rank_dist.g1.csv", overwrite)
-      RDDtoCSV(synthRDD, filePrefix + "_page_rank_dist.g2.csv", overwrite)
+      Util.RDDtoCSV(seedRDD, filePrefix + "_page_rank_dist.g1.csv", overwrite)
+      Util.RDDtoCSV(synthRDD, filePrefix + "_page_rank_dist.g2.csv", overwrite)
     }
 
     val bucketNum = 1.0 / globalBucketSize

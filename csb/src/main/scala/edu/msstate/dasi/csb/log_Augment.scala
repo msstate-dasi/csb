@@ -3,7 +3,6 @@ package edu.msstate.dasi.csb
 import java.io.{BufferedWriter, File, FileWriter}
 import java.text.SimpleDateFormat
 
-import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 
 /**
@@ -11,7 +10,7 @@ import org.apache.spark.rdd.RDD
   */
 class log_Augment extends Serializable {
 
-  case class alertBlock(
+  private case class alertBlock(
                          attackName: String = "",
                          srcIP: String = "",
                          srcPort: Int = 0,
@@ -20,7 +19,7 @@ class log_Augment extends Serializable {
                          timeStamp: String = ""
                        )
 
-  case class connLogEntry(TS: String = "",
+  private case class connLogEntry(TS: String = "",
                           UID: String = "",
                           SRCADDR: String = "",
                           SRCPORT: Int = 0,
@@ -44,7 +43,7 @@ class log_Augment extends Serializable {
                           DESC: String = ""
                          )
 
-  def getDate(in: Array[String]): String = {
+  private def getDate(in: Array[String]): String = {
     val pattern = "MM/dd/yy-HH:mm:ss"
     val dateFormatter = new SimpleDateFormat(pattern)
     //TODO the following can be refactored as split(regexp)
@@ -52,7 +51,7 @@ class log_Augment extends Serializable {
     dateTime.getTime.toString
   }
 
-  def getSnortAlertInfo(alertLog: String): RDD[alertBlock] = {
+  private def getSnortAlertInfo(alertLog: String): RDD[alertBlock] = {
     println(sc.wholeTextFiles(alertLog).flatMap(x => x._2.split("\n\n")).count())
 
     sc.wholeTextFiles(alertLog).flatMap(x => x._2.split("\n\n")).map { block =>
@@ -80,7 +79,7 @@ class log_Augment extends Serializable {
     }.filter(_.timeStamp != "")
   }
 
-  def getBroLogInfo(connLog: String): RDD[connLogEntry] = {
+  private def getBroLogInfo(connLog: String): RDD[connLogEntry] = {
     sc.textFile(connLog).map { line =>
       try {
         if (line.contains("#")) connLogEntry()
@@ -118,7 +117,7 @@ class log_Augment extends Serializable {
     }.filter(_.TS != "")
   }
 
-  def mergeEntries(left: connLogEntry, right: connLogEntry): connLogEntry = {
+  private def mergeEntries(left: connLogEntry, right: connLogEntry): connLogEntry = {
     val v = if (left.DESC != "") {
       connLogEntry(
         right.TS,
@@ -180,7 +179,7 @@ class log_Augment extends Serializable {
     * @param DESC the description snort gives of the attack
     * @return
     */
-  def reduceRecords(TSofAlert: Double, connEntries: Array[connLogEntry], DESC: String): connLogEntry =
+  private def reduceRecords(TSofAlert: Double, connEntries: Array[connLogEntry], DESC: String): connLogEntry =
   {
     val timeBuffer = 1.0
     for(x <- connEntries)
@@ -205,7 +204,7 @@ class log_Augment extends Serializable {
     * @param DESC
     * @return
     */
-  def reducePortScanRecords(TSofAlert: Double, connEntry: connLogEntry, DESC: String): connLogEntry =
+  private def reducePortScanRecords(TSofAlert: Double, connEntry: connLogEntry, DESC: String): connLogEntry =
   {
     val timeBuffer: Double = 5.0
 
@@ -218,7 +217,7 @@ class log_Augment extends Serializable {
     return null
   }
 
-  def getAugLogInfo(snortEntries: RDD[alertBlock], broEntries: RDD[connLogEntry], augLog: String): Unit = {
+  private def getAugLogInfo(snortEntries: RDD[alertBlock], broEntries: RDD[connLogEntry], augLog: String): Unit = {
     //println(snortEntries.count())
 
     broEntries.count()
@@ -318,7 +317,7 @@ class log_Augment extends Serializable {
   }
 
 
-  def mv(oldName: String, newName: String) =
+  private def mv(oldName: String, newName: String) =
     try {
       new File(oldName).renameTo(new File(newName));
       true

@@ -5,9 +5,6 @@ import org.apache.spark.mllib.rdd.RDDFunctions._
 
 import scala.reflect.ClassTag
 
-/**
- * Created by scordio on 1/24/17.
- */
 sealed trait Degree extends Veracity {
   /**
    * Computes the degree veracity factor between the degrees of two graphs.
@@ -28,8 +25,8 @@ sealed trait Degree extends Veracity {
     val d2RDD = normDistRDD(d2Values, bucketSize)
 
     if (saveDistAsCSV) {
-      RDDtoCSV(d1RDD, filePrefix + "_degrees_dist.g1.csv", overwrite)
-      RDDtoCSV(d2RDD, filePrefix + "_degrees_dist.g2.csv", overwrite)
+      Util.RDDtoCSV(d1RDD, filePrefix + "_degrees_dist.g1.csv", overwrite)
+      Util.RDDtoCSV(d2RDD, filePrefix + "_degrees_dist.g2.csv", overwrite)
     }
 
     val bucketNum = 1.0 / globalBucketSize

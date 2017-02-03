@@ -1,10 +1,11 @@
 package edu.msstate.dasi.csb
 
 import java.io._
-
-import scala.util.Random
+import java.net.InetAddress
 
 import org.apache.spark.SparkContext
+
+import scala.util.Random
 
 /**
  * Created by scordio on 12/17/16.
@@ -581,9 +582,5 @@ class DataDistributions(augLogPath: String) extends Serializable{
       accumulator = accumulator + outElem._2
     }
     outElem._1
-  }
-  def getIpSample: String = {
-    val r = Random
-    r.nextInt(255) + "." + r.nextInt(255) + "." + r.nextInt(255) + "." + r.nextInt(255) + ":" + r.nextInt(65536)
   }
 }

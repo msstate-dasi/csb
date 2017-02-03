@@ -1,6 +1,5 @@
 package edu.msstate.dasi.csb
 
-import org.apache.spark.SparkContext
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.graphx.{Edge, Graph}
 import org.apache.spark.rdd.RDD

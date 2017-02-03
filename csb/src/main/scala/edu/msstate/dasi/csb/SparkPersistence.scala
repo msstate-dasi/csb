@@ -8,9 +8,6 @@ import org.apache.spark.storage.StorageLevel
 
 import scala.reflect.ClassTag
 
-/**
- * Created by scordio on 1/4/17.
- */
 class SparkPersistence() extends GraphPersistence {
   private val vertices_suffix = "_vertices"
   private val edges_suffix = "_edges"
@@ -45,5 +42,28 @@ class SparkPersistence() extends GraphPersistence {
 
     graph.vertices.saveAsObjectFile(verticesPath)
     graph.edges.saveAsObjectFile(edgesPath)
+  }
+
+  /**
+   * Save the graph.
+   */
+  def saveAsText[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], name: String, overwrite :Boolean = false): Unit = {
+    val verticesPath = name + vertices_suffix
+    val verticesTmpPath = "__" + verticesPath
+    val edgesPath = name + edges_suffix
+    val edgesTmpPath = "__" + edgesPath
+
+    if (overwrite) {
+      FileUtil.fullyDelete(new File(verticesPath))
+      FileUtil.fullyDelete(new File(edgesPath))
+    }
+
+    graph.vertices.saveAsTextFile(verticesTmpPath)
+    Util.merge(verticesTmpPath, verticesPath)
+    FileUtil.fullyDelete(new File(verticesTmpPath))
+
+    graph.edges.saveAsTextFile(edgesTmpPath)
+    Util.merge(edgesTmpPath, edgesPath)
+    FileUtil.fullyDelete(new File(edgesTmpPath))
   }
 }

@@ -282,7 +282,7 @@ object Benchmark {
     val logAug = new log_Augment()
     logAug.run(params.alertLog, params.connLog, params.augLog)
 
-    val seed = DataParser.readFromConnFile(params.partitions, params.augLog)
+    val seed = DataParser.logToGraph(params.augLog, params.partitions)
 
     println("Vertices #: " + seed.numVertices + ", Edges #: " + seed.numEdges)
 

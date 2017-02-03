@@ -17,34 +17,24 @@ trait GraphSynth {
   private def genProperties(synth: Graph[VertexData, EdgeData], seedDists : DataDistributions): Graph[VertexData, EdgeData] = {
     val dataDistBroadcast = sc.broadcast(seedDists)
 
-    synth
-      .mapVertices(
-        (_, _) => {
-          val dataDist = dataDistBroadcast.value
-          VertexData(
-            dataDist.getIpSample
-          )
-        }
+    // There is no need to invoke also mapVertices because the vertex has no properties right now
+    synth.mapEdges( _ => {
+      val dataDist = dataDistBroadcast.value
+      val origBytes = dataDist.getOrigBytesSample
+
+      EdgeData(
+        proto = dataDist.getProtoSample(origBytes),
+        duration = dataDist.getDurationSample(origBytes),
+        origBytes = origBytes,
+        respBytes = dataDist.getRespBytesSample(origBytes),
+        connState = dataDist.getConnectionStateSample(origBytes),
+        origPkts = dataDist.getOrigPktsSample(origBytes),
+        origIpBytes = dataDist.getOrigIPBytesSample(origBytes),
+        respPkts = dataDist.getRespPktsSample(origBytes),
+        respIpBytes = dataDist.getRespIPBytesSample(origBytes),
+        desc = dataDist.getDescSample(origBytes)
       )
-      .mapEdges(
-        _ => {
-          val dataDist = dataDistBroadcast.value
-          val origBytes = dataDist.getOrigBytesSample
-          EdgeData(
-            "",
-            dataDist.getProtoSample(origBytes),
-            dataDist.getDurationSample(origBytes),
-            origBytes,
-            dataDist.getRespBytesSample(origBytes),
-            dataDist.getConnectionStateSample(origBytes),
-            dataDist.getOrigPktsSample(origBytes),
-            dataDist.getOrigIPBytesSample(origBytes),
-            dataDist.getRespPktsSample(origBytes),
-            dataDist.getRespIPBytesSample(origBytes),
-            dataDist.getDescSample(origBytes)
-          )
-        }
-      )
+    })
   }
 
   /**
