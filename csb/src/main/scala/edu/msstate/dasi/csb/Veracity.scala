@@ -9,7 +9,12 @@ trait Veracity {
   // TODO: we should find a more elegant solution for passing the bucket size to the inheriting class
   protected var globalBucketSize = 0.0
 
-
+  /**
+   * Saves a distribution RDD to a CSV file
+   */
+  protected def saveDist[K: ClassTag, V: ClassTag](rdd: RDD[(K, V)], filename: String, overwrite: Boolean): Boolean = {
+    Util.RDDtoCSV(rdd, filename, overwrite)
+  }
 
   /**
    * Computes a normalized bucketed distribution given a list of keys.

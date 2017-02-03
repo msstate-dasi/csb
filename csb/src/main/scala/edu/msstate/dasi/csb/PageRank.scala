@@ -26,8 +26,8 @@ object PageRank extends Veracity {
     val synthRDD = normDistRDD(synthPrRDD, bucketSize)
 
     if (saveDistAsCSV) {
-      Util.RDDtoCSV(seedRDD, filePrefix + "_page_rank_dist.g1.csv", overwrite)
-      Util.RDDtoCSV(synthRDD, filePrefix + "_page_rank_dist.g2.csv", overwrite)
+      saveDist(seedRDD, filePrefix + "_page_rank_dist.g1.csv", overwrite)
+      saveDist(synthRDD, filePrefix + "_page_rank_dist.g2.csv", overwrite)
     }
 
     val bucketNum = 1.0 / globalBucketSize

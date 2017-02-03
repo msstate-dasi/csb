@@ -23,7 +23,7 @@ object Util {
   }
 
   /**
-   * Save a (key,value) RDD to a CSV file
+   * Saves a (key,value) RDD to a CSV file
    */
   def RDDtoCSV[K: ClassTag, V: ClassTag](rdd: RDD[(K, V)], filename: String, overwrite: Boolean): Boolean = {
     val tmpFile = "__RDDtoCSV.tmp"
