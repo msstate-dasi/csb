@@ -16,6 +16,11 @@ object DataParser {
     ! ( pieces(2).contains(':') || pieces(4).contains(':') )
   }
 
+  private def inetToLong(inet: String): Long = {
+    val pieces = inet.split('.')
+    pieces.zipWithIndex.map { case (value, index) => value.toLong << 8 * ((pieces.length - 1) - index) }.sum
+  }
+
   def logToGraph(augLogPath: String, partitions: Int): Graph[VertexData, EdgeData] = {
     val augLogFile = sc.textFile(augLogPath, partitions)
 
@@ -28,11 +33,11 @@ object DataParser {
 
       val origIp = pieces(2)
       val origPort = pieces(3)
-      val srcId = InetAddress.getByName(origIp).hashCode() + (origPort.toLong << 32)
+      val srcId = inetToLong(origIp) | (origPort.toLong << 32)
 
       val respIp = pieces(4)
       val respPort = pieces(5)
-      val dstId = InetAddress.getByName(respIp).hashCode() + (respPort.toLong << 32)
+      val dstId = inetToLong(respIp) | (respPort.toLong << 32)
 
       Edge(srcId, dstId, EdgeData(
         /* ts = new Date(pieces(0).split('.')(0).toLong * 1000), */
