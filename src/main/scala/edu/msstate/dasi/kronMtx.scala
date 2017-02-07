@@ -134,10 +134,12 @@ class kronMtx(sc: SparkContext) {
       } else {
         DLL += lVal
       }
+      println("before " + nid1 + " and " + nid2)
       nid1 /= mtxDim
       nid2 /= mtxDim
     }
 
+    println("one of the dll's between " + nid1 + " and " + nid2 + (-thetaCnt*math.exp(DLL) - thetaCnt*math.exp(At(thetaX, thetaY)+2*DLL)))
     return -thetaCnt*math.exp(DLL) - thetaCnt*math.exp(At(thetaX, thetaY)+2*DLL)
   }
 

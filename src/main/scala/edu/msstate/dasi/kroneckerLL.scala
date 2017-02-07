@@ -61,7 +61,7 @@ class kroneckerLL(sc: SparkContext) {
 
   def setPerm(): Unit =
   {
-    //gather every (nid, deg)
+    //gather every (deg, nid)
     //undirected
     val DegNIdV: Array[(Long,Long)] = sc.parallelize(edgeList)
       .flatMap(record => Array((record._1, 1), (record._2, 1)))
@@ -69,6 +69,11 @@ class kroneckerLL(sc: SparkContext) {
       .map(record => (record._2.toLong, record._1))
       .sortBy(_._1, ascending = false)
       .collect()
+
+    for(i <- DegNIdV)
+      {
+        println("Deg: " + i._1 + " lable " + i._2)
+      }
 
     nodePerm = Array.fill(DegNIdV.length)(0)
     for(i <- 0 until DegNIdV.length)
@@ -250,6 +255,7 @@ class kroneckerLL(sc: SparkContext) {
 
   def calcApxGraphLL(): Double = {
     logLike = getApxEmptyGraphLL()
+    println("empty graph " + logLike)
     for ((nid, outNids) <- adjList) {
       for (oNid <- outNids)
       {
@@ -257,7 +263,8 @@ class kroneckerLL(sc: SparkContext) {
 //        println("NODE PERM " + nodePerm(nodeHash(nid.toInt)))
         logLike = logLike - LLMtx.getApxNoEdgeLL(nodePerm(nodeHash(nid.toInt)), nodePerm(nodeHash(oNid.toInt)), kronIters) + LLMtx.getEdgeLL(nodePerm(nodeHash(nid.toInt)), nodePerm(nodeHash(oNid.toInt)), kronIters)
 
-        println("nid: " + nid + " oNid: " + oNid + " logLike: " + logLike)
+//        println("nid: " + nid + " oNid: " + oNid + " logLike: " + logLike)
+//        println("stuff = " + (- LLMtx.getApxNoEdgeLL(nodePerm(nodeHash(nid.toInt)), nodePerm(nodeHash(oNid.toInt)), kronIters) + LLMtx.getEdgeLL(nodePerm(nodeHash(nid.toInt)), nodePerm(nodeHash(oNid.toInt)), kronIters)))
       }
     }
 
@@ -395,6 +402,7 @@ class kroneckerLL(sc: SparkContext) {
   def calcApxGraphDLL(): Array[Double] = {
     for(paramId <- 0 until LLMtx.Len()) {
       var DLL = getApxEmptyGraphDLL(paramId)
+      println("begining DLL = " + DLL)
       for((nid,outNids) <- adjList) {
         for(dstNid <- outNids) {
           DLL = DLL - LLMtx.getApxNoEdgeDLL(paramId, nid, dstNid, kronIters) + LLMtx.getEdgeDLL(paramId, nid, dstNid, kronIters)
@@ -402,6 +410,11 @@ class kroneckerLL(sc: SparkContext) {
       }
       gradV(paramId) = DLL
     }
+    for(i<- gradV)
+      {
+        println(i)
+      }
+    sys.exit(1)
     return gradV
   }
 

@@ -65,14 +65,14 @@ trait DataParser {
     val combined = sc.textFile(connFile).filter(line => !line.contains("#")).map { line =>
       try {
         val splits = line.split('\t')
-        (splits(0).toLong, splits(1).toLong)
+        (splits(0).toLong - 1, splits(1).toLong - 1)
       } catch {
         case _: Throwable =>
           (-1L, -1L)
       }
     }.filter(record => record._1 != -1)
 
-    val edges = combined
+    val edges = combined//if undirected uncomment  .flatMap(record => Array((record._1, record._2), (record._2, record._1)))
     val vertices = edges.flatMap(record => Array(record._1, record._2)).distinct()
     var hash = new mutable.HashMap[Int, Int]()
 
@@ -84,7 +84,7 @@ trait DataParser {
     }
 
     val nodeCount = vertices.count()
-    val permEdges: Array[(Long, Long)] = edges.map(record => (hash.get(record._1.toInt).head.toLong, hash.get(record._2.toInt).head.toLong)).collect()
+    val permEdges: Array[(Long, Long)] = edges.collect()//edges.map(record => (hash.get(record._1.toInt).head.toLong, hash.get(record._2.toInt).head.toLong)).collect()
     val PermNodes = for (x <- 0L until nodeCount) yield x
 
     println("nodeList " + nodeCount + "edge count " + edges.count())
