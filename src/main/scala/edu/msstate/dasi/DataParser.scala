@@ -13,7 +13,7 @@ trait DataParser {
     val file = sc.textFile(connFile, partitions)
 
     //I get a list of all the lines of the conn.log file in a way for easy parsing
-    val lines = file.map(line => line.split("\n")).filter(line => !line(0).contains("#")).map(line => line(0).replaceAll("-","0"))
+    val lines = file.map(line => line.split("\n")).filter(line => !line(0).contains("#")).map(line => line(0).replaceAll("-", "0"))
 
     //Next I get each line in a list of the edge that line in conn.log represents and the vertices that make that edge up
     //NOTE: There will be many copies of the vertices which will be reduced later
@@ -28,13 +28,17 @@ trait DataParser {
       line.split("\t")(17).toLong,
       line.split("\t")(18).toLong,
       line.split("\t")(19).toLong,
-      try { line.split("\t")(21) } catch {case _: Throwable => ""}
-      ),
+      try {
+        line.split("\t")(21)
+      } catch {
+        case _: Throwable => ""
+      }
+    ),
       nodeData(line.split("\t")(2) + ":" + line.split("\t")(3)),
       nodeData(line.split("\t")(4) + ":" + line.split("\t")(5))))
 
     //from connPLUSnodes lets grab all the DISTINCT nodes
-    val ALLNODES : RDD[nodeData] = connPLUSnodes.map(record => record._2).union(connPLUSnodes.map(record => record._3)).distinct()
+    val ALLNODES: RDD[nodeData] = connPLUSnodes.map(record => record._2).union(connPLUSnodes.map(record => record._3)).distinct()
 
     //next lets give them numbers and let that number be the "key"(basically index for my use)
     val vertices: RDD[(VertexId, nodeData)] = ALLNODES.zipWithIndex().map(record => (record._2, record._1))
@@ -44,8 +48,7 @@ trait DataParser {
     //other RDD's and hashtables have O(1)
     val verticesList = ALLNODES.collect()
     val hashTable = new scala.collection.mutable.HashMap[nodeData, VertexId]
-    for( x <- verticesList.indices )
-    {
+    for (x <- verticesList.indices) {
       hashTable.put(verticesList(x), x.toLong)
     }
 
@@ -57,126 +60,139 @@ trait DataParser {
     (vertices, Edges)
   }
 
-  def tempReadFromConn(sc: SparkContext, partitions: Int, connFile: String): (Array[Long], Array[(Long, Long)]) =
-  {
-    val combined = readFromConnFile(sc, partitions, connFile)
+  def tempReadFromConn(sc: SparkContext, partitions: Int, connFile: String): (Array[Long], Array[(Long, Long)]) = {
 
-    val edges = combined._2.map(record => (record.srcId, record.dstId))
+    val combined = sc.textFile(connFile).filter(line => !line.contains("#")).map { line =>
+      try {
+        val splits = line.split('\t')
+        (splits(0).toLong, splits(1).toLong)
+      } catch {
+        case _: Throwable =>
+          (-1L, -1L)
+      }
+    }.filter(record => record._1 != -1)
+
+    val edges = combined
     val vertices = edges.flatMap(record => Array(record._1, record._2)).distinct()
     var hash = new mutable.HashMap[Int, Int]()
 
-
     val nodeArr = vertices.collect()
 
-
-        for(x <- 0 until nodeArr.length)
-          {
-//            println("making " + x + " = " + nodeArr(x))
-            hash.put(nodeArr(x).toInt, x)
-          }
+    for (x <- 0 until nodeArr.length) {
+      //            println("making " + x + " = " + nodeArr(x))
+      hash.put(nodeArr(x).toInt, x)
+    }
 
     val nodeCount = vertices.count()
-        val permEdges = edges.map(record => (hash.get(record._1.toInt).head.toLong, hash.get(record._2.toInt).head.toLong)).collect()
-        val PermNodes = for(x <- 0L until nodeCount) yield x
-        for(x <- permEdges)
-          {
-    //        println("node " + x._1 + " to node " + x._2)
-    //        if(x._1 == 1)
-    //          {
-    //            sys.exit(1)
-    //          }
-          }
-    println("nodeList " + nodeCount + "edge count " + edges.count())
-        return (PermNodes.toArray, permEdges)
+    val permEdges: Array[(Long, Long)] = edges.map(record => (hash.get(record._1.toInt).head.toLong, hash.get(record._2.toInt).head.toLong)).collect()
+    val PermNodes = for (x <- 0L until nodeCount) yield x
 
-    //this code was used to load the file provided by snap
-//    val rdd = sc.textFile(connFile, partitions)
-//    val edges = rdd.filter(record => !record.contains("#")).map(record => (record.split("\t")(0).toLong, record.split("\t")(1).toLong))
-//    val nodes = edges.flatMap(record => Array(record._2, record._1)).distinct().map(record => (record, record))
-//      .sortByKey(ascending = true).map(record => record._1)
-//    val nodeArr = nodes.collect()
-//    var hash = new mutable.HashMap[Int, Int]()
-//
-//    for(x <- 0 until nodeArr.length)
-//      {
-//        println("making " + x + " = " + nodeArr(x))
-//        hash.put(nodeArr(x).toInt, x)
-//      }
-//
-//    val nodeCount = nodes.count()
-//    val permEdges = edges.map(record => (hash.get(record._1.toInt).head.toLong, hash.get(record._2.toInt).head.toLong)).collect()
-//    val PermNodes = for(x <- 0L until nodeCount) yield x
-//    for(x <- permEdges)
-//      {
-////        println("node " + x._1 + " to node " + x._2)
-////        if(x._1 == 1)
-////          {
-////            sys.exit(1)
-////          }
-//      }
-//    return (PermNodes.toArray, permEdges)
+    println("nodeList " + nodeCount + "edge count " + edges.count())
+    return (PermNodes.toArray, permEdges)
   }
 
-  def readFromSeedGraph(sc: SparkContext, partitions: Int, seedVertFile: String,seedEdgeFile: String): (RDD[(VertexId, nodeData)], RDD[Edge[edgeData]]) = {
+  def readFromSeedGraph(sc: SparkContext, partitions: Int, seedVertFile: String, seedEdgeFile: String): (RDD[(VertexId, nodeData)], RDD[Edge[edgeData]]) = {
 
-    val inVertices: RDD[(VertexId,nodeData)] = sc.textFile(seedVertFile, partitions).map(line => line.stripPrefix("(").stripSuffix(")").split(',')).map { record =>
-      val inData = record
+    val inVertices: RDD[(VertexId, nodeData)] = sc.textFile(seedVertFile, partitions).map(line => line.stripPrefix("(").stripSuffix(")").split(',')).map {
+      record =>
+        val inData = record
 
-      try {
-        (true, (inData(0).toLong, nodeData(inData(1).stripPrefix("nodeData(").stripSuffix(")"))))
-      } catch {
-        case _: Throwable =>
-          println("!!! THERE MAY BE ERRORS IN THE DATASET !!!")
-          (false, (0L, nodeData()))
-      }
+        try {
+          (true, (inData(0).toLong, nodeData(inData(1).stripPrefix("nodeData(").stripSuffix(")"))))
+        } catch {
+          case _: Throwable =>
+            println("!!! THERE MAY BE ERRORS IN THE DATASET !!!")
+            (false, (0L, nodeData()))
+        }
     }.filter(_._1 != false).map(record => record._2)
 
-    val inEdges: RDD[Edge[edgeData]] = sc.textFile(seedEdgeFile, partitions).map(line => line.stripPrefix("Edge(").stripSuffix(")").split(",", 3)).map { record =>
-      val inData = record
+    val inEdges: RDD[Edge[edgeData]] = sc.textFile(seedEdgeFile, partitions).map(line => line.stripPrefix("Edge(").stripSuffix(")").split(",", 3)).map {
+      record =>
+        val inData = record
 
-      try {
-        val srcNode = inData(0).toLong
-        val dstNode = inData(1).toLong
+        try {
+          val srcNode = inData(0).toLong
+          val dstNode = inData(1).toLong
 
-        //Just a bunch of string formatting and splitting
-        val edgeStrs = inData(2).stripPrefix("edgeData(").stripSuffix(")").split(',')
-        //println(inData(2).stripPrefix("edgeData(").stripSuffix(")"))
-        val dP = edgeData()
-        val TS: String = try { edgeStrs(0) } catch { case _: Throwable => dP.TS}
-        //println("TS: \"" + TS + "\"")
-        val PROTOCOL: String =try { edgeStrs(1) } catch { case _: Throwable => dP.PROTOCOL}
-        //println("PROTOCOL: \"" + PROTOCOL + "\"")
-        val DURATION: Double = try { edgeStrs(2).toDouble } catch { case _: Throwable => dP.DURATION}
-        //println("DURATION: \"" + DURATION + "\"")
-        val ORIG_BYTES: Long = try { edgeStrs(3).toLong } catch { case _: Throwable => dP.ORIG_BYTES}
-        //println("ORIG_BYTES: \"" + ORIG_BYTES + "\"")
-        val RESP_BYTES: Long = try { edgeStrs(4).toLong } catch { case _: Throwable => dP.RESP_BYTES}
-        //println("RESP_BYTES: \"" + RESP_BYTES + "\"")
-        val CONN_STATE: String = try { edgeStrs(5) } catch { case _: Throwable => dP.CONN_STATE}
-        //println("CONN_STATE: \"" + CONN_STATE + "\"")
-        val ORIG_PKTS: Long = try { edgeStrs(6).toLong } catch { case _: Throwable => dP.ORIG_PKTS}
-        //println("ORIG_PKTS: \"" + ORIG_PKTS + "\"")
-        val ORIG_IP_BYTES: Long = try { edgeStrs(7).toLong } catch { case _: Throwable => dP.ORIG_IP_BYTES}
-        //println("ORIG_IP_BYTES: \"" + ORIG_IP_BYTES + "\"")
-        val RESP_PKTS: Long = try { edgeStrs(8).toLong } catch { case _: Throwable => dP.RESP_PKTS}
-        //println("RESP_PKTS: \"" + RESP_PKTS + "\"")
-        val RESP_IP_BYTES: Long = try { edgeStrs(9).toLong } catch { case _: Throwable => dP.RESP_IP_BYTES}
-        //println("RESP_IP_BYTES: \"" + RESP_IP_BYTES + "\"")
+          //Just a bunch of string formatting and splitting
+          val edgeStrs = inData(2).stripPrefix("edgeData(").stripSuffix(")").split(',')
+          //println(inData(2).stripPrefix("edgeData(").stripSuffix(")"))
+          val dP = edgeData()
+          val TS: String = try {
+            edgeStrs(0)
+          } catch {
+            case _: Throwable => dP.TS
+          }
+          //println("TS: \"" + TS + "\"")
+          val PROTOCOL: String = try {
+            edgeStrs(1)
+          } catch {
+            case _: Throwable => dP.PROTOCOL
+          }
+          //println("PROTOCOL: \"" + PROTOCOL + "\"")
+          val DURATION: Double = try {
+            edgeStrs(2).toDouble
+          } catch {
+            case _: Throwable => dP.DURATION
+          }
+          //println("DURATION: \"" + DURATION + "\"")
+          val ORIG_BYTES: Long = try {
+            edgeStrs(3).toLong
+          } catch {
+            case _: Throwable => dP.ORIG_BYTES
+          }
+          //println("ORIG_BYTES: \"" + ORIG_BYTES + "\"")
+          val RESP_BYTES: Long = try {
+            edgeStrs(4).toLong
+          } catch {
+            case _: Throwable => dP.RESP_BYTES
+          }
+          //println("RESP_BYTES: \"" + RESP_BYTES + "\"")
+          val CONN_STATE: String = try {
+            edgeStrs(5)
+          } catch {
+            case _: Throwable => dP.CONN_STATE
+          }
+          //println("CONN_STATE: \"" + CONN_STATE + "\"")
+          val ORIG_PKTS: Long = try {
+            edgeStrs(6).toLong
+          } catch {
+            case _: Throwable => dP.ORIG_PKTS
+          }
+          //println("ORIG_PKTS: \"" + ORIG_PKTS + "\"")
+          val ORIG_IP_BYTES: Long = try {
+            edgeStrs(7).toLong
+          } catch {
+            case _: Throwable => dP.ORIG_IP_BYTES
+          }
+          //println("ORIG_IP_BYTES: \"" + ORIG_IP_BYTES + "\"")
+          val RESP_PKTS: Long = try {
+            edgeStrs(8).toLong
+          } catch {
+            case _: Throwable => dP.RESP_PKTS
+          }
+          //println("RESP_PKTS: \"" + RESP_PKTS + "\"")
+          val RESP_IP_BYTES: Long = try {
+            edgeStrs(9).toLong
+          } catch {
+            case _: Throwable => dP.RESP_IP_BYTES
+          }
+          //println("RESP_IP_BYTES: \"" + RESP_IP_BYTES + "\"")
 
-        val DESC: String = if (edgeStrs.length > 9) edgeStrs(0) else ""
+          val DESC: String = if (edgeStrs.length > 9) edgeStrs(0) else ""
 
-        //println("DESC: \"" + DESC + "\"")
-        //println()
+          //println("DESC: \"" + DESC + "\"")
+          //println()
 
-        (true, Edge(srcNode, dstNode, edgeData(TS, PROTOCOL, DURATION, ORIG_BYTES, RESP_BYTES, CONN_STATE, ORIG_PKTS, ORIG_IP_BYTES, RESP_PKTS, RESP_IP_BYTES, DESC)))
-      } catch {
-        case _: Throwable =>
-          println("!!! THERE MAY BE ERRORS IN THE DATASET !!!")
-          println()
-          (false, Edge(0L, 0L, edgeData()))
-      }
+          (true, Edge(srcNode, dstNode, edgeData(TS, PROTOCOL, DURATION, ORIG_BYTES, RESP_BYTES, CONN_STATE, ORIG_PKTS, ORIG_IP_BYTES, RESP_PKTS, RESP_IP_BYTES, DESC)))
+        } catch {
+          case _: Throwable =>
+            println("!!! THERE MAY BE ERRORS IN THE DATASET !!!")
+            println()
+            (false, Edge(0L, 0L, edgeData()))
+        }
     }.filter(_._1 != false).map(record => record._2)
 
-    (inVertices,inEdges)
+    (inVertices, inEdges)
   }
 }

@@ -2,6 +2,7 @@ package edu.msstate.dasi
 
 import breeze.numerics.log
 import org.apache.spark.SparkContext
+import org.apache.spark.graphx.Graph
 
 import scala.collection.mutable
 import scala.util.Random
@@ -60,20 +61,15 @@ class kroneckerLL(sc: SparkContext) {
 
   def setPerm(): Unit =
   {
-    var degree = sc.parallelize(edgeList).groupByKey().collect().toMap
-    println(degree.size + "should not be zero")
-    var DegNIdV = Array.fill(nodes)(0, 0)
-    for(ni <- 0 until nodeList.length)
-      {
-        val nodeID: Int = nodeList(ni).toInt
-        DegNIdV(ni) = (degree.get(nodeID.toLong).head.size, nodeID)
-      }
-    DegNIdV = DegNIdV.sortBy(_._1).reverse
+    //gather every (nid, deg)
+    //undirected
+    val DegNIdV: Array[(Long,Long)] = sc.parallelize(edgeList)
+      .flatMap(record => Array((record._1, 1), (record._2, 1)))
+      .reduceByKey(_+_)
+      .map(record => (record._2.toLong, record._1))
+      .sortBy(_._1, ascending = false)
+      .collect()
 
-//    for(x <- DegNIdV)
-//          {
-//            println("Degree " + x._1 + " nodeID of " + x._2)
-//          }
     nodePerm = Array.fill(DegNIdV.length)(0)
     for(i <- 0 until DegNIdV.length)
       {
@@ -260,6 +256,8 @@ class kroneckerLL(sc: SparkContext) {
 
 //        println("NODE PERM " + nodePerm(nodeHash(nid.toInt)))
         logLike = logLike - LLMtx.getApxNoEdgeLL(nodePerm(nodeHash(nid.toInt)), nodePerm(nodeHash(oNid.toInt)), kronIters) + LLMtx.getEdgeLL(nodePerm(nodeHash(nid.toInt)), nodePerm(nodeHash(oNid.toInt)), kronIters)
+
+        println("nid: " + nid + " oNid: " + oNid + " logLike: " + logLike)
       }
     }
 
