@@ -325,10 +325,10 @@ class kroneckerLL(sc: SparkContext) {
     }
     else
     {
-      val e = math.abs(Rnd.nextInt) % edges
+      val e = math.abs(Rnd.nextLong) % edges
 
-      val edgeList = edgeHash.keys.toArray
-      val edge = edgeList(e)
+      val edgeList = edgeHash.toSeq
+      val edge = edgeList(e.toInt)._1
       nid1 = edge._1
       nid2 = edge._2
     }
@@ -374,12 +374,12 @@ class kroneckerLL(sc: SparkContext) {
 //    if(edgeList.contains((nid1, nid2)))
     if(edgeHash.contains((nid1, nid2)))
     {
-      logLike += -LLMtx.getApxNoEdgeLL(nnid1, nnid2, kronIters) + LLMtx.getEdgeLL(nnid1, nnid2, kronIters)
+      logLike += +LLMtx.getApxNoEdgeLL(nnid1, nnid2, kronIters) - LLMtx.getEdgeLL(nnid1, nnid2, kronIters)
     }
 //    if(edgeList.contains((nid2, nid1)))
     if(edgeHash.contains((nid2, nid1)))
     {
-      logLike += -LLMtx.getApxNoEdgeLL(nnid2, nnid1, kronIters) + LLMtx.getEdgeLL(nnid2, nnid1, kronIters)
+      logLike += +LLMtx.getApxNoEdgeLL(nnid2, nnid1, kronIters) - LLMtx.getEdgeLL(nnid2, nnid1, kronIters)
     }
 
     return logLike
