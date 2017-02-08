@@ -5,7 +5,7 @@ import org.apache.spark.mllib.rdd.RDDFunctions._
 
 import scala.reflect.ClassTag
 
-sealed trait Degree extends Veracity {
+sealed trait DegreeVeracity extends Veracity {
   /**
    * Computes the degree veracity factor between the degrees of two graphs.
    */
@@ -35,7 +35,7 @@ sealed trait Degree extends Veracity {
   }
 }
 
-object Degree extends Degree {
+object DegreeVeracity extends DegreeVeracity {
   /**
    * Computes the degree veracity factor between two graphs.
    */
@@ -44,7 +44,7 @@ object Degree extends Degree {
     degree(g1.degrees, g2.degrees, saveDistAsCSV, filePrefix, overwrite)
   }
 }
-object InDegree extends Degree {
+object InDegreeVeracity extends DegreeVeracity {
   /**
    * Computes the in-degree veracity factor between two graphs.
    */
@@ -53,7 +53,7 @@ object InDegree extends Degree {
     degree(g1.inDegrees, g2.inDegrees, saveDistAsCSV, filePrefix, overwrite)
   }
 }
-object OutDegree extends Degree {
+object OutDegreeVeracity extends DegreeVeracity {
   /**
    * Computes the out-degree veracity factor between two graphs.
    */

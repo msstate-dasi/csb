@@ -315,22 +315,22 @@ object Benchmark {
 
     println("Calculating veracity metrics...")
     startTime = System.nanoTime()
-    val degVeracity = Degree(seed, synth)
+    val degVeracity = DegreeVeracity(seed, synth)
     timeSpan = (System.nanoTime() - startTime) / 1e9
     println(s"\tDegree Veracity: $degVeracity [$timeSpan s]")
 
     startTime = System.nanoTime()
-    val inDegVeracity = InDegree(seed, synth)
+    val inDegVeracity = InDegreeVeracity(seed, synth)
     timeSpan = (System.nanoTime() - startTime) / 1e9
     println(s"\tIn Degree Veracity: $inDegVeracity [$timeSpan s]")
 
     startTime = System.nanoTime()
-    val outDegVeracity = OutDegree(seed, synth)
+    val outDegVeracity = OutDegreeVeracity(seed, synth)
     timeSpan = (System.nanoTime() - startTime) / 1e9
     println(s"\tOut Degree Veracity: $outDegVeracity [$timeSpan s]")
 
     startTime = System.nanoTime()
-    val pageRankVeracity = PageRank(seed, synth)
+    val pageRankVeracity = PageRankVeracity(seed, synth)
     timeSpan = (System.nanoTime() - startTime) / 1e9
     println(s"\tPage Rank Veracity: $pageRankVeracity  [$timeSpan s]")
 
@@ -351,25 +351,25 @@ object Benchmark {
     params.metric match {
       case "degree" =>
         val startTime = System.nanoTime()
-        val degree = Degree(seed, synth, saveDistAsCSV = true, overwrite = true)
+        val degree = DegreeVeracity(seed, synth, saveDistAsCSV = true, overwrite = true)
         val timeSpan = (System.nanoTime() - startTime) / 1e9
         println(s"\tPage Rank Veracity: $degree [$timeSpan s]")
 
       case "inDegree" =>
         val startTime = System.nanoTime()
-        val inDegree = InDegree(seed, synth, saveDistAsCSV = true, overwrite = true)
+        val inDegree = InDegreeVeracity(seed, synth, saveDistAsCSV = true, overwrite = true)
         val timeSpan = (System.nanoTime() - startTime) / 1e9
         println(s"\tPage Rank Veracity: $inDegree [$timeSpan s]")
 
       case "outDegree" =>
         val startTime = System.nanoTime()
-        val outDegree = OutDegree(seed, synth, saveDistAsCSV = true, overwrite = true)
+        val outDegree = OutDegreeVeracity(seed, synth, saveDistAsCSV = true, overwrite = true)
         val timeSpan = (System.nanoTime() - startTime) / 1e9
         println(s"\tPage Rank Veracity: $outDegree [$timeSpan s]")
 
       case "pageRank" =>
         val startTime = System.nanoTime()
-        val pageRank = PageRank(seed, synth, saveDistAsCSV = true, overwrite = true)
+        val pageRank = PageRankVeracity(seed, synth, saveDistAsCSV = true, overwrite = true)
         val timeSpan = (System.nanoTime() - startTime) / 1e9
         println(s"\tPage Rank Veracity: $pageRank [$timeSpan s]")
 

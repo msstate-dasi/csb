@@ -5,7 +5,7 @@ import org.apache.spark.mllib.rdd.RDDFunctions._
 
 import scala.reflect.ClassTag
 
-object PageRank extends Veracity {
+object PageRankVeracity extends Veracity {
   /**
    * Computes the pageRank veracity factor between two graphs.
    */
