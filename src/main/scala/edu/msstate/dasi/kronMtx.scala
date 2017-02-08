@@ -53,7 +53,7 @@ class kronMtx(sc: SparkContext) {
 
   def getLLMtx(): kronMtx = {
     var LLMtx: kronMtx = new kronMtx(sc, mtxDim)
-    println(Len())
+    //println(Len())
     for(i <- 0 until Len()) {
       if (At(i) != 0.0) {
         LLMtx.seedMtx(i) = math.log(At(i))
@@ -66,11 +66,11 @@ class kronMtx(sc: SparkContext) {
 
   def setForEdges(nodes: Int, edges: Int): Int = {
     val kronIter = getKronIter(nodes)
-    println(kronIter)
+    //println(kronIter)
     val eZero = math.pow(edges.toDouble, 1.0/kronIter.toDouble)
-    println(eZero)
+    //println(eZero)
     val factor: Double = eZero / getMtxSum()
-    println(factor)
+    //println(factor)
     for(i<-0 until Len()) {
       seedMtx(i) *= factor
       if (seedMtx(i) > 1) { seedMtx(i) = 1 }
@@ -79,7 +79,7 @@ class kronMtx(sc: SparkContext) {
   }
 
   def getKronIter(nodes: Int): Int =  {
-    println("number of nodes " + nodes)
+    //println("number of nodes " + nodes)
     return math.ceil(math.log(nodes.toDouble)/math.log(mtxDim.toDouble)).toInt
   }
 
@@ -134,12 +134,12 @@ class kronMtx(sc: SparkContext) {
       } else {
         DLL += lVal
       }
-      println("before " + nid1 + " and " + nid2)
+      //println("before " + nid1 + " and " + nid2)
       nid1 /= mtxDim
       nid2 /= mtxDim
     }
 
-    println("one of the dll's between " + nid1 + " and " + nid2 + (-thetaCnt*math.exp(DLL) - thetaCnt*math.exp(At(thetaX, thetaY)+2*DLL)))
+    //println("one of the dll's between " + nid1 + " and " + nid2 + (-thetaCnt*math.exp(DLL) - thetaCnt*math.exp(At(thetaX, thetaY)+2*DLL)))
     return -thetaCnt*math.exp(DLL) - thetaCnt*math.exp(At(thetaX, thetaY)+2*DLL)
   }
 

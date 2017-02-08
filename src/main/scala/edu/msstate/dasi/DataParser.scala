@@ -62,7 +62,7 @@ trait DataParser {
 
   def tempReadFromConn(sc: SparkContext, partitions: Int, connFile: String): (Array[Long], Array[(Long, Long)]) = {
 
-    val combined = sc.textFile(connFile).filter(line => !line.contains("#")).map { line =>
+    val combined = sc.textFile(connFile).filter(line => !line.contains("#")).collect.map { line =>
       try {
         val splits = line.split('\t')
         (splits(0).toLong - 1, splits(1).toLong - 1)
@@ -72,23 +72,23 @@ trait DataParser {
       }
     }.filter(record => record._1 != -1)
 
-    val edges = combined//if undirected uncomment  .flatMap(record => Array((record._1, record._2), (record._2, record._1)))
-    val vertices = edges.flatMap(record => Array(record._1, record._2)).distinct()
-    var hash = new mutable.HashMap[Int, Int]()
+    val vertices = combined.flatMap(record => Array(record._1, record._2)).distinct
+    val verticesHash = new mutable.HashMap[Long,Long]()
 
-    val nodeArr = vertices.collect()
-
-    for (x <- 0 until nodeArr.length) {
-      //            println("making " + x + " = " + nodeArr(x))
-      hash.put(nodeArr(x).toInt, x)
+    var idx = 0L
+    for (v <- vertices) {
+      verticesHash.put(v, idx)
+      idx += 1L
     }
 
-    val nodeCount = vertices.count()
-    val permEdges: Array[(Long, Long)] = edges.collect()//edges.map(record => (hash.get(record._1.toInt).head.toLong, hash.get(record._2.toInt).head.toLong)).collect()
-    val PermNodes = for (x <- 0L until nodeCount) yield x
+    val edges = combined.map(record => (verticesHash(record._1), verticesHash(record._2)))
 
-    println("nodeList " + nodeCount + "edge count " + edges.count())
-    return (PermNodes.toArray, permEdges)
+    var hash = new mutable.HashMap[Int, Int]()
+
+    val nodeCount = verticesHash.size
+
+    println("nodeList " + nodeCount + "edge count " + edges.length)
+    return (verticesHash.values.toArray, edges)
   }
 
   def readFromSeedGraph(sc: SparkContext, partitions: Int, seedVertFile: String, seedEdgeFile: String): (RDD[(VertexId, nodeData)], RDD[Edge[edgeData]]) = {
