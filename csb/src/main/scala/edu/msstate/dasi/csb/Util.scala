@@ -27,7 +27,6 @@ object Util {
    */
   def RDDtoCSV[K: ClassTag, V: ClassTag](rdd: RDD[(K, V)], filename: String, overwrite: Boolean): Boolean = {
     val tmpFile = "__RDDtoCSV.tmp"
-    val numPartitions = 16
 
     if (overwrite) {
       FileUtil.fullyDelete(new File(filename))
@@ -36,7 +35,7 @@ object Util {
     rdd.map {
       // for each (key,value) pair, create a "key,value" string
       case (key, value) => Array(key, value).mkString(",")
-    }.coalesce(numPartitions).saveAsTextFile(tmpFile)
+    }.saveAsTextFile(tmpFile)
 
     merge(tmpFile, filename)
 

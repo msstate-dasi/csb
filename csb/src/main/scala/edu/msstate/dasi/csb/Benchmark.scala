@@ -1,13 +1,7 @@
 package edu.msstate.dasi.csb
 
-import java.io.{BufferedWriter, File, FileWriter}
-
 import org.apache.log4j.{Level, Logger}
-import org.apache.spark.SparkContext
 import scopt.OptionParser
-import org.apache.spark.graphx._
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.SparkSession
 
 /**
   * Created by spencer on 11/3/16.
@@ -252,18 +246,6 @@ object Benchmark {
     } else {
 
     }
-
-
-//    // Create a SparkSession. No need to create SparkContext
-//    // You automatically get it as part of the SparkSession
-//    val warehouseLocation = "spark-warehouse"
-//    val spark = SparkSession
-//      .builder()
-//      .appName("Cyber Security Benchmark")
-//      .config("spark.sql.warehouse.dir", warehouseLocation)
-//      .getOrCreate()
-//    val sc = spark.sparkContext
-
 
     params.mode match {
       case "gen_dist" => run_gendist(params)
