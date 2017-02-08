@@ -355,12 +355,12 @@ class kroneckerLL(sc: SparkContext) {
     val (pid1, pid2) = (nodePerm(nid1), nodePerm(nid2))
 
 //    if(edgeList.contains((nid1, nid2)))
-    if(edgeHash.contains(nid1, nid2))
+    if(edgeHash.contains((nid1, nid2)))
     {
       logLike += -LLMtx.getApxNoEdgeLL(pid1, pid2, kronIters) + LLMtx.getEdgeLL(pid1, pid2, kronIters)
     }
 //    if(edgeList.contains((nid2, nid1)))
-    if(edgeHash.contains(nid2, nid1))
+    if(edgeHash.contains((nid2, nid1)))
     {
       logLike += -LLMtx.getApxNoEdgeLL(pid2, pid1, kronIters) + LLMtx.getEdgeLL(pid2, pid1, kronIters)
     }
@@ -372,12 +372,12 @@ class kroneckerLL(sc: SparkContext) {
     val (nnid1, nnid2) = (nodePerm(nid1),nodePerm(nid2))
 
 //    if(edgeList.contains((nid1, nid2)))
-    if(edgeHash.contains(nid1, nid2))
+    if(edgeHash.contains((nid1, nid2)))
     {
       logLike += -LLMtx.getApxNoEdgeLL(nnid1, nnid2, kronIters) + LLMtx.getEdgeLL(nnid1, nnid2, kronIters)
     }
 //    if(edgeList.contains((nid2, nid1)))
-    if(edgeHash.contains(nid2, nid1))
+    if(edgeHash.contains((nid2, nid1)))
     {
       logLike += -LLMtx.getApxNoEdgeLL(nnid2, nnid1, kronIters) + LLMtx.getEdgeLL(nnid2, nnid1, kronIters)
     }
@@ -464,13 +464,13 @@ class kroneckerLL(sc: SparkContext) {
       val (pid1,pid2) = (nodePerm(snid1), nodePerm(snid2))
 
 //      if(edgeList.contains((snid1,snid2)))
-      if(edgeHash.contains(snid1, snid2))
+      if(edgeHash.contains((snid1, snid2)))
       {
 //        println("OMG WE DID IT")
         DLL += -LLMtx.getApxNoEdgeDLL(paramId, pid1, pid2, kronIters) + LLMtx.getEdgeDLL(paramId, pid1, pid2, kronIters)
       }
 //      if(edgeList.contains((snid2,snid1)))
-      if(edgeHash.contains(snid2, snid1))
+      if(edgeHash.contains((snid2, snid1)))
       {
 //        println("OMG WE DID IT AGAIN")
         DLL += -LLMtx.getApxNoEdgeDLL(paramId, pid2, pid1, kronIters) + LLMtx.getEdgeDLL(paramId, pid2, pid1, kronIters)
@@ -481,12 +481,12 @@ class kroneckerLL(sc: SparkContext) {
       val (nnid1,nnid2) = (nodePerm(snid1), nodePerm(snid2))
 
 //      if(edgeList.contains((snid1,snid2)))
-      if(edgeHash.contains(snid1, snid2))
+      if(edgeHash.contains((snid1, snid2)))
       {
         DLL += -LLMtx.getApxNoEdgeDLL(paramId, nnid1, nnid2, kronIters) + LLMtx.getEdgeDLL(paramId, nnid1, nnid2, kronIters)
       }
 //      if(edgeList.contains((snid2,snid1)))
-      if(edgeHash.contains(snid2, snid1))
+      if(edgeHash.contains((snid2, snid1)))
       {
         DLL += -LLMtx.getApxNoEdgeDLL(paramId, nnid2, nnid1, kronIters) + LLMtx.getEdgeDLL(paramId, nnid2, nnid1, kronIters)
       }
@@ -516,7 +516,7 @@ class kroneckerLL(sc: SparkContext) {
     }
 
 //    if(edgeList.contains((nid, nid)))
-    if(edgeHash.contains(nid, nid))
+    if(edgeHash.contains((nid, nid)))
     {
       delta += LLMtx.getApxNoEdgeDLL(paramId, srcRow, srcCol, kronIters) - LLMtx.getEdgeDLL(paramId, srcRow, srcCol, kronIters)
     }
