@@ -297,8 +297,6 @@ class kroneckerLL(sc: SparkContext) {
       }
     }
 
-//    println(logLike)
-//    sys.exit(1)
     return logLike
   }
 
@@ -325,10 +323,10 @@ class kroneckerLL(sc: SparkContext) {
     }
     else
     {
-      val e = math.abs(Rnd.nextLong) % edges
+      val e = math.abs(Rnd.nextInt) % edges
 
-      val edgeList = edgeHash.toSeq
-      val edge = edgeList(e.toInt)._1
+      val edgeList = edgeHash.keys.toArray
+      val edge = edgeList(e)
       nid1 = edge._1
       nid2 = edge._2
     }
@@ -345,8 +343,10 @@ class kroneckerLL(sc: SparkContext) {
       logLike = oldLL
       swapNodesNodePerm(nid2, nid1)
       swapNodesInvertPerm(nodePerm(nid2), nodePerm(nid1))
+//      println("changing")
       return (-1,-1)
     }
+//    println("did not change")
     return (nid1, nid2)
   }
 
@@ -357,6 +357,7 @@ class kroneckerLL(sc: SparkContext) {
 //    if(edgeList.contains((nid1, nid2)))
     if(edgeHash.contains((nid1, nid2)))
     {
+
       logLike += -LLMtx.getApxNoEdgeLL(pid1, pid2, kronIters) + LLMtx.getEdgeLL(pid1, pid2, kronIters)
     }
 //    if(edgeList.contains((nid2, nid1)))
@@ -371,35 +372,45 @@ class kroneckerLL(sc: SparkContext) {
     logLike = logLike + nodeLLDelta(nid1) + nodeLLDelta(nid2)
     val (nnid1, nnid2) = (nodePerm(nid1),nodePerm(nid2))
 
+
 //    if(edgeList.contains((nid1, nid2)))
     if(edgeHash.contains((nid1, nid2)))
     {
-      logLike += +LLMtx.getApxNoEdgeLL(nnid1, nnid2, kronIters) - LLMtx.getEdgeLL(nnid1, nnid2, kronIters)
+      logLike += -LLMtx.getApxNoEdgeLL(nnid1, nnid2, kronIters) + LLMtx.getEdgeLL(nnid1, nnid2, kronIters)
     }
 //    if(edgeList.contains((nid2, nid1)))
     if(edgeHash.contains((nid2, nid1)))
     {
-      logLike += +LLMtx.getApxNoEdgeLL(nnid2, nnid1, kronIters) - LLMtx.getEdgeLL(nnid2, nnid1, kronIters)
+      logLike += -LLMtx.getApxNoEdgeLL(nnid2, nnid1, kronIters) + LLMtx.getEdgeLL(nnid2, nnid1, kronIters)
     }
 
     return logLike
   }
 
+
+  /**
+    * I ADDED NODEPERM IN HERE  IT MAY OR MAY NOT BE RIGHT
+    * @param nid
+    * @return
+    */
   def nodeLLDelta(nid: Long): Double = {
-    if (!nodeHash.contains(nid)) return 0.0
+    if (!nodeHash.contains(nid))
+      {
+        return 0.0
+      }
     var delta = 0.0
 
 //    println(nodePerm.length)
     val srcRow = nodePerm(nid)
-    for(e <- 0 until adjHash(nid).length ) {
+    for(e <- 0 until adjHash(nodePerm(nid)).length ) {
 //      println("here")
-      val dstCol = adjHash(nid)(e)
+      val dstCol = adjHash(nodePerm(nid))(e)
       delta += -LLMtx.getApxNoEdgeLL(srcRow, dstCol, kronIters) + LLMtx.getEdgeLL(srcRow, dstCol, kronIters)
     }
 
     val srcCol = nodePerm(nid)
-    for(e <- 0 until adjHash(nid).length ) {
-      val dstRow = adjHash(nid)(e)
+    for(e <- 0 until adjHash(nodePerm(nid)).length ) {
+      val dstRow = adjHash(nodePerm(nid))(e)
       delta += -LLMtx.getApxNoEdgeLL(dstRow, srcCol, kronIters) + LLMtx.getEdgeLL(dstRow, srcCol, kronIters)
     }
 
@@ -423,21 +434,25 @@ class kroneckerLL(sc: SparkContext) {
   def calcApxGraphDLL(): Array[Double] = {
     for(paramId <- 0 until LLMtx.Len()) {
       var DLL = getApxEmptyGraphDLL(paramId)
-      //println("begining DLL = " + DLL)
+//      println("begining DLL = " + DLL)
+      val adjListSorted = adjHash.toSeq.sortBy(_._2.length).reverse
       for((nid,outNids) <- adjHash) {
+//        println("at node id:" + nid)
         for(dstNid <- outNids) {
-          DLL = DLL - LLMtx.getApxNoEdgeDLL(paramId, nid, dstNid, kronIters) + LLMtx.getEdgeDLL(paramId, nid, dstNid, kronIters)
+//          print("\t" + dstNid)
+          DLL = DLL - LLMtx.getApxNoEdgeDLL(paramId, nodePerm(nid), nodePerm.get(dstNid).head, kronIters) + LLMtx.getEdgeDLL(paramId, nodePerm.get(nid).head, nodePerm.get(dstNid).head, kronIters)
+//          print("\tno edge: " + LLMtx.getApxNoEdgeDLL(paramId, nodePerm(nid), nodePerm.get(dstNid).head, kronIters))
+//          println("\tedge: " + LLMtx.getEdgeDLL(paramId, nodePerm.get(nid).head, nodePerm.get(dstNid).head, kronIters))
         }
+
       }
       gradV(paramId) = DLL
     }
-    /*
-    for(i<- gradV)
-      {
-        println(i)
-      }
-      */
-    //sys.exit(1)
+//    for(i<- gradV)
+//      {
+//        println(i)
+//      }
+//    sys.exit(1)
     return gradV
   }
 

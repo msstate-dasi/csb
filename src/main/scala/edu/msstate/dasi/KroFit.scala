@@ -46,7 +46,7 @@ class KroFit(sc: SparkContext, partitions: Int, initMtxStr: String, gradIter: In
 
       var logLike: Double = 0
 //      logLike = kronLL.gradDescent(gradIter, lrnRate, mnStep, mxStep, warmUp, nSamples);
-      logLike = kronLL.gradDescent(50, lrnRate, mnStep, mxStep, 10000, 100000);
+      logLike = kronLL.gradDescent(100, lrnRate, mnStep, mxStep, 10000, 100000);
 
     }
 

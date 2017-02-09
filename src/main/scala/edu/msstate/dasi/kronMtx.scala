@@ -151,7 +151,7 @@ class kronMtx(sc: SparkContext) {
 
     var thetaCnt = 0
 
-    for(level<-0 to nKronIters) {
+    for(level<-0 until nKronIters) {
       if((nid1 % mtxDim) == thetaX && (nid2%mtxDim) == thetaY) {
         thetaCnt += 1
       }
