@@ -41,28 +41,19 @@ trait GraphSynth {
    * Synthesizes a graph from a seed graph and its properties distributions.
    */
   def synthesize(seed: Graph[VertexData, EdgeData], seedDists : DataDistributions, withProperties: Boolean): Graph[VertexData, EdgeData] = {
-    var startTime = System.nanoTime()
 
-    var synth = genGraph(seed, seedDists)
-    println("Vertices #: " + synth.numVertices + ", Edges #: " + synth.numEdges)
+    var synth = null.asInstanceOf[Graph[VertexData, EdgeData]]
 
-    var timeSpan = (System.nanoTime() - startTime) / 1e9
-    println()
-    println("Finished generating graph.")
-    println("\tTotal time elapsed: " + timeSpan.toString)
-    println()
+    Util.time( "Gen Graph", {
+      synth = genGraph(seed, seedDists)
+      println("Vertices #: " + synth.numVertices + ", Edges #: " + synth.numEdges)
+    } )
 
     if (withProperties) {
-      startTime = System.nanoTime()
-      println()
-      println("Generating Edge and Node properties")
-
-      synth = genProperties(synth, seedDists)
-
-      println("Vertices #: " + synth.numVertices + ", Edges #: " + synth.numEdges)
-
-      timeSpan = (System.nanoTime() - startTime) / 1e9
-      println("Finished generating Edge and Node Properties. Total time elapsed: " + timeSpan.toString)
+      Util.time( "Gen Properties", {
+        synth = genProperties(synth, seedDists)
+        println("Vertices #: " + synth.numVertices + ", Edges #: " + synth.numEdges)
+      } )
     }
 
     synth

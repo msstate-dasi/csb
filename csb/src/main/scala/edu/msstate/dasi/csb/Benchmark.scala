@@ -1,6 +1,8 @@
 package edu.msstate.dasi.csb
 
 import org.apache.log4j.{Level, Logger}
+import org.apache.spark.graphx.Graph
+
 import scopt.OptionParser
 
 /**
@@ -264,23 +266,22 @@ object Benchmark {
     val logAug = new log_Augment()
     logAug.run(params.alertLog, params.connLog, params.augLog)
 
-    val seed = DataParser.logToGraph(params.augLog, params.partitions)
+    var seed = null.asInstanceOf[Graph[VertexData,EdgeData]]
 
-    println("Vertices #: " + seed.numVertices + ", Edges #: " + seed.numEdges)
+    Util.time( "Log to graph", {
+      seed = DataParser.logToGraph(params.augLog, params.partitions)
+      println("Vertices #: " + seed.numVertices + ", Edges #: " + seed.numEdges)
+    } )
 
-    //this is called to read the newly created aug log and create the distributions from it
-    new DataDistributions(params.augLog)
+    Util.time( "Seed distributions", new DataDistributions(params.augLog) )
 
-    println("Saving the seed graph...")
     var graphPs = null.asInstanceOf[GraphPersistence]
     params.backend match {
       case "fs" => graphPs = new SparkPersistence()
       case "neo4j" => graphPs = new Neo4jPersistence()
     }
 
-    graphPs.saveGraph(seed, "seed", overwrite = true)
-
-    println("Finished saving the synthetic graph.")
+    Util.time( "Save seed graph", graphPs.saveGraph(seed, "seed", overwrite = true) )
 
     true
   }
@@ -305,34 +306,19 @@ object Benchmark {
 
     val synth = synthesizer.synthesize(seed, seedDists, !params.noProp)
 
-    println("Saving the synthetic graph...")
+    Util.time( "Save synth graph", graphPs.saveGraph(synth, params.outputGraphPrefix, overwrite = true) )
 
-    var startTime = System.nanoTime()
-    graphPs.saveGraph(synth, params.outputGraphPrefix, overwrite = true)
-    var timeSpan = (System.nanoTime() - startTime) / 1e9
+    val degVeracity = Util.time( "Degree Veracity", DegreeVeracity(seed, synth) )
+    println(s"Degree Veracity: $degVeracity")
 
-    println("Finished saving the synthetic graph. Total time elapsed: " + timeSpan.toString + " s")
+    val inDegVeracity = Util.time( "In-Degree Veracity", InDegreeVeracity(seed, synth) )
+    println(s"In-Degree Veracity: $inDegVeracity")
 
-    println("Calculating veracity metrics...")
-    startTime = System.nanoTime()
-    val degVeracity = DegreeVeracity(seed, synth)
-    timeSpan = (System.nanoTime() - startTime) / 1e9
-    println(s"\tDegree Veracity: $degVeracity [$timeSpan s]")
+    val outDegVeracity = Util.time( "Out-Degree Veracity", OutDegreeVeracity(seed, synth) )
+    println(s"Out-Degree Veracity: $outDegVeracity")
 
-    startTime = System.nanoTime()
-    val inDegVeracity = InDegreeVeracity(seed, synth)
-    timeSpan = (System.nanoTime() - startTime) / 1e9
-    println(s"\tIn Degree Veracity: $inDegVeracity [$timeSpan s]")
-
-    startTime = System.nanoTime()
-    val outDegVeracity = OutDegreeVeracity(seed, synth)
-    timeSpan = (System.nanoTime() - startTime) / 1e9
-    println(s"\tOut Degree Veracity: $outDegVeracity [$timeSpan s]")
-
-    startTime = System.nanoTime()
-    val pageRankVeracity = PageRankVeracity(seed, synth)
-    timeSpan = (System.nanoTime() - startTime) / 1e9
-    println(s"\tPage Rank Veracity: $pageRankVeracity  [$timeSpan s]")
+    val pageRankVeracity = Util.time( "PageRank Veracity", PageRankVeracity(seed, synth) )
+    println(s"Page Rank Veracity: $pageRankVeracity")
 
     true
   }

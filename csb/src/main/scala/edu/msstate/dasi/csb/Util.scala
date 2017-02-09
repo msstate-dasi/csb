@@ -23,7 +23,7 @@ object Util {
   }
 
   /**
-   * Saves a (key,value) RDD to a CSV file
+   * Saves a (key,value) RDD to a CSV file.
    */
   def RDDtoCSV[K: ClassTag, V: ClassTag](rdd: RDD[(K, V)], filename: String, overwrite: Boolean): Boolean = {
     val tmpFile = "__RDDtoCSV.tmp"
@@ -40,5 +40,22 @@ object Util {
     merge(tmpFile, filename)
 
     FileUtil.fullyDelete(new File(tmpFile))
+  }
+
+  /**
+   * Executes a task and prints the elapsed time.
+   *
+   * @param taskName the name of the task
+   * @param task the code block to be executed
+
+   * @return the return value of the task
+   */
+  def time[R](taskName: String, task: => R): R = {
+    println("[TIME] " + taskName + " started...")
+    val start = System.nanoTime
+    val ret = task // call-by-name
+    val end = System.nanoTime
+    println("[TIME] " + taskName + " completed in " + (end - start) / 1e9 + " s")
+    ret
   }
 }

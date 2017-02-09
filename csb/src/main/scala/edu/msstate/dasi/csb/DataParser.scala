@@ -1,7 +1,5 @@
 package edu.msstate.dasi.csb
 
-import java.net.InetAddress
-
 import org.apache.spark.graphx.{Edge, Graph}
 import org.apache.spark.storage.StorageLevel
 
