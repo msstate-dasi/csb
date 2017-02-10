@@ -173,14 +173,39 @@ object Workload {
    * @tparam ED Edge attribute type for input graph
    * @return Graph containing the betweenness double values
    */
-  def betweennessCentrality[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED], k: Int): Graph[Double, Double] = {
+  def betweennessCentrality[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], k: Int): Graph[Double, Double] = {
     KBetweenness.run(graph, k)
   }
 
-  def subGraphIsoMorphism[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED], k: Int) = {
+  def subGraphIsoMorphism[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], k: Int) = {
     // This one is gonna take some time for me to wrap my head around and find a way
     // to implement it in spark.
   }
 
+  private def edgeWithPropFilter(edge: Edge[EdgeData], filterEdge: Edge[EdgeData]): Boolean = {
+    filterEdge.attr.proto != null &&  filterEdge.attr.proto.equals(edge.attr.proto)
+  }
+
+  private def edgeWithPropRangeFilter(edge: Edge[EdgeData], min: Edge[EdgeData], max: Edge[EdgeData]): Boolean = {
+//    filterEdge.attr.proto != null &&  filterEdge.attr.proto.equals(edge.attr.proto)
+    true
+  }
+
+  /**
+   * Computes the number of triangles passing through each vertex.
+   */
+  def edgesWithProperty[VD: ClassTag](graph: Graph[VD, EdgeData], property: EdgeData): RDD[Edge[EdgeData]] = {
+    val filterEdge = Edge(0L, 0L, property)
+    graph.edges.filter(edge => edgeWithPropFilter(edge, filterEdge))
+  }
+
+  /**
+   * Computes the number of triangles passing through each vertex.
+   */
+  def edgesWithProperty[VD: ClassTag](graph: Graph[VD, EdgeData], min: EdgeData, max: EdgeData): RDD[Edge[EdgeData]] = {
+    val filterMin = Edge(0L, 0L, min)
+    val filterMax = Edge(0L, 0L, max)
+    graph.edges.filter(edge => edgeWithPropRangeFilter(edge, filterMin, filterMax))
+  }
 }
 
