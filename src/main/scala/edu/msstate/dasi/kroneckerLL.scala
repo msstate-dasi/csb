@@ -25,6 +25,7 @@ class kroneckerLL(sc: SparkContext) {
   var nodeHash: mutable.HashMap[Long, Boolean] = null
   var edgeHash: mutable.HashMap[(Long, Long), Boolean] = null
   var adjHash: mutable.HashMap[Long, Array[Long]] = null
+  var inAdjHash: mutable.HashMap[Long, Array[Long]] = null
   val NInf: Double = -Double.MaxValue
   var logLike: Double = 0
   var gradV: Array[Double] = Array.empty[Double]
@@ -135,14 +136,24 @@ class kroneckerLL(sc: SparkContext) {
     edges = this.edgeHash.size
 
     this.adjHash = new mutable.HashMap[Long, Array[Long]]()
+    this.inAdjHash = new mutable.HashMap[Long, Array[Long]]()
 
     for(edge <- edgeHash.keys)
     {
       try {
-        val oldList: Array[Long] = adjHash(edge._1)
+        var oldList: Array[Long] = adjHash(edge._1)
         adjHash(edge._1) = oldList :+ edge._2
+
       } catch {
         case _: Throwable => adjHash.put(edge._1, Array(edge._2))
+      }
+
+      try {
+        var oldList: Array[Long] = inAdjHash(edge._2)
+        inAdjHash(edge._2) = oldList :+ edge._1
+
+      } catch {
+        case _: Throwable => inAdjHash.put(edge._2, Array(edge._1))
       }
     }
 
@@ -184,7 +195,7 @@ class kroneckerLL(sc: SparkContext) {
       curGradV = result._2
       for(p <- 0 until getParams()) {
         learnRateV(p) *= 0.95
-        val constant = 0.95 //this value should be 0.95 Im testing here
+        val constant = 0.95
 
         if (i<1) {
           while(math.abs(learnRateV(p)*curGradV(p)) > mxStep) {learnRateV(p) *= constant}
@@ -255,10 +266,14 @@ class kroneckerLL(sc: SparkContext) {
     var startTime = System.nanoTime()
     for(s <- 0 until nSamples) {
 //      println("sample " + s)
-      val (temp1, temp2) = sampleNextPerm(NId1, NId2)
+      val ((temp1, temp2), result) = sampleNextPerm(NId1, NId2)
+      NId1 = temp1
+      NId2 = temp2
 //      println(" temp1 = " + temp1 + "  temp2 = " + temp2)
-      if (temp1 != -1) {
-        updateGraphDLL(temp1, temp2) ///!!! lol
+//      if (result)
+      if(result)
+      {
+        updateGraphDLL(NId1, NId2) ///!!! lol
         NAccept += 1
       }
       for(m <- 0 until LLMtx.Len)
@@ -296,7 +311,6 @@ class kroneckerLL(sc: SparkContext) {
 //        println("stuff = " + (- LLMtx.getApxNoEdgeLL(nodePerm(nodeHash(nid)), nodePerm(nodeHash(oNid)), kronIters) + LLMtx.getEdgeLL(nodePerm(nodeHash(nid)), nodePerm(nodeHash(oNid)), kronIters)))
       }
     }
-
     return logLike
   }
 
@@ -311,9 +325,12 @@ class kroneckerLL(sc: SparkContext) {
     return -math.pow(sum, kronIters) - 0.5*math.pow(sumSq, kronIters)
   }
 
-  def sampleNextPerm(inid1: Long, inid2: Long): (Long, Long) = {
+  def sampleNextPerm(inid1: Long, inid2: Long): ((Long, Long), Boolean) = {
+
     var nid1 = inid1
     var nid2 = inid2
+
+
 
     if (Rnd.nextDouble() < permSwapNodeProb)
     {
@@ -331,9 +348,11 @@ class kroneckerLL(sc: SparkContext) {
       nid2 = edge._2
     }
 
+//    nid1 = 1
+//    nid2 = 0
 
-
-    val u = Rnd.nextDouble()
+    var u = Rnd.nextDouble()
+//    u = 0
     val oldLL = logLike
     val newLL = swapNodesLL(nid1, nid2)
     val logU = math.log(u)
@@ -344,10 +363,10 @@ class kroneckerLL(sc: SparkContext) {
       swapNodesNodePerm(nid2, nid1)
       swapNodesInvertPerm(nodePerm(nid2), nodePerm(nid1))
 //      println("changing")
-      return (-1,-1)
+      return ((-1,-1), false)
     }
 //    println("did not change")
-    return (nid1, nid2)
+    return ((nid1, nid2), true)
   }
 
   def swapNodesLL(nid1: Long, nid2: Long): Double = {
@@ -376,12 +395,12 @@ class kroneckerLL(sc: SparkContext) {
 //    if(edgeList.contains((nid1, nid2)))
     if(edgeHash.contains((nid1, nid2)))
     {
-      logLike += -LLMtx.getApxNoEdgeLL(nnid1, nnid2, kronIters) + LLMtx.getEdgeLL(nnid1, nnid2, kronIters)
+      logLike += +LLMtx.getApxNoEdgeLL(nnid1, nnid2, kronIters) - LLMtx.getEdgeLL(nnid1, nnid2, kronIters)
     }
 //    if(edgeList.contains((nid2, nid1)))
     if(edgeHash.contains((nid2, nid1)))
     {
-      logLike += -LLMtx.getApxNoEdgeLL(nnid2, nnid1, kronIters) + LLMtx.getEdgeLL(nnid2, nnid1, kronIters)
+      logLike += +LLMtx.getApxNoEdgeLL(nnid2, nnid1, kronIters) - LLMtx.getEdgeLL(nnid2, nnid1, kronIters)
     }
 
     return logLike
@@ -402,15 +421,16 @@ class kroneckerLL(sc: SparkContext) {
 
 //    println(nodePerm.length)
     val srcRow = nodePerm(nid)
-    for(e <- 0 until adjHash(nodePerm(nid)).length ) {
+    for(e <- 0 until adjHash(nid).length){// adjHash(nodePerm(nid)) ) {
 //      println("here")
-      val dstCol = adjHash(nodePerm(nid))(e)
+      val dstCol = nodePerm(adjHash(nid)(e))
       delta += -LLMtx.getApxNoEdgeLL(srcRow, dstCol, kronIters) + LLMtx.getEdgeLL(srcRow, dstCol, kronIters)
     }
 
     val srcCol = nodePerm(nid)
-    for(e <- 0 until adjHash(nodePerm(nid)).length ) {
-      val dstRow = adjHash(nodePerm(nid))(e)
+    for(e <- 0 until inAdjHash(nid).length )
+    {
+      val dstRow = nodePerm(inAdjHash(nid)(e))
       delta += -LLMtx.getApxNoEdgeLL(dstRow, srcCol, kronIters) + LLMtx.getEdgeLL(dstRow, srcCol, kronIters)
     }
 
@@ -422,8 +442,11 @@ class kroneckerLL(sc: SparkContext) {
   }
 
   def swapNodesNodePerm(nid1: Long, nid2: Long) = {
-    nodePerm(nid2) = nid1
-    nodePerm(nid1) = nid2
+    val temp1 = nodePerm(nid1)
+    val temp2 = nodePerm(nid2)
+
+    nodePerm(nid1) = temp2
+    nodePerm(nid2) = temp1
   }
 
   def swapNodesInvertPerm(nid1: Long, nid2: Long) = {
@@ -448,11 +471,6 @@ class kroneckerLL(sc: SparkContext) {
       }
       gradV(paramId) = DLL
     }
-//    for(i<- gradV)
-//      {
-//        println(i)
-//      }
-//    sys.exit(1)
     return gradV
   }
 
@@ -468,7 +486,9 @@ class kroneckerLL(sc: SparkContext) {
   }
 
 
-  def updateGraphDLL(snid1: Long, snid2: Long): Unit = {
+  def updateGraphDLL(inid1: Long, inid2: Long): Unit = {
+    var snid1 = inid1
+    var snid2 = inid2
     for(paramId <- 0 until LLMtx.Len()) {
 
       swapNodesNodePerm(snid1, snid2)
@@ -498,14 +518,16 @@ class kroneckerLL(sc: SparkContext) {
 //      if(edgeList.contains((snid1,snid2)))
       if(edgeHash.contains((snid1, snid2)))
       {
-        DLL += -LLMtx.getApxNoEdgeDLL(paramId, nnid1, nnid2, kronIters) + LLMtx.getEdgeDLL(paramId, nnid1, nnid2, kronIters)
+        DLL += +LLMtx.getApxNoEdgeDLL(paramId, nnid1, nnid2, kronIters) - LLMtx.getEdgeDLL(paramId, nnid1, nnid2, kronIters)
       }
 //      if(edgeList.contains((snid2,snid1)))
       if(edgeHash.contains((snid2, snid1)))
       {
-        DLL += -LLMtx.getApxNoEdgeDLL(paramId, nnid2, nnid1, kronIters) + LLMtx.getEdgeDLL(paramId, nnid2, nnid1, kronIters)
+        DLL += +LLMtx.getApxNoEdgeDLL(paramId, nnid2, nnid1, kronIters) - LLMtx.getEdgeDLL(paramId, nnid2, nnid1, kronIters)
       }
+      gradV(paramId) = DLL
     }
+    return (snid1, snid2)
   }
 
 
@@ -519,21 +541,21 @@ class kroneckerLL(sc: SparkContext) {
     //nodeHash(nid)
     for(e <- 0 until adjHash(nid).length )
     {
-      val dstCol = adjHash(nid)(e)
+      val dstCol = nodePerm(adjHash(nid)(e))
       delta += -LLMtx.getApxNoEdgeDLL(paramId, srcRow, dstCol, kronIters) + LLMtx.getEdgeDLL(paramId, srcRow, dstCol, kronIters)
     }
 
     val srcCol = nodePerm(nid)
-    for(e <- 0 until adjHash(nid).length )
+    for(e <- 0 until inAdjHash(nid).length )
     {
-      val dstRow = adjHash(nid)(e)
+      val dstRow = nodePerm(inAdjHash(nid)(e))
       delta += -LLMtx.getApxNoEdgeDLL(paramId, dstRow, srcCol, kronIters) + LLMtx.getEdgeDLL(paramId, dstRow, srcCol, kronIters)
     }
 
 //    if(edgeList.contains((nid, nid)))
     if(edgeHash.contains((nid, nid)))
     {
-      delta += LLMtx.getApxNoEdgeDLL(paramId, srcRow, srcCol, kronIters) - LLMtx.getEdgeDLL(paramId, srcRow, srcCol, kronIters)
+      delta += +LLMtx.getApxNoEdgeDLL(paramId, srcRow, srcCol, kronIters) - LLMtx.getEdgeDLL(paramId, srcRow, srcCol, kronIters)
     }
 //    println("END nodeDLLDelta")
     return delta

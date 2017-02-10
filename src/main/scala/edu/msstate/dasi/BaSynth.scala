@@ -65,7 +65,7 @@ class BaSynth(sc: SparkContext, partitions: Int, dataDist: DataDistributions, gr
         }
 
 
-        vertToAdd = vertToAdd :+ (srcId, tempNodeProp)
+//        vertToAdd = vertToAdd :+ (srcId, tempNodeProp)
         degList = degList :+ (srcId, 0) //initial degree of 0
 
         val numEdgesToAdd = dataDist.getOutEdgeSample

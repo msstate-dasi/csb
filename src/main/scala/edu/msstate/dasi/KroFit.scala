@@ -10,13 +10,16 @@ import org.apache.spark.rdd.RDD
   */
 class KroFit(sc: SparkContext, partitions: Int, initMtxStr: String, gradIter: Int, connLog: String) extends DataParser {
 
-    def run(): Unit = {
+    def run(sc:SparkContext, G: Graph[edgeData, nodeData]): Unit = {
+
+      val edgeList: Array[(Long, Long)] = G.edges.map(record => (record.srcId, record.dstId)).collect()
+      val nodeList: Array[Long] = G.vertices.map(record => (record._1)).collect()
 
 //      var edgeList: Array[(Long,Long)] = Array.empty[(Long,Long)]
 //      var nodeList: Array[Long] = Array.empty[(Long)]
       val permSwapNodeProb = 0.2
       val scaleInitMtx = true
-      var (nodeList, edgeList) = tempReadFromConn(sc, 120, connLog);
+//      var (nodeList, edgeList) = tempReadFromConn(sc, 120, connLog);
 //      nodeList = tempReadFromConn(sc, 120, connLog)._1
 
       val lrnRate = 0.00005
