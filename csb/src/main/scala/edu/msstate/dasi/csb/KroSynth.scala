@@ -58,11 +58,9 @@ class KroSynth(partitions: Int, mtxFile: String, genIter: Int) extends GraphSynt
         val u = probToRCPosV(n)._2
         val v = probToRCPosV(n)._3
 
-        //println("MtxRow " + u + ", MtxCol " + v)
         range = range / n1
         srcId += u * range
         dstId += v * range
-        //println("Row " + srcId + ", Col " + dstId)
       }
       Edge[EdgeData](srcId, dstId)
     }
