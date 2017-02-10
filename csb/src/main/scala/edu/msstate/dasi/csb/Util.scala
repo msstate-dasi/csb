@@ -6,8 +6,6 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, FileUtil, Path}
 import org.apache.spark.rdd.RDD
 
-import scala.reflect.ClassTag
-
 object Util {
   /**
    * Squashes part files of saveAsTextFile() together into a single file using the Hadoop’s merge function.
@@ -25,7 +23,7 @@ object Util {
   /**
    * Saves a (key,value) RDD to a CSV file.
    */
-  def RDDtoCSV[K: ClassTag, V: ClassTag](rdd: RDD[(K, V)], filename: String, overwrite: Boolean): Boolean = {
+  def RDDtoCSV[K, V](rdd: RDD[(K, V)], filename: String, overwrite: Boolean): Boolean = {
     val tmpFile = "__RDDtoCSV.tmp"
 
     if (overwrite) {
