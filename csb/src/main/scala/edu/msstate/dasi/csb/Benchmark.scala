@@ -20,10 +20,9 @@ object Benchmark {
                          outputGraphPrefix_desc: String = "Prefix to use when saving the output graph",
                          partitions_desc: String = "Number of partitions to set RDDs to.",
                          backend_desc: String = "Backend used to save generated data (fs or neo4j).",
-                         checkpointDir_desc: String = "Directory for checkpointing intermediate results. " +
-                           "Checkpointing helps with recovery and eliminates temporary shuffle files on disk.",
-                         checkpointInterval_desc: String = "Iterations between each checkpoint. Only used if " +
-                           "checkpointDir is set.",
+                         checkpointDir_desc: String = "Directory for checkpointing intermediate results. Checkpointing helps with recovery and eliminates temporary shuffle files on disk.",
+                         checkpointInterval_desc: String = "Iterations between each checkpoint. Only used if checkpointDir is set.",
+                         seed_desc: String = "Path of the seed.",
 
                          /**
                            * GenDist Arguments
@@ -37,7 +36,6 @@ object Benchmark {
                            */
                          noProp_desc: String = "Specify whether to generate random properties during generation or not.",
                          numNodesPerIter_desc: String = "The number of nodes to add to the graph per iteration.",
-                         seed_desc: String = "Serialized file to use as a seed for BA Graph Generation.",
                          baIter_desc: String = "Number of iterations for Barabasi–Albert model.",
 
                          /**
@@ -49,10 +47,10 @@ object Benchmark {
                          /**
                            * veracity arguements
                            */
-                       veracity_Desc: String = "The veracity metric you want to compute. Options include: degree, inDegree, outDegree, pageRank",
-                         veracity_File: String = "The file to save the metric information",
-                         seed_Metric: String = "Serialized file to use as a seed",
-                         synth_Metric: String = "Serialized file to use as a synth"
+                         veracity_Desc: String = "The veracity metric you want to compute. Options include: degree, inDegree, outDegree, pageRank.",
+                         veracity_File: String = "The file to save the metric information.",
+                         seed_Metric: String = "Serialized file to use as a seed.",
+                         synth_Metric: String = "Serialized file to use as a synth."
                        )
 
   case class Params(
@@ -109,21 +107,21 @@ object Benchmark {
         * All Arguments:
         */
       opt[String]("output")
-        .text(s"${h.outputGraphPrefix_desc} default ${dP.outputGraphPrefix}")
+        .text(s"${h.outputGraphPrefix_desc} Default ${dP.outputGraphPrefix}")
         .action((x, c) => c.copy(outputGraphPrefix = x))
       opt[Int]("partitions")
-        .text(s"${h.partitions_desc} default: ${dP.partitions}")
+        .text(s"${h.partitions_desc} Default: ${dP.partitions}")
         .validate(x => if (x > 0) success else failure("Partition count must be greater than 0."))
         .action((x, c) => c.copy(partitions = x))
       opt[String]("backend")
-        .text(s"${h.backend_desc} default: ${dP.backend}")
+        .text(s"${h.backend_desc} Default: ${dP.backend}")
         .validate(x => if (x == "fs" || x == "neo4j") success else failure("Backend must be fs or neo4j."))
         .action((x, c) => c.copy(backend = x))
       opt[String]("checkpointDir")
-        .text(s"${h.checkpointDir_desc} default: ${dP.checkpointDir}")
+        .text(s"${h.checkpointDir_desc} Default: ${dP.checkpointDir}")
         .action((x, c) => c.copy(checkpointDir = Some(x)))
       opt[Int]("checkpointInterval")
-        .text(s"${h.checkpointInterval_desc} default: ${dP.checkpointInterval}")
+        .text(s"${h.checkpointInterval_desc} Default: ${dP.checkpointInterval}")
         .action((x, c) => c.copy(checkpointInterval = x))
       opt[Unit]("debug")
         .hidden()
@@ -138,19 +136,19 @@ object Benchmark {
         .text(s"Generate distribution data for a given input dataset.")
         .children(
           arg[String]("bro_log")
-            .text(s"${h.connLog_desc} default: ${dP.connLog}")
+            .text(s"${h.connLog_desc} Default: ${dP.connLog}")
             .required()
             .action((x, c) => c.copy(connLog = x)),
           arg[String]("alert_log")
-            .text(s"${h.alertLog_desc} default: ${dP.alertLog}")
+            .text(s"${h.alertLog_desc} Default: ${dP.alertLog}")
             .required()
             .action((x, c) => c.copy(alertLog = x)),
           arg[String]("aug_log")
-            .text(s"${h.augLog_desc} default: ${dP.augLog}")
+            .text(s"${h.augLog_desc} Default: ${dP.augLog}")
             .required()
             .action((x, c) => c.copy(augLog = x)),
           arg[String]("seed")
-            .text(s"Output file for ${h.seed_desc} default: ${dP.seed}")
+            .text(s"${h.seed_desc} Default: ${dP.seed}")
             .required()
             .action((x, c) => c.copy(seed = x))
         )
@@ -168,7 +166,7 @@ object Benchmark {
           opt[Long]("nodes-per-iter")
             .text(s"${h.numNodesPerIter_desc} default: ${dP.numNodesPerIter}")
             .action((x, c) => c.copy(numNodesPerIter = x)),
-          arg[String]("seed_vert")
+          arg[String]("seed")
             .text(s"${h.seed_desc} default: ${dP.seed}")
             .required()
             .action((x, c) => c.copy(seed = x)),
@@ -192,7 +190,7 @@ object Benchmark {
             .text(s"${h.seedMtx_desc} default: ${dP.seedMtx}")
             .required()
             .action((x, c) => c.copy(seedMtx = x)),
-          arg[String]("seed_vert")
+          arg[String]("seed")
             .text(s"${h.seed_desc} default: ${dP.seed}")
             .required()
             .action((x, c) => c.copy(seed = x)),
