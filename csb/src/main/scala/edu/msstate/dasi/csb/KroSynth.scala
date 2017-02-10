@@ -28,8 +28,8 @@ class KroSynth(partitions: Int, mtxFile: String, genIter: Int) extends GraphSynt
    * original graph from the small probability matrix after performing Kronecker multiplications is very high.
    */
   private def kronFit(seed: Graph[VertexData, EdgeData]): Array[Array[Double]] = {
-    // TODO: the following acts as a placeholder and should be replaced with the actual algorithm
-    parseMtxDataFromFile(mtxFile)
+    //inMtx already has a default value
+    KroFit.run(seed)
   }
 
   private def getKroRDD(nVerts: Long, nEdges: Long, n1: Int, iter: Int, probToRCPosV_Broadcast: Broadcast[Array[(Double, Long, Long)]] ): RDD[Edge[EdgeData]] = {

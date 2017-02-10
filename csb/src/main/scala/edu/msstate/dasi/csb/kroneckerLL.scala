@@ -1,13 +1,14 @@
 package edu.msstate.dasi.csb
 
-import org.apache.spark.SparkContext
+import org.apache.spark.rdd.RDD
+
 import scala.collection.mutable
 import scala.util.Random
 
 /**
   * Created by spencer on 1/27/2017.
   */
-class kroneckerLL(sc: SparkContext) {
+class kroneckerLL() {
 
   val Rnd = new Random()
 
@@ -33,16 +34,16 @@ class kroneckerLL(sc: SparkContext) {
   var lEdgeList: Array[(Long,Long)] = Array.empty[(Long,Long)]
   var lSelfEdge = 0
 
-  def this(sc: SparkContext, edgeList: Array[(Long,Long)], nodeList: Array[Long],  paramV: Array[Double]) = {
-    this(sc)
-    InitLL(edgeList, nodeList, new kronMtx(sc, paramV))
+  def this(edgeList: RDD[(Long,Long)], nodeList: RDD[Long],  paramV: Array[Double]) = {
+    this
+    InitLL(edgeList, nodeList, new kronMtx(paramV))
   }
-  def this(sc: SparkContext, edgeList: Array[(Long,Long)], nodeList: Array[Long], paramMtx: kronMtx) = {
-    this(sc)
+  def this(edgeList: RDD[(Long,Long)], nodeList: RDD[Long], paramMtx: kronMtx) = {
+    this
     InitLL(edgeList, nodeList, paramMtx)
   }
-  def this(sc: SparkContext, edgeList: Array[(Long,Long)], nodeList: Array[Long], paramMtx: kronMtx, permSwapNodeProb: Double) = {
-    this(sc)
+  def this(edgeList: RDD[(Long,Long)], nodeList: RDD[Long], paramMtx: kronMtx, permSwapNodeProb: Double) = {
+    this
     this.permSwapNodeProb = permSwapNodeProb
     InitLL(edgeList, nodeList, paramMtx)
   }
@@ -78,7 +79,7 @@ class kroneckerLL(sc: SparkContext) {
   }
 
 
-  def InitLL(edgeList: Array[(Long,Long)], nodeList: Array[Long], paramMtx: kronMtx): Unit = {
+  def InitLL(edgeList: RDD[(Long,Long)], nodeList: RDD[Long], paramMtx: kronMtx): Unit = {
     probMtx = paramMtx
     LLMtx = probMtx.getLLMtx()
     setGraph(edgeList, nodeList)
@@ -95,7 +96,7 @@ class kroneckerLL(sc: SparkContext) {
     }
   }
 
-  def setGraph(edgeList: Array[(Long,Long)], nodeList: Array[Long]): Unit ={
+  def setGraph(edgeList: RDD[(Long,Long)], nodeList: RDD[Long]): Unit ={
     this.nodeHash = new mutable.HashMap()
     nodeList.distinct
       .foreach(record =>

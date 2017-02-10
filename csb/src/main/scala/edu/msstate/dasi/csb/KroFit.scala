@@ -8,12 +8,13 @@ import org.apache.spark.rdd.RDD
   * Kro(n)Fit
   * Created by spencer on 1/27/2017.
   */
-class KroFit(sc: SparkContext, partitions: Int, initMtxStr: String, gradIter: Int, connLog: String, inMtx: Array[Double]) {
+object KroFit {
 
-    def run(sc:SparkContext, G: Graph[EdgeData, Long], lrnRate: Double, mnStep: Double, mxStep: Double, warmUp: Int, nSamples: Int): Unit = {
+    def run(G: Graph[VertexData, EdgeData], gradIter: Int = 50, lrnRate: Double = 0.00005, mnStep: Double = 0.005,
+            mxStep: Double = 0.05, warmUp: Int = 10000, nSamples: Int = 100000, inMtx: Array[Double] = Array(.9,.7,.5,.2)): Array[Array[Double]] = {
 
-      val edgeList: Array[(Long, Long)] = G.edges.map(record => (record.srcId, record.dstId)).collect()
-      val nodeList: Array[Long] = G.vertices.map(record => (record._1)).collect()
+      val edgeList: RDD[(Long, Long)] = G.edges.map(record => (record.srcId, record.dstId))
+      val nodeList: RDD[Long] = G.vertices.map(record => record._1)
 
       val permSwapNodeProb = 0.2
       val scaleInitMtx = true
@@ -25,15 +26,15 @@ class KroFit(sc: SparkContext, partitions: Int, initMtxStr: String, gradIter: In
       val warmUp = 10000
       val nSamples = 100000
 
-      val initKronMtx = new kronMtx(sc, Array(.9,.7,.5,.2))
+      val initKronMtx = new kronMtx(sc, )
       */
 
-      val initKronMtx = new kronMtx(sc, inMtx)
+      val initKronMtx = new kronMtx(inMtx)
 
       println("INIT PARAM")
       initKronMtx.dump()
 
-      val kronLL = new kroneckerLL(sc, edgeList, nodeList, initKronMtx, permSwapNodeProb)
+      val kronLL = new kroneckerLL(edgeList, nodeList, initKronMtx, permSwapNodeProb)
 
       if(scaleInitMtx)
       {
@@ -46,10 +47,19 @@ class KroFit(sc: SparkContext, partitions: Int, initMtxStr: String, gradIter: In
       kronLL.setPerm()
 
       var logLike: Double = 0
-      logLike = kronLL.gradDescent(gradIter, lrnRate, mnStep, mxStep, warmUp, nSamples);
+      logLike = kronLL.gradDescent(gradIter, lrnRate, mnStep, mxStep, warmUp, nSamples)
 
 //      logLike = kronLL.gradDescent(100, lrnRate, mnStep, mxStep, 10000, 100000);
+      val fittedMtx = kronLL.probMtx.seedMtx
+      val mtxDim = fittedMtx.length / 2
+      val result = Array.ofDim[Double](mtxDim, mtxDim)
 
+      for (i <- 0 until mtxDim)
+        for (j <- 0 until mtxDim) {
+          result(i)(j) = fittedMtx(i+j)
+        }
+
+      return result
     }
 
 }
