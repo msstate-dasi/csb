@@ -57,6 +57,9 @@ trait DataParser {
     //NOTE FROM JUSTIN: I changed this line so that it would be undirected.  Soneone check me on this.
     val Edges: RDD[Edge[edgeData]] = connPLUSnodes.flatMap(record => Array(Edge[edgeData](hashTable.get(record._2).head, hashTable.get(record._3).head, record._1),
       Edge[edgeData](hashTable.get(record._3).head, hashTable.get(record._2).head, record._1)))
+
+    Edges.coalesce(1).saveAsTextFile("edges")
+    vertices.coalesce(1).saveAsTextFile("vertices")
     (vertices, Edges)
   }
 

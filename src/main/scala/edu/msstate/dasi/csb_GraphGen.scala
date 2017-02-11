@@ -402,7 +402,7 @@ object csb_GraphGen extends DataParser {
   def run_krofit(sc: SparkContext, params: Params): Boolean =
   {
     val krofit = new KroFit(sc, params.partitions, params.initialMtx, 50, params.connLog)
-    krofit.run(null, null)
+    krofit.run(sc, null)
 
     true
   }

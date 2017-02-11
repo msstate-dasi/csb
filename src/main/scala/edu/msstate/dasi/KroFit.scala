@@ -12,15 +12,17 @@ class KroFit(sc: SparkContext, partitions: Int, initMtxStr: String, gradIter: In
 
     def run(sc:SparkContext, G: Graph[edgeData, nodeData]): Unit = {
 
-      val edgeList: Array[(Long, Long)] = G.edges.map(record => (record.srcId, record.dstId)).collect()
-      val nodeList: Array[Long] = G.vertices.map(record => (record._1)).collect()
+//      val edgeList: Array[(Long, Long)] = G.edges.map(record => (record.srcId, record.dstId)).collect()
+//      val nodeList: Array[Long] = G.vertices.map(record => (record._1)).collect()
 
 //      var edgeList: Array[(Long,Long)] = Array.empty[(Long,Long)]
 //      var nodeList: Array[Long] = Array.empty[(Long)]
       val permSwapNodeProb = 0.2
       val scaleInitMtx = true
-//      var (nodeList, edgeList) = tempReadFromConn(sc, 120, connLog);
-//      nodeList = tempReadFromConn(sc, 120, connLog)._1
+      var (nodeList, edgeList) = readFromConnFile(sc, 120, connLog);
+      var newEdgeList = edgeList.map(record => (record.srcId.toLong, record.dstId.toLong)).collect()
+      var newNodeList = nodeList.map(record => record._1.toLong).collect()
+//      nodeList = edgeList.flatMap(record => Array(record.srcId, record.dstId)).distinct().collect()//tempReadFromConn(sc, 120, connLog)._1
 
       val lrnRate = 0.00005
       val mnStep = 0.005
@@ -33,13 +35,13 @@ class KroFit(sc: SparkContext, partitions: Int, initMtxStr: String, gradIter: In
       println("INIT PARAM")
       initKronMtx.dump()
 
-      val kronLL = new kroneckerLL(sc, edgeList, nodeList, initKronMtx, permSwapNodeProb)
+      val kronLL = new kroneckerLL(sc, newEdgeList, newNodeList, initKronMtx, permSwapNodeProb)
 
       if(scaleInitMtx)
       {
         kronLL.kronIters = initKronMtx.setForEdges(kronLL.nodes, kronLL.edges) //we very much need this
       }
-      kronLL.InitLL(edgeList, nodeList, initKronMtx)
+      kronLL.InitLL(newEdgeList, newNodeList, initKronMtx)
 
       initKronMtx.dump()
 
