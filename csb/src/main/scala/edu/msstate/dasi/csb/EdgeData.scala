@@ -16,19 +16,49 @@ package edu.msstate.dasi.csb
  */
 case class EdgeData(/* ts: Date, */
                     /* uid: String */
-                    proto: String,
+                    proto: String = "",
                     /* service: String, */
-                    duration: Double,
-                    origBytes: Long,
-                    respBytes: Long,
-                    connState: String,
+                    duration: Double = Double.MinValue,
+                    origBytes: Long = Long.MinValue,
+                    respBytes: Long = Long.MinValue,
+                    connState: String = "",
                     /* localOrig: Boolean, */
                     /* localResp: Boolean, */
                     /* missedBytes: Long, */
                     /* history: String, */
-                    origPkts: Long,
-                    origIpBytes: Long,
-                    respPkts: Long,
-                    respIpBytes: Long,
+                    origPkts: Long = Long.MinValue,
+                    origIpBytes: Long = Long.MinValue,
+                    respPkts: Long = Long.MinValue,
+                    respIpBytes: Long = Long.MinValue,
                     /* tunnelParents: String, */
-                    desc: String)
+                    desc: String = ""){def <(that: EdgeData): Boolean =
+
+  (this.proto == "" && that.proto == "")  && //cant really have a range on protocol
+    ((this.duration == Double.MinValue && that.duration == Double.MinValue) || (this.duration < that.duration)) &&
+    ((this.origBytes == Long.MinValue && that.origBytes == Long.MinValue) ||   (this.origBytes < that.origBytes)) &&
+    ((this.respBytes == Long.MinValue && that.respBytes == Long.MinValue) ||    (this.respBytes < that.respBytes)) &&
+    (this.connState == "" && that.connState == "") && //cant really have a string range
+    ((this.origPkts == Long.MinValue && that.origPkts == Long.MinValue) ||    (this.origPkts < that.origPkts)) &&
+    ((this.origIpBytes == Long.MinValue && that.origIpBytes == Long.MinValue) ||    (this.origIpBytes < that.origIpBytes)) &&
+    ((this.respPkts == Long.MinValue && that.respPkts == Long.MinValue) ||    (this.respPkts < that.respPkts)) &&
+    ((this.respIpBytes == Long.MinValue && that.respIpBytes == Long.MinValue) ||    (this.respIpBytes < that.respIpBytes)) &&
+    ((this.desc == "" && that.desc == ""))
+
+  def ==(that: EdgeData): Boolean =
+  {
+    ((this.proto != "" &&  this.proto.equals(that.proto)) || this.proto == "") &&
+      ((this.connState != "" && this.connState.equals(that.connState)) || this.connState == "") &&
+      ((this.desc != "" && this.desc.equals(that.desc)) || this.desc == "") &&
+      ((this.duration != Double.MinValue && this.duration.equals(that.duration)) || this.duration == Double.MinValue) &&
+      ((this.origBytes != Long.MinValue && this.origBytes.equals(that.origBytes)) || this.origBytes == Long.MinValue) &&
+      ((this.origIpBytes != Long.MinValue && this.origIpBytes.equals(that.origIpBytes)) || this.origIpBytes == Long.MinValue) &&
+      ((this.origPkts != Long.MinValue && this.origPkts.equals(that.origPkts)) || this.origPkts == Long.MinValue) &&
+      ((this.respBytes != Long.MinValue && this.respBytes.equals(that.respBytes)) || this.respBytes == Long.MinValue) &&
+      ((this.respIpBytes != Long.MinValue && this.respIpBytes.equals(that.respIpBytes)) || this.respIpBytes == Long.MinValue) &&
+      ((this.respPkts != Long.MinValue && this.respPkts.equals(that.respPkts)) || this.respPkts == Long.MinValue)
+  }
+}
+
+
+
+
