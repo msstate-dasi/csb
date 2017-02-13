@@ -12,6 +12,9 @@ class SparkPersistence() extends GraphPersistence {
   private val vertices_suffix = "_vertices"
   private val edges_suffix = "_edges"
 
+  /**
+   * Load a graph.
+   */
   def loadGraph[VD: ClassTag, ED: ClassTag](name: String): Graph[VD, ED] = {
     val verticesPath = name + vertices_suffix
     val edgesPath = name + edges_suffix
@@ -29,7 +32,7 @@ class SparkPersistence() extends GraphPersistence {
   }
 
   /**
-   * Save the graph.
+   * Save a graph.
    */
   def saveGraph[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], name: String, overwrite :Boolean = false): Unit = {
     val verticesPath = name + vertices_suffix
@@ -45,7 +48,44 @@ class SparkPersistence() extends GraphPersistence {
   }
 
   /**
-   * Save the graph.
+   * Load a graph from text files, one for the vertices and another for the edges.
+   */
+  def loadFromText(name: String): Graph[VertexData, EdgeData] = {
+    val verticesPath = name + vertices_suffix
+    val edgesPath = name + edges_suffix
+
+    val verticesText = sc.textFile(verticesPath)
+    val edgesText = sc.textFile(edgesPath)
+
+    // Vertex string example: (175551085347081,null)
+    val verticesRegex = "[(,)]"
+
+    val vertices = verticesText.map(line =>
+      line.replaceFirst("^" + verticesRegex, "").split(verticesRegex) match {
+        case Array(id, textProperties) => (id.toLong, VertexData(textProperties))
+      }
+    )
+
+    // Edge string example: Edge(230520062210,227807592450,EdgeData(udp,0.003044,116,230,SF,2,172,2,286,))
+    val edgesRegex = "\\w+\\(|,"
+
+    val edges = edgesText.map(line =>
+      line.replaceFirst("^" + edgesRegex, "").dropRight(1).split(edgesRegex,3) match {
+        case Array(srcId, dstId, textProperties) => Edge(srcId.toLong, dstId.toLong, EdgeData(textProperties))
+      }
+    )
+
+    Graph(
+      vertices,
+      edges,
+      null.asInstanceOf[VertexData],
+      StorageLevel.MEMORY_AND_DISK,
+      StorageLevel.MEMORY_AND_DISK
+    )
+  }
+
+  /**
+   * Save a graph as text files, one for the vertices and another for the edges.
    */
   def saveAsText[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], name: String, overwrite :Boolean = false): Unit = {
     val verticesPath = name + vertices_suffix

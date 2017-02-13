@@ -31,21 +31,33 @@ case class EdgeData(/* ts: Date, */
                     respPkts: Long = Long.MinValue,
                     respIpBytes: Long = Long.MinValue,
                     /* tunnelParents: String, */
-                    desc: String = ""){def <(that: EdgeData): Boolean =
+                    desc: String = "") {
+  /**
+   *
+   *
+   * @param that
+   * @return
+   */
+  def <(that: EdgeData): Boolean = {
+    (this.proto == "" && that.proto == "")  && //cant really have a range on protocol
+      ((this.duration == Double.MinValue && that.duration == Double.MinValue) || (this.duration < that.duration)) &&
+      ((this.origBytes == Long.MinValue && that.origBytes == Long.MinValue) ||   (this.origBytes < that.origBytes)) &&
+      ((this.respBytes == Long.MinValue && that.respBytes == Long.MinValue) ||    (this.respBytes < that.respBytes)) &&
+      (this.connState == "" && that.connState == "") && //cant really have a string range
+      ((this.origPkts == Long.MinValue && that.origPkts == Long.MinValue) ||    (this.origPkts < that.origPkts)) &&
+      ((this.origIpBytes == Long.MinValue && that.origIpBytes == Long.MinValue) ||    (this.origIpBytes < that.origIpBytes)) &&
+      ((this.respPkts == Long.MinValue && that.respPkts == Long.MinValue) ||    (this.respPkts < that.respPkts)) &&
+      ((this.respIpBytes == Long.MinValue && that.respIpBytes == Long.MinValue) ||    (this.respIpBytes < that.respIpBytes)) &&
+      (this.desc == "" && that.desc == "")
+  }
 
-  (this.proto == "" && that.proto == "")  && //cant really have a range on protocol
-    ((this.duration == Double.MinValue && that.duration == Double.MinValue) || (this.duration < that.duration)) &&
-    ((this.origBytes == Long.MinValue && that.origBytes == Long.MinValue) ||   (this.origBytes < that.origBytes)) &&
-    ((this.respBytes == Long.MinValue && that.respBytes == Long.MinValue) ||    (this.respBytes < that.respBytes)) &&
-    (this.connState == "" && that.connState == "") && //cant really have a string range
-    ((this.origPkts == Long.MinValue && that.origPkts == Long.MinValue) ||    (this.origPkts < that.origPkts)) &&
-    ((this.origIpBytes == Long.MinValue && that.origIpBytes == Long.MinValue) ||    (this.origIpBytes < that.origIpBytes)) &&
-    ((this.respPkts == Long.MinValue && that.respPkts == Long.MinValue) ||    (this.respPkts < that.respPkts)) &&
-    ((this.respIpBytes == Long.MinValue && that.respIpBytes == Long.MinValue) ||    (this.respIpBytes < that.respIpBytes)) &&
-    ((this.desc == "" && that.desc == ""))
-
-  def ==(that: EdgeData): Boolean =
-  {
+  /**
+   *
+   *
+   * @param that
+   * @return
+   */
+  def ~=(that: EdgeData): Boolean = {
     ((this.proto != "" &&  this.proto.equals(that.proto)) || this.proto == "") &&
       ((this.connState != "" && this.connState.equals(that.connState)) || this.connState == "") &&
       ((this.desc != "" && this.desc.equals(that.desc)) || this.desc == "") &&
@@ -59,6 +71,45 @@ case class EdgeData(/* ts: Date, */
   }
 }
 
+object EdgeData {
+  /**
+   *
+   */
+  def apply(text: String): EdgeData = {
+    if (text == "null") {
+      null.asInstanceOf[EdgeData]
+    } else {
+      // EdgeData string example: EdgeData(udp,0.003044,116,230,SF,2,172,2,286,)
+      val dataRegex = "\\w+\\(|[,)]"
 
-
-
+      text.replaceFirst("^" + dataRegex, "").dropRight(1).split(dataRegex) match {
+        case Array(proto, duration, origBytes, respBytes, connState, origPkts, origIpBytes, respPkts, respIpBytes, desc) =>
+          new EdgeData(
+            proto,
+            duration.toDouble,
+            origBytes.toLong,
+            respBytes.toLong,
+            connState,
+            origBytes.toLong,
+            origIpBytes.toLong,
+            respPkts.toLong,
+            respIpBytes.toLong,
+            desc
+          )
+        // TODO: check why we need the following, i.e. why might "desc" be empty?
+        case Array(proto, duration, origBytes, respBytes, connState, origPkts, origIpBytes, respPkts, respIpBytes) =>
+          new EdgeData(
+            proto,
+            duration.toDouble,
+            origBytes.toLong,
+            respBytes.toLong,
+            connState,
+            origBytes.toLong,
+            origIpBytes.toLong,
+            respPkts.toLong,
+            respIpBytes.toLong
+          )
+      }
+    }
+  }
+}

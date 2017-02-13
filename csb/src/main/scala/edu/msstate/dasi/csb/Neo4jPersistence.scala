@@ -4,9 +4,6 @@ import org.apache.spark.graphx.Graph
 
 import scala.reflect.ClassTag
 
-/**
- * Created by scordio on 1/4/17.
- */
 class Neo4jPersistence() extends GraphPersistence {
 
   def loadGraph[VD: ClassTag, ED: ClassTag](name: String): Graph[VD, ED] = {

@@ -183,11 +183,11 @@ object Workload {
   }
 
   private def edgeWithPropFilter(edge: Edge[EdgeData], filterEdge: Edge[EdgeData]): Boolean = {
-    filterEdge.attr == edge.attr
+    filterEdge.attr ~= edge.attr
   }
 
   private def edgeWithPropRangeFilter(edge: Edge[EdgeData], min: Edge[EdgeData], max: Edge[EdgeData]): Boolean = {
-    return edge.attr < max.attr && min.attr < edge.attr
+    edge.attr < max.attr && min.attr < edge.attr
   }
 
   /**
@@ -195,7 +195,7 @@ object Workload {
    */
   def edgesWithProperty[VD: ClassTag](graph: Graph[VD, EdgeData], property: EdgeData): RDD[Edge[EdgeData]] = {
     val filterEdge = Edge(0L, 0L, property)
-    return graph.edges.filter(edge => edgeWithPropFilter(edge, filterEdge))
+    graph.edges.filter(edge => edgeWithPropFilter(edge, filterEdge))
   }
 
   /**
@@ -204,7 +204,7 @@ object Workload {
   def edgesWithProperty[VD: ClassTag](graph: Graph[VD, EdgeData], min: EdgeData, max: EdgeData): RDD[Edge[EdgeData]] = {
     val filterMin = Edge(0L, 0L, min)
     val filterMax = Edge(0L, 0L, max)
-    return graph.edges.filter(edge => edgeWithPropRangeFilter(edge, filterMin, filterMax))
+    graph.edges.filter(edge => edgeWithPropRangeFilter(edge, filterMin, filterMax))
   }
 }
 
