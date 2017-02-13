@@ -57,7 +57,7 @@ class SparkPersistence() extends GraphPersistence {
     val verticesText = sc.textFile(verticesPath)
     val edgesText = sc.textFile(edgesPath)
 
-    // Vertex string example: (175551085347081,null)
+    // Vertex example: (175551085347081,null)
     val verticesRegex = "[(,)]"
 
     val vertices = verticesText.map(line =>
@@ -66,7 +66,7 @@ class SparkPersistence() extends GraphPersistence {
       }
     )
 
-    // Edge string example: Edge(230520062210,227807592450,EdgeData(udp,0.003044,116,230,SF,2,172,2,286,))
+    // Edge example: Edge(230520062210,227807592450,EdgeData(udp,0.003044,116,230,SF,2,172,2,286,))
     val edgesRegex = "\\w+\\(|,"
 
     val edges = edgesText.map(line =>

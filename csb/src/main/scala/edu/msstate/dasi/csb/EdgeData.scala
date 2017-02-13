@@ -79,10 +79,10 @@ object EdgeData {
     if (text == "null") {
       null.asInstanceOf[EdgeData]
     } else {
-      // EdgeData string example: EdgeData(udp,0.003044,116,230,SF,2,172,2,286,)
+      // EdgeData example: EdgeData(udp,0.003044,116,230,SF,2,172,2,286,)
       val dataRegex = "\\w+\\(|[,)]"
 
-      text.replaceFirst("^" + dataRegex, "").dropRight(1).split(dataRegex) match {
+      text.replaceFirst("^" + dataRegex, "").split(dataRegex) match {
         case Array(proto, duration, origBytes, respBytes, connState, origPkts, origIpBytes, respPkts, respIpBytes, desc) =>
           new EdgeData(
             proto,
