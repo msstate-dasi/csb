@@ -48,7 +48,7 @@ case class EdgeData(/* ts: Date, */
     ((this.origIpBytes == Long.MinValue ) ||    (this.origIpBytes < that.origIpBytes)) &&
     ((this.respPkts == Long.MinValue ) ||    (this.respPkts < that.respPkts)) &&
     ((this.respIpBytes == Long.MinValue ) ||    (this.respIpBytes < that.respIpBytes)) &&
-    ((this.desc == "" ))
+    (this.desc == "" )
 
   /**
     * NOTE: FOR THIS FORMULA TO WORK THE THIS VARIABLE MUST BE THE FILTER AND THE THAT MUST BE THE EDGE THAT WE ARE TESTING TO SEE IF IT FITS THE FILTER
