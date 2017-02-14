@@ -11,4 +11,5 @@ package object csb {
     .appName("Cyber Security Benchmark")
     .getOrCreate()
     .sparkContext
+  sc.setLogLevel("ERROR")
 }

@@ -188,6 +188,6 @@ object SparkWorkload extends Workload {
    * Finds all edges with a given property range.
    */
   def edgesWithProperty[VD: ClassTag](graph: Graph[VD, EdgeData], propertyMin: EdgeData, propertyMax: EdgeData): RDD[Edge[EdgeData]] = {
-    graph.edges.filter(edge => edge.attr < propertyMax && propertyMin < edge.attr)
+    graph.edges.filter(edge => propertyMax > edge.attr && propertyMin < edge.attr)
   }
 }

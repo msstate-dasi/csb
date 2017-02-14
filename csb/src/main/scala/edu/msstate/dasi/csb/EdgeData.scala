@@ -33,31 +33,37 @@ case class EdgeData(/* ts: Date, */
                     /* tunnelParents: String, */
                     desc: String = "") {
   /**
-   *
-   *
-   * @param that
-   * @return
-   */
-  def <(that: EdgeData): Boolean = {
-    (this.proto == "" && that.proto == "")  && //cant really have a range on protocol
-      ((this.duration == Double.MinValue && that.duration == Double.MinValue) || (this.duration < that.duration)) &&
-      ((this.origBytes == Long.MinValue && that.origBytes == Long.MinValue) ||   (this.origBytes < that.origBytes)) &&
-      ((this.respBytes == Long.MinValue && that.respBytes == Long.MinValue) ||    (this.respBytes < that.respBytes)) &&
-      (this.connState == "" && that.connState == "") && //cant really have a string range
-      ((this.origPkts == Long.MinValue && that.origPkts == Long.MinValue) ||    (this.origPkts < that.origPkts)) &&
-      ((this.origIpBytes == Long.MinValue && that.origIpBytes == Long.MinValue) ||    (this.origIpBytes < that.origIpBytes)) &&
-      ((this.respPkts == Long.MinValue && that.respPkts == Long.MinValue) ||    (this.respPkts < that.respPkts)) &&
-      ((this.respIpBytes == Long.MinValue && that.respIpBytes == Long.MinValue) ||    (this.respIpBytes < that.respIpBytes)) &&
-      (this.desc == "" && that.desc == "")
-  }
+    * NOTE: FOR THIS FORMULA TO WORK THE THIS VARIABLE MUST BE THE FILTER AND THE THAT MUST BE THE EDGE THAT WE ARE TESTING TO SEE IF IT FITS THE FILTER
+    * @param that the edge that is tested to see if it fits the filter
+    * @return if the edge fits the filter
+    */
+  def <(that: EdgeData): Boolean =
+
+  (this.proto == "")  && //cant really have a range on protocol
+    ((this.duration == Double.MinValue ) || (this.duration < that.duration)) &&
+    ((this.origBytes == Long.MinValue ) ||   (this.origBytes < that.origBytes)) &&
+    ((this.respBytes == Long.MinValue ) ||    (this.respBytes < that.respBytes)) &&
+    (this.connState == "" ) && //cant really have a string range
+    ((this.origPkts == Long.MinValue ) ||    (this.origPkts < that.origPkts)) &&
+    ((this.origIpBytes == Long.MinValue ) ||    (this.origIpBytes < that.origIpBytes)) &&
+    ((this.respPkts == Long.MinValue ) ||    (this.respPkts < that.respPkts)) &&
+    ((this.respIpBytes == Long.MinValue ) ||    (this.respIpBytes < that.respIpBytes)) &&
+    ((this.desc == "" ))
 
   /**
-   *
-   *
-   * @param that
-   * @return
-   */
-  def ~=(that: EdgeData): Boolean = {
+    * NOTE: FOR THIS FORMULA TO WORK THE THIS VARIABLE MUST BE THE FILTER AND THE THAT MUST BE THE EDGE THAT WE ARE TESTING TO SEE IF IT FITS THE FILTER
+    * @param that the edge that is tested to see if it fits the filter
+    * @return if the edge fits the filter
+    */
+  def >(that:EdgeData): Boolean = !(this < that) && !(this == that)
+
+  /**
+    * NOTE: FOR THIS FORMULA TO WORK THE THIS VARIABLE MUST BE THE FILTER AND THE THAT MUST BE THE EDGE THAT WE ARE TESTING TO SEE IF IT FITS THE FILTER
+    * @param that the edge that is tested to see if it fits the filter
+    * @return if the edge fits the filter
+    */
+  def ~=(that: EdgeData): Boolean =
+  {
     ((this.proto != "" &&  this.proto.equals(that.proto)) || this.proto == "") &&
       ((this.connState != "" && this.connState.equals(that.connState)) || this.connState == "") &&
       ((this.desc != "" && this.desc.equals(that.desc)) || this.desc == "") &&

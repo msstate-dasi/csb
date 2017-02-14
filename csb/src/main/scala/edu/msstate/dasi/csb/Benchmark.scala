@@ -97,6 +97,8 @@ object Benchmark {
                    )
 
   def main(args: Array[String]) {
+
+
     val dP = Params()
     val h = ParamsHelp()
 
@@ -359,6 +361,8 @@ object Benchmark {
 
       case _ => println("Invalid metric:" + params.metric)
     }
+
+
 
     true
   }
