@@ -11,7 +11,6 @@ object DataParser {
 
   private def isInet4(line: String): Boolean = {
     val pieces = line.split('\t')
-    if(pieces.length < 2) println(pieces)
     ! ( pieces(2).contains(':') || pieces(4).contains(':') )
   }
 
@@ -21,15 +20,15 @@ object DataParser {
   }
 
   def logToGraph(augLogPath: String, partitions: Int): Graph[VertexData, EdgeData] = {
-    val augLogFile = sc.textFile(augLogPath, partitions).filter(record => !record.contains("#"))
+    val augLogFile = sc.textFile(augLogPath, partitions)
 
     // Drop the 8-lines header and filter lines that contains only IPv4 addresses
     val augLog = augLogFile.mapPartitionsWithIndex { (idx, lines) => if (idx == 0) lines.drop(8) else lines }
       .filter(isInet4).filter(isAllowedProto)
 
     val edges = augLog.map(line => {
-
       val pieces = line.split('\t')
+
       val origIp = pieces(2)
       val origPort = pieces(3)
       val srcId = inetToLong(origIp) | (origPort.toLong << 32)
