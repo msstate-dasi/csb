@@ -5,6 +5,8 @@ import org.apache.spark.rdd.RDD
 
 import scala.reflect.ClassTag
 
+
+
 object SparkWorkload extends Workload {
   /**
    * The number of vertices in the graph.
@@ -177,17 +179,35 @@ object SparkWorkload extends Workload {
     KBetweenness.run(graph, k)
   }
 
+  def closenessCentrality[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit =
+  {
+    val sourceId = 42
+    val initialGraph = graph.mapVertices((id, _) =>
+      if (id == sourceId) 0.0 else Double.PositiveInfinity)
+    val sssp = initialGraph.pregel(Double.PositiveInfinity)(
+      (id, dist, newDist) => math.min(dist, newDist), // Vertex Program
+      triplet => {  // Send Message
+        if (triplet.srcAttr + triplet.attr < triplet.dstAttr) {
+          Iterator((triplet.dstId, triplet.srcAttr + triplet.attr))
+        } else {
+          Iterator.empty
+        }
+      },
+      (a, b) => math.min(a, b) // Merge Message
+    )
+  }
   /**
    * Finds all edges with a given property.
    */
   def edgesWithProperty[VD: ClassTag](graph: Graph[VD, EdgeData], property: EdgeData): RDD[Edge[EdgeData]] = {
-    graph.edges.filter(edge => edge.attr ~= property)
+    graph.edges.filter(edge => property ~= edge.attr)
   }
 
   /**
    * Finds all edges with a given property range.
    */
   def edgesWithProperty[VD: ClassTag](graph: Graph[VD, EdgeData], propertyMin: EdgeData, propertyMax: EdgeData): RDD[Edge[EdgeData]] = {
+    if(propertyMin > propertyMax || !(propertyMin < propertyMax || propertyMax < propertyMin)) throw new IllegalArgumentException("propertyMin MUST be lower for all values of Edge data"); //If the properties are not set correctly then this function will output nonsense.
     graph.edges.filter(edge => propertyMax > edge.attr && propertyMin < edge.attr)
   }
 }
