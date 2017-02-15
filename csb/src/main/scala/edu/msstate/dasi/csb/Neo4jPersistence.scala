@@ -27,8 +27,6 @@ class Neo4jPersistence(uri: String, username: String, password: String) extends 
     session.run(s"CREATE (:$name { name:${edge.srcId} })")
     session.run(s"CREATE (:$name { name:${edge.dstId} })")
 
-    println("CREATE (src)-[:EDGE { " + edge.attr.toNeo4jString + " }]->(dst)")
-
     session.run(s"MATCH (src:$name { name:${edge.srcId} }), (dst:$name { name:${edge.dstId} }) " +
       "CREATE (src)-[:EDGE { " + edge.attr.toNeo4jString + " }]->(dst)")
 
