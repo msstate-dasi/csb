@@ -6,8 +6,6 @@ import org.apache.hadoop.fs.FileUtil
 import org.apache.spark.graphx.{Edge, Graph, VertexId}
 import org.apache.spark.storage.StorageLevel
 
-import scala.reflect.ClassTag
-
 class SparkPersistence() extends GraphPersistence {
   private val vertices_suffix = "_vertices"
   private val edges_suffix = "_edges"
@@ -15,17 +13,17 @@ class SparkPersistence() extends GraphPersistence {
   /**
    * Load a graph.
    */
-  def loadGraph[VD: ClassTag, ED: ClassTag](name: String): Graph[VD, ED] = {
+  def loadGraph(name: String): Graph[VertexData, EdgeData] = {
     val verticesPath = name + vertices_suffix
     val edgesPath = name + edges_suffix
 
-    val vertices = sc.objectFile[(VertexId, VD)](verticesPath)
-    val edges = sc.objectFile[Edge[ED]](edgesPath)
+    val vertices = sc.objectFile[(VertexId, VertexData)](verticesPath)
+    val edges = sc.objectFile[Edge[EdgeData]](edgesPath)
 
     Graph(
       vertices,
       edges,
-      null.asInstanceOf[VD],
+      null.asInstanceOf[VertexData],
       StorageLevel.MEMORY_AND_DISK,
       StorageLevel.MEMORY_AND_DISK
     )
@@ -34,7 +32,7 @@ class SparkPersistence() extends GraphPersistence {
   /**
    * Save a graph.
    */
-  def saveGraph[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], name: String, overwrite :Boolean = false): Unit = {
+  def saveGraph(graph: Graph[VertexData, EdgeData], name: String, overwrite :Boolean = false): Unit = {
     val verticesPath = name + vertices_suffix
     val edgesPath = name + edges_suffix
 
@@ -87,7 +85,7 @@ class SparkPersistence() extends GraphPersistence {
   /**
    * Save a graph as text files, one for the vertices and another for the edges.
    */
-  def saveAsText[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], name: String, overwrite :Boolean = false): Unit = {
+  def saveAsText(graph: Graph[VertexData, EdgeData], name: String, overwrite :Boolean = false): Unit = {
     val verticesPath = name + vertices_suffix
     val verticesTmpPath = "__" + verticesPath
     val edgesPath = name + edges_suffix

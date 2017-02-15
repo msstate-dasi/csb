@@ -75,6 +75,11 @@ case class EdgeData(/* ts: Date, */
       ((this.respIpBytes != Long.MinValue && this.respIpBytes.equals(that.respIpBytes)) || this.respIpBytes == Long.MinValue) &&
       ((this.respPkts != Long.MinValue && this.respPkts.equals(that.respPkts)) || this.respPkts == Long.MinValue)
   }
+
+  def toNeo4jString: String = {
+    s"proto:'$proto', duration:$duration, origBytes:$origBytes, respBytes:$respBytes, connState:'$connState', " +
+      s"origPkts:$origPkts, origIpBytes:$origIpBytes, respPkts:$respPkts, respIpBytes:$respIpBytes, desc:'$desc'"
+  }
 }
 
 object EdgeData {

@@ -276,7 +276,7 @@ object Benchmark {
     var graphPs = null.asInstanceOf[GraphPersistence]
     params.backend match {
       case "fs" => graphPs = new SparkPersistence()
-      case "neo4j" => graphPs = new Neo4jPersistence()
+      case "neo4j" => graphPs = new Neo4jPersistence("bolt://localhost/7687", "neo4j", "password")
     }
 
     Util.time( "Save seed graph", graphPs.saveGraph(seed, "seed", overwrite = true) )
@@ -288,10 +288,10 @@ object Benchmark {
     var graphPs = null.asInstanceOf[GraphPersistence]
     params.backend match {
       case "fs" => graphPs = new SparkPersistence()
-      case "neo4j" => graphPs = new Neo4jPersistence()
+      case "neo4j" => graphPs = new Neo4jPersistence("bolt://localhost/7687", "neo4j", "password")
     }
 
-    val seed = graphPs.loadGraph[VertexData, EdgeData]("seed")
+    val seed = graphPs.loadGraph("seed")
     println("Vertices #: " + seed.numVertices + ", Edges #: " + seed.numEdges)
 
     val seedDists = new DataDistributions(params.augLog)
@@ -325,12 +325,12 @@ object Benchmark {
     var graphPs = null.asInstanceOf[GraphPersistence]
     params.backend match {
       case "fs" => graphPs = new SparkPersistence()
-      case "neo4j" => graphPs = new Neo4jPersistence()
+      case "neo4j" => graphPs = new Neo4jPersistence("bolt://localhost/7687", "neo4j", "password")
     }
 
-    val seed = graphPs.loadGraph[VertexData, EdgeData](params.seed)
+    val seed = graphPs.loadGraph(params.seed)
 
-    val synth = graphPs.loadGraph[VertexData, EdgeData](params.synth)
+    val synth = graphPs.loadGraph(params.synth)
 
     params.metric match {
       case "degree" =>
