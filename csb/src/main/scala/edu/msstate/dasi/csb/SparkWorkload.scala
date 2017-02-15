@@ -181,20 +181,7 @@ object SparkWorkload extends Workload {
 
   def closenessCentrality[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit =
   {
-    val sourceId = 42
-    val initialGraph = graph.mapVertices((id, _) =>
-      if (id == sourceId) 0.0 else Double.PositiveInfinity)
-    val sssp = initialGraph.pregel(Double.PositiveInfinity)(
-      (id, dist, newDist) => math.min(dist, newDist), // Vertex Program
-      triplet => {  // Send Message
-        if (triplet.srcAttr + triplet.attr < triplet.dstAttr) {
-          Iterator((triplet.dstId, triplet.srcAttr + triplet.attr))
-        } else {
-          Iterator.empty
-        }
-      },
-      (a, b) => math.min(a, b) // Merge Message
-    )
+
   }
   /**
    * Finds all edges with a given property.
