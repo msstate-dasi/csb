@@ -96,8 +96,12 @@ object Benchmark {
 
                    )
 
-
+def JustinTest(): Unit =
+  {
+    KroFit.run(DataParser.logToGraph("aug", 120))
+  }
   def main(args: Array[String]) {
+    JustinTest()
     val dP = Params()
     val h = ParamsHelp()
 
