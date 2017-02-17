@@ -7,25 +7,25 @@ import scala.util.Random
 /**
   * Created by B1nary on 1/27/2017.
   */
-class kronMtx(sc: SparkContext) {
+class kronMtx() extends java.io.Serializable{
 
   val NInf: Double = Double.MaxValue
   var rnd: Random = new Random()
   var mtxDim: Int = -1
   var seedMtx: Array[Double] = Array.empty[Double]
 
-  def this(sc: SparkContext, dim: Int) = {
-    this(sc)
+  def this(dim: Int) = {
+    this()
     mtxDim = dim
     seedMtx = Array.fill(dim*dim)(0d)
   }
-  def this(sc: SparkContext, sMtx: Array[Double]) = {
-    this(sc)
+  def this(sMtx: Array[Double]) = {
+    this()
     mtxDim = sMtx.length / 2 //Added this since mtxes are squares
     seedMtx = sMtx
   }
   def this(sc: SparkContext, kMtx: kronMtx) = {
-    this(sc)
+    this()
     mtxDim = kMtx.mtxDim
     seedMtx = kMtx.seedMtx
   }
@@ -52,7 +52,7 @@ class kronMtx(sc: SparkContext) {
   def Len(): Int = {return mtxDim * mtxDim}
 
   def getLLMtx(): kronMtx = {
-    var LLMtx: kronMtx = new kronMtx(sc, mtxDim)
+    var LLMtx: kronMtx = new kronMtx(mtxDim)
     //println(Len())
     for(i <- 0 until Len()) {
       if (At(i) != 0.0) {

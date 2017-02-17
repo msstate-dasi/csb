@@ -43,7 +43,7 @@ class kroneckerLL(sc: SparkContext) {
 
   def this(sc: SparkContext, edgeList: Array[(Long,Long)], nodeList: Array[Long],  paramV: Array[Double]) = {
     this(sc)
-    InitLL(edgeList, nodeList, new kronMtx(sc, paramV))
+    InitLL(edgeList, nodeList, new kronMtx(paramV))
   }
   def this(sc: SparkContext, edgeList: Array[(Long,Long)], nodeList: Array[Long], paramMtx: kronMtx) = {
     this(sc)
@@ -299,18 +299,20 @@ class kroneckerLL(sc: SparkContext) {
     //print(" empty graph " + logLike + " ")
     var i = 0.0
     var j = 0.0
-    val adjListSorted = adjHash.toSeq.sortBy(_._2.length).reverse
-    for ((nid, outNids) <- adjListSorted) {
-      for (oNid <- outNids)
-      {
-//        println("NODE PERM " + nodePerm(nodeHash(nid)))
-        logLike = logLike - LLMtx.getApxNoEdgeLL(nodePerm(nid), nodePerm(oNid), kronIters) + LLMtx.getEdgeLL(nodePerm(nid), nodePerm(oNid), kronIters)
-        i += LLMtx.getApxNoEdgeLL(nodePerm(nid), nodePerm(oNid), kronIters)
-        j += LLMtx.getEdgeLL(nodePerm(nid), nodePerm(oNid), kronIters)
-//        println("nid: " + nid + " oNid: " + oNid + " logLike: " + logLike)
-//        println("stuff = " + (- LLMtx.getApxNoEdgeLL(nodePerm(nodeHash(nid)), nodePerm(nodeHash(oNid)), kronIters) + LLMtx.getEdgeLL(nodePerm(nodeHash(nid)), nodePerm(nodeHash(oNid)), kronIters)))
-      }
-    }
+    val sum = computation.LL(adjHash, LLMtx, nodePerm, kronIters, sc)
+    logLike += sum
+//    val adjListSorted = adjHash.toSeq.sortBy(_._2.length).reverse
+//    for ((nid, outNids) <- adjListSorted) {
+//      for (oNid <- outNids)
+//      {
+////        println("NODE PERM " + nodePerm(nodeHash(nid)))
+//        logLike = logLike - LLMtx.getApxNoEdgeLL(nodePerm(nid), nodePerm(oNid), kronIters) + LLMtx.getEdgeLL(nodePerm(nid), nodePerm(oNid), kronIters)
+//        i += LLMtx.getApxNoEdgeLL(nodePerm(nid), nodePerm(oNid), kronIters)
+//        j += LLMtx.getEdgeLL(nodePerm(nid), nodePerm(oNid), kronIters)
+////        println("nid: " + nid + " oNid: " + oNid + " logLike: " + logLike)
+////        println("stuff = " + (- LLMtx.getApxNoEdgeLL(nodePerm(nodeHash(nid)), nodePerm(nodeHash(oNid)), kronIters) + LLMtx.getEdgeLL(nodePerm(nodeHash(nid)), nodePerm(nodeHash(oNid)), kronIters)))
+//      }
+//    }
     return logLike
   }
 
@@ -455,22 +457,24 @@ class kroneckerLL(sc: SparkContext) {
   }
 
   def calcApxGraphDLL(): Array[Double] = {
-    for(paramId <- 0 until LLMtx.Len()) {
-      var DLL = getApxEmptyGraphDLL(paramId)
-//      println("begining DLL = " + DLL)
-      val adjListSorted = adjHash.toSeq.sortBy(_._2.length).reverse
-      for((nid,outNids) <- adjHash) {
-//        println("at node id:" + nid)
-        for(dstNid <- outNids) {
-//          print("\t" + dstNid)
-          DLL = DLL - LLMtx.getApxNoEdgeDLL(paramId, nodePerm(nid), nodePerm.get(dstNid).head, kronIters) + LLMtx.getEdgeDLL(paramId, nodePerm.get(nid).head, nodePerm.get(dstNid).head, kronIters)
-//          print("\tno edge: " + LLMtx.getApxNoEdgeDLL(paramId, nodePerm(nid), nodePerm.get(dstNid).head, kronIters))
-//          println("\tedge: " + LLMtx.getEdgeDLL(paramId, nodePerm.get(nid).head, nodePerm.get(dstNid).head, kronIters))
-        }
-
-      }
-      gradV(paramId) = DLL
-    }
+//    for(paramId <- 0 until LLMtx.Len()) {
+//
+//      var DLL = getApxEmptyGraphDLL(paramId)
+////      println("begining DLL = " + DLL)
+//      val adjListSorted = adjHash.toSeq.sortBy(_._2.length).reverse
+//      for((nid,outNids) <- adjHash) {
+////        println("at node id:" + nid)
+//        for(dstNid <- outNids) {
+////          print("\t" + dstNid)
+//          DLL = DLL - LLMtx.getApxNoEdgeDLL(paramId, nodePerm(nid), nodePerm.get(dstNid).head, kronIters) + LLMtx.getEdgeDLL(paramId, nodePerm.get(nid).head, nodePerm.get(dstNid).head, kronIters)
+////          print("\tno edge: " + LLMtx.getApxNoEdgeDLL(paramId, nodePerm(nid), nodePerm.get(dstNid).head, kronIters))
+////          println("\tedge: " + LLMtx.getEdgeDLL(paramId, nodePerm.get(nid).head, nodePerm.get(dstNid).head, kronIters))
+//        }
+//
+//      }
+//      gradV(paramId) = DLL
+//    }
+    gradV = computation.DLL(LLMtx, probMtx, adjHash, nodePerm, kronIters, gradV, sc)
     return gradV
   }
 
@@ -560,5 +564,109 @@ class kroneckerLL(sc: SparkContext) {
 //    println("END nodeDLLDelta")
     return delta
 
+  }
+}
+
+object computation {
+  def LL(adjHash: mutable.HashMap[Long, Array[Long]], LLMtx: kronMtx, nodePerm: mutable.HashMap[Long, Long], kronIters: Int, sc: SparkContext): Double = {
+    var sum = 0.0
+    val adjListSorted = sc.parallelize(adjHash.toSeq).sortBy(_._2.length, ascending = false)
+
+    //    val adjListSorted = adjHash.toSeq.sortBy(_._2.length).reverse
+    val valueHash = sc.broadcast(new mutable.HashMap[Long, Double])
+    adjListSorted.foreach(record => {
+      var subSum = 0.0;
+      for (oNid <- record._2) {
+        subSum += -LLMtx.getApxNoEdgeLL(nodePerm(record._1), nodePerm(oNid), kronIters) + LLMtx.getEdgeLL(nodePerm(record._1), nodePerm(oNid), kronIters)
+      }
+      valueHash.value.put(record._1, subSum)
+    })
+    for (x <- valueHash.value.keySet) {
+      sum += valueHash.value.get(x).head
+    }
+
+    //    for ((nid, outNids) <- adjListSorted) {
+    //      for (oNid <- outNids)
+    //      {
+    //        //        println("NODE PERM " + nodePerm(nodeHash(nid)))
+    //        sum  += -LLMtx.getApxNoEdgeLL(nodePerm(nid), nodePerm(oNid), kronIters) + LLMtx.getEdgeLL(nodePerm(nid), nodePerm(oNid), kronIters)
+    ////        i += LLMtx.getApxNoEdgeLL(nodePerm(nid), nodePerm(oNid), kronIters)
+    ////        j += LLMtx.getEdgeLL(nodePerm(nid), nodePerm(oNid), kronIters)
+    //        //        println("nid: " + nid + " oNid: " + oNid + " logLike: " + logLike)
+    //        //        println("stuff = " + (- LLMtx.getApxNoEdgeLL(nodePerm(nodeHash(nid)), nodePerm(nodeHash(oNid)), kronIters) + LLMtx.getEdgeLL(nodePerm(nodeHash(nid)), nodePerm(nodeHash(oNid)), kronIters)))
+    //      }
+    //    }
+    sum
+  }
+
+  def DLL(LLMtx: kronMtx, probMtx: kronMtx, adjHash: mutable.HashMap[Long, Array[Long]], nodePerm: mutable.HashMap[Long, Long], kronIters: Int, ngradV: Array[Double], sc: SparkContext): Array[Double] = {
+    val gradV = Array.fill(LLMtx.Len()){0.0}
+    for (paramId <- 0 until LLMtx.Len()) {
+      var DLL = getApxEmptyGraphDLL(paramId, probMtx, kronIters)
+      //      println("begining DLL = " + DLL)
+      val adjListSorted = sc.parallelize(adjHash.toSeq).sortBy(_._2.length, ascending = false)
+
+      val sumHash = sc.broadcast(new mutable.HashMap[Long, Double]())
+      adjListSorted.foreach(record => {
+                                        var subSum = 0.0;
+                                       for(dstNid <- record._2) {subSum += - LLMtx.getApxNoEdgeDLL(paramId, nodePerm(record._1), nodePerm.get(dstNid).head, kronIters) + LLMtx.getEdgeDLL(paramId, nodePerm.get(record._1).head, nodePerm.get(dstNid).head, kronIters)
+                                       }
+                                      sumHash.value.put(record._1, subSum)
+                                       })
+      for(x <- sumHash.value.keySet)
+        {
+          DLL += sumHash.value.get(x).head
+        }
+//        for ((nid, outNids) <- adjHash) {
+//        //        println("at node id:" + nid)
+//        for (dstNid <- outNids) {
+//          //          print("\t" + dstNid)
+//          DLL = DLL - LLMtx.getApxNoEdgeDLL(paramId, nodePerm(nid), nodePerm.get(dstNid).head, kronIters) + LLMtx.getEdgeDLL(paramId, nodePerm.get(nid).head, nodePerm.get(dstNid).head, kronIters)
+//          //          print("\tno edge: " + LLMtx.getApxNoEdgeDLL(paramId, nodePerm(nid), nodePerm.get(dstNid).head, kronIters))
+//          //          println("\tedge: " + LLMtx.getEdgeDLL(paramId, nodePerm.get(nid).head, nodePerm.get(dstNid).head, kronIters))
+//        }
+//
+//      }
+      gradV(paramId) = DLL
+    }
+    return gradV
+  }
+
+  def getApxEmptyGraphDLL(paramId: Int, probMtx: kronMtx, kronIters: Int): Double = {
+    var sum = 0.0
+    var sumSq = 0.0
+    for (i <- 0 until probMtx.Len()) {
+      sum += probMtx.At(i)
+      sumSq += math.pow(probMtx.At(i), 2)
+    }
+    return -kronIters*math.pow(sum, kronIters - 1) - kronIters*math.pow(sumSq, kronIters-1)*probMtx.At(paramId)
+  }
+  def nodeDLLDelta(nodePerm: mutable.HashMap[Long, Long], adjHash: mutable.HashMap[Long, Array[Long]], nid: Long, kronIters: Int, LLMtx: kronMtx, inAdjHash: mutable.HashMap[Long, Array[Long]], edgeHash: mutable.HashMap[(Long, Long), Boolean], sc: SparkContext): Unit =
+  {
+    var delta = 0.0
+    val srcRow = nodePerm(nid)
+    val adjHashPar = sc.parallelize(adjHash(nid))
+    var valueHash = sc.broadcast(new mutable.HashMap[Long, Double])
+
+    adjHashPar.foreach(record => {
+      val dstCol = nodePerm(record);
+      valueHash.value.put(record, -LLMtx.getApxNoEdgeLL(srcRow, dstCol, kronIters) + LLMtx.getEdgeLL(srcRow, dstCol, kronIters))
+    })
+    for(e <- 0 until adjHash(nid).length){// adjHash(nodePerm(nid)) ) {
+    //      println("here")
+    val dstCol = nodePerm(adjHash(nid)(e))
+      delta += -LLMtx.getApxNoEdgeLL(srcRow, dstCol, kronIters) + LLMtx.getEdgeLL(srcRow, dstCol, kronIters)
+    }
+
+    val srcCol = nodePerm(nid)
+    for(e <- 0 until inAdjHash(nid).length )
+    {
+      val dstRow = nodePerm(inAdjHash(nid)(e))
+      delta += -LLMtx.getApxNoEdgeLL(dstRow, srcCol, kronIters) + LLMtx.getEdgeLL(dstRow, srcCol, kronIters)
+    }
+
+    if(edgeHash.contains((nid, nid))) {
+      delta += LLMtx.getApxNoEdgeLL(srcRow, srcCol, kronIters) - LLMtx.getEdgeLL(srcRow, srcCol, kronIters)
+    }
   }
 }

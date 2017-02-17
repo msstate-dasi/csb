@@ -19,9 +19,9 @@ class KroFit(sc: SparkContext, partitions: Int, initMtxStr: String, gradIter: In
 //      var nodeList: Array[Long] = Array.empty[(Long)]
       val permSwapNodeProb = 0.2
       val scaleInitMtx = true
-      var (nodeList, edgeList) = readFromConnFile(sc, 120, connLog);
-      var newEdgeList = edgeList.map(record => (record.srcId.toLong, record.dstId.toLong)).collect()
-      var newNodeList = nodeList.map(record => record._1.toLong).collect()
+      var (nodeList, edgeList) = tempReadFromConn(sc, 120, connLog)//readFromConnFile(sc, 120, connLog);
+      var newEdgeList = edgeList.map(record => (record._1.toLong, record._2.toLong))
+      var newNodeList = nodeList.map(record => record)
 //      nodeList = edgeList.flatMap(record => Array(record.srcId, record.dstId)).distinct().collect()//tempReadFromConn(sc, 120, connLog)._1
 
       val lrnRate = 0.00005
@@ -30,7 +30,7 @@ class KroFit(sc: SparkContext, partitions: Int, initMtxStr: String, gradIter: In
       val warmUp = 10000
       val nSamples = 100000
 
-      val initKronMtx = new kronMtx(sc, Array(.9,.7,.5,.2))
+      val initKronMtx = new kronMtx(Array(.9,.7,.5,.2))
 
       println("INIT PARAM")
       initKronMtx.dump()
