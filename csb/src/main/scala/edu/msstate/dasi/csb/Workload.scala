@@ -3,6 +3,7 @@ package edu.msstate.dasi.csb
 import org.apache.spark.graphx.{Edge, Graph, VertexId, VertexRDD}
 import org.apache.spark.rdd.RDD
 
+import scala.collection.mutable
 import scala.reflect.ClassTag
 
 trait Workload {

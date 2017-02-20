@@ -20,6 +20,7 @@ class kroneckerLL() {
   var realEdges = -1
   var nodeHash: mutable.HashMap[Long, Boolean] = null
   var edgeHash: mutable.HashMap[(Long, Long), Boolean] = null
+  var edgeList: Array[(Long, Long)] = null
   var adjHash: mutable.HashMap[Long, Array[Long]] = null
   var inAdjHash: mutable.HashMap[Long, Array[Long]] = null
   val NInf: Double = -Double.MaxValue
@@ -96,16 +97,19 @@ class kroneckerLL() {
     }
   }
 
-  def setGraph(edgeList: RDD[(Long,Long)], nodeList: RDD[Long]): Unit ={
+  def setGraph(edgeList: RDD[(Long,Long)], nodeList: RDD[Long]): Unit = {
     this.nodeHash = new mutable.HashMap()
-    nodeList.distinct
+//    val broadcastNodeHash = sc.broadcast(nodeHash)
+    nodeList.distinct.collect()
       .foreach(record =>
-        this.nodeHash.put(record, true))
+        nodeHash.put(record, true))
 
     this.edgeHash = new mutable.HashMap[(Long, Long), Boolean]()
-    edgeList.distinct
+//    val broadcastEdgeHash = sc.broadcast(edgeHash)
+    edgeList.distinct.collect()
       .foreach(record =>
-        this.edgeHash.put(record, true))
+        edgeHash.put(record, true))
+    this.edgeList = edgeHash.keySet.toArray
 
     nodes = this.nodeHash.size
     edges = this.edgeHash.size
@@ -303,7 +307,7 @@ class kroneckerLL() {
     {
       val e = math.abs(Rnd.nextInt) % edges
 
-      val edgeList = edgeHash.keys.toArray
+//      val edgeList = edgeHash.keys.toArray
       val edge = edgeList(e)
       nid1 = edge._1
       nid2 = edge._2
@@ -318,7 +322,7 @@ class kroneckerLL() {
     {
       logLike = oldLL
       swapNodesNodePerm(nid2, nid1)
-      swapNodesInvertPerm(nodePerm(nid2), nodePerm(nid1))
+//      swapNodesInvertPerm(nodePerm(nid2), nodePerm(nid1))
       return ((-1,-1), false)
     }
     return ((nid1, nid2), true)
@@ -328,30 +332,30 @@ class kroneckerLL() {
     logLike = logLike - nodeLLDelta(nid1) - nodeLLDelta(nid2)
     val (pid1, pid2) = (nodePerm(nid1), nodePerm(nid2))
 
-    if(edgeHash.contains((nid1, nid2)))
+    if(edgeHash.get((nid1, nid2)) != null)
     {
 
       logLike += -LLMtx.getApxNoEdgeLL(pid1, pid2, kronIters) + LLMtx.getEdgeLL(pid1, pid2, kronIters)
     }
-    if(edgeHash.contains((nid2, nid1)))
+    if(edgeHash.get((nid2, nid1)) != null)
     {
       logLike += -LLMtx.getApxNoEdgeLL(pid2, pid1, kronIters) + LLMtx.getEdgeLL(pid2, pid1, kronIters)
     }
 
     swapNodesNodePerm(nid1, nid2)
-    swapNodesInvertPerm(nodePerm(nid1), nodePerm(nid2))
+//    swapNodesInvertPerm(nodePerm(nid1), nodePerm(nid2))
 
     logLike = logLike + nodeLLDelta(nid1) + nodeLLDelta(nid2)
     val (nnid1, nnid2) = (nodePerm(nid1),nodePerm(nid2))
 
 
 //    if(edgeList.contains((nid1, nid2)))
-    if(edgeHash.contains((nid1, nid2)))
+    if(edgeHash.get((nid1, nid2)) != null)
     {
       logLike += +LLMtx.getApxNoEdgeLL(nnid1, nnid2, kronIters) - LLMtx.getEdgeLL(nnid1, nnid2, kronIters)
     }
 //    if(edgeList.contains((nid2, nid1)))
-    if(edgeHash.contains((nid2, nid1)))
+    if(edgeHash.get((nid2, nid1)) != null)
     {
       logLike += +LLMtx.getApxNoEdgeLL(nnid2, nnid1, kronIters) - LLMtx.getEdgeLL(nnid2, nnid1, kronIters)
     }
@@ -435,6 +439,48 @@ class kroneckerLL() {
   def updateGraphDLL(inid1: Long, inid2: Long): Unit = {
     var snid1 = inid1
     var snid2 = inid2
+//    val copyGradV = new Array[Double](4)
+//    copyGradV(0) = gradV(0)
+//    copyGradV(1) = gradV(1)
+//    copyGradV(2) = gradV(2)
+//    copyGradV(3) = gradV(3)
+//
+//    val broadGradV = sc.broadcast(copyGradV)
+//    val arr = new Array[Int](4)
+//    arr(0) = 0
+//    arr(1) = 1
+//    arr(2) = 2
+//    arr(3) = 3
+//    val parallel = sc.parallelize(arr)
+//    parallel.foreach(record => {
+//      swapNodesNodePerm(snid1, snid2)
+//
+//      var DLL = broadGradV.value(record)
+//      DLL = DLL - nodeDLLDelta(record, snid1) - nodeDLLDelta(record, snid2)
+//
+//      val (pid1, pid2) = (nodePerm(snid1), nodePerm(snid2))
+//
+//      if (edgeHash.contains((snid1, snid2))) {
+//        DLL += -LLMtx.getApxNoEdgeDLL(record, pid1, pid2, kronIters) + LLMtx.getEdgeDLL(record, pid1, pid2, kronIters)
+//      }
+//      if (edgeHash.contains((snid2, snid1))) {
+//        DLL += -LLMtx.getApxNoEdgeDLL(record, pid2, pid1, kronIters) + LLMtx.getEdgeDLL(record, pid2, pid1, kronIters)
+//      }
+//
+//      swapNodesNodePerm(snid1, snid2)
+//      DLL = DLL + nodeDLLDelta(record, snid1) + nodeDLLDelta(record, snid2)
+//      val (nnid1, nnid2) = (nodePerm(snid1), nodePerm(snid2))
+//
+//      if (edgeHash.contains((snid1, snid2))) {
+//        DLL += +LLMtx.getApxNoEdgeDLL(record, nnid1, nnid2, kronIters) - LLMtx.getEdgeDLL(record, nnid1, nnid2, kronIters)
+//      }
+//      if (edgeHash.contains((snid2, snid1))) {
+//        DLL += +LLMtx.getApxNoEdgeDLL(record, nnid2, nnid1, kronIters) - LLMtx.getEdgeDLL(record, nnid2, nnid1, kronIters)
+//      }
+//      broadGradV.value(record) = DLL
+//    })
+//    return copyGradV
+
     for(paramId <- 0 until LLMtx.Len()) {
 
       swapNodesNodePerm(snid1, snid2)

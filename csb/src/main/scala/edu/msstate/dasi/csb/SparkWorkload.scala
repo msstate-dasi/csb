@@ -179,9 +179,9 @@ object SparkWorkload extends Workload {
     KBetweenness.run(graph, k)
   }
 
-  def closenessCentrality[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit =
+  def closenessCentrality[VD: ClassTag, ED: ClassTag](vertex: VertexId, graph: Graph[VD, ED]): Double =
   {
-
+    return ClosenessCentrality.getClosenessOfVert(vertex, graph)
   }
   /**
    * Finds all edges with a given property.

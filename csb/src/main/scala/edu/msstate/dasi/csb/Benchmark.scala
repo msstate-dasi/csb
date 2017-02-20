@@ -1,8 +1,8 @@
 package edu.msstate.dasi.csb
 
+
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.graphx.Graph
-
 import scopt.OptionParser
 
 /**
@@ -96,12 +96,8 @@ object Benchmark {
 
                    )
 
-def JustinTest(): Unit =
-  {
-    KroFit.run(DataParser.logToGraph("aug", 120))
-  }
+
   def main(args: Array[String]) {
-    JustinTest()
     val dP = Params()
     val h = ParamsHelp()
 
