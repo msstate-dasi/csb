@@ -75,8 +75,7 @@ class kroneckerLL() {
       {
         nodePerm.put(i, DegNIdV(i)._2)
       }
-
-    setIPerm(nodePerm)
+//    setIPerm(nodePerm)
   }
 
 
@@ -110,6 +109,7 @@ class kroneckerLL() {
       .foreach(record =>
         edgeHash.put(record, true))
     this.edgeList = edgeHash.keySet.toArray
+
 
     nodes = this.nodeHash.size
     edges = this.edgeHash.size
@@ -276,8 +276,8 @@ class kroneckerLL() {
       for (oNid <- outNids)
       {
         logLike = logLike - LLMtx.getApxNoEdgeLL(nodePerm(nid), nodePerm(oNid), kronIters) + LLMtx.getEdgeLL(nodePerm(nid), nodePerm(oNid), kronIters)
-        i += LLMtx.getApxNoEdgeLL(nodePerm(nid), nodePerm(oNid), kronIters)
-        j += LLMtx.getEdgeLL(nodePerm(nid), nodePerm(oNid), kronIters)
+//        i += LLMtx.getApxNoEdgeLL(nodePerm(nid), nodePerm(oNid), kronIters)
+//        j += LLMtx.getEdgeLL(nodePerm(nid), nodePerm(oNid), kronIters)
       }
     }
     return logLike
@@ -377,17 +377,33 @@ class kroneckerLL() {
     var delta = 0.0
 
     val srcRow = nodePerm(nid)
-    for(e <- 0 until adjHash(nid).length){
-      val dstCol = nodePerm(adjHash(nid)(e))
-      delta += -LLMtx.getApxNoEdgeLL(srcRow, dstCol, kronIters) + LLMtx.getEdgeLL(srcRow, dstCol, kronIters)
-    }
+    val rowStop = adjHash(nid).length
+    var counter = 0
+    while(counter < rowStop)
+      {
+        val dstCol = nodePerm(adjHash(nid)(counter))
+        delta += -LLMtx.getApxNoEdgeLL(srcRow, dstCol, kronIters) + LLMtx.getEdgeLL(srcRow, dstCol, kronIters)
+        counter += 1
+      }
+//    for(e <- 0 until adjHash(nid).length){
+//      val dstCol = nodePerm(adjHash(nid)(e))
+//      delta += -LLMtx.getApxNoEdgeLL(srcRow, dstCol, kronIters) + LLMtx.getEdgeLL(srcRow, dstCol, kronIters)
+//    }
 
     val srcCol = nodePerm(nid)
-    for(e <- 0 until inAdjHash(nid).length )
-    {
-      val dstRow = nodePerm(inAdjHash(nid)(e))
-      delta += -LLMtx.getApxNoEdgeLL(dstRow, srcCol, kronIters) + LLMtx.getEdgeLL(dstRow, srcCol, kronIters)
-    }
+    val colStop = inAdjHash(nid).length
+    counter = 0
+    while(counter < colStop)
+      {
+        val dstRow = nodePerm(inAdjHash(nid)(counter))
+        delta += -LLMtx.getApxNoEdgeLL(dstRow, srcCol, kronIters) + LLMtx.getEdgeLL(dstRow, srcCol, kronIters)
+        counter += 1
+      }
+//    for(e <- 0 until inAdjHash(nid).length )
+//    {
+//      val dstRow = nodePerm(inAdjHash(nid)(e))
+//      delta += -LLMtx.getApxNoEdgeLL(dstRow, srcCol, kronIters) + LLMtx.getEdgeLL(dstRow, srcCol, kronIters)
+//    }
 
     if(edgeHash.contains((nid, nid))) {
       delta += LLMtx.getApxNoEdgeLL(srcRow, srcCol, kronIters) - LLMtx.getEdgeLL(srcRow, srcCol, kronIters)
