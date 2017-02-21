@@ -116,7 +116,11 @@ class kroneckerLL() {
 
     this.adjHash = new mutable.HashMap[Long, Array[Long]]()
     this.inAdjHash = new mutable.HashMap[Long, Array[Long]]()
-
+    for(n <- 0 until nodes)
+      {
+        adjHash.put(n, Array())
+        inAdjHash.put(n, Array())
+      }
     for(edge <- edgeHash.keys)
     {
       try {

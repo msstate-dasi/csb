@@ -83,7 +83,8 @@ object KroFit {
       }
     println("counter = " + counter)
     val newNodes = nodeList.map(record => hash.get(record).head).sortBy(record => record, ascending = true)
-    val newEdges = edgeList.flatMap(record => Array((hash.get(record._1).head, hash.get(record._2).head), (hash.get(record._2).head, hash.get(record._1).head)))
+    val newEdges = edgeList.map(record => (hash.get(record._1).head, hash.get(record._2).head))
+//    val newEdges = edgeList.flatMap(record => Array((hash.get(record._1).head, hash.get(record._2).head), (hash.get(record._2).head, hash.get(record._1).head)))
     return (newEdges, newNodes)
   }
 
