@@ -45,7 +45,7 @@ object SparkWorkload extends Workload {
    * Breadth-first Search: returns the shortest directed-edge path from src to dst in the graph. If no path exists,
    * returns the empty list.
    */
-  def bfs[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], src: VertexId, dst: VertexId): Seq[VertexId] = {
+  private def bfs[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], src: VertexId, dst: VertexId): Seq[VertexId] = {
     if (src == dst) return List(src)
 
     // The attribute of each vertex is (dist from src, id of vertex with dist-1)
@@ -179,10 +179,47 @@ object SparkWorkload extends Workload {
     KBetweenness.run(graph, k)
   }
 
+  /***
+    * Returns the closeness centrality of a node using the formula N/(sum(distances)).
+    * @param vertex The vertext to calculate centraility
+    * @param graph the graph the vertex exists in
+    * @tparam VD reflection.  We don't care about the data
+    * @tparam ED reflection.  We don't care about the data
+    * @return
+    */
   def closenessCentrality[VD: ClassTag, ED: ClassTag](vertex: VertexId, graph: Graph[VD, ED]): Double =
   {
     return ClosenessCentrality.getClosenessOfVert(vertex, graph)
   }
+
+  /***
+    * This returns the shortest path from srcVertex to destVertex.  By returning in this case we mean returning a list of the vertexId's from srcVertex to destVertex by following the least number of edges possible.
+    * @param graph the graph
+    * @param srcVertex source vertex
+    * @param destVertex destination vertex
+    * @tparam VD reflection.  We don't care about the property that could be here
+    * @tparam ED reflection.  We don't care about the property that could be here
+    * @return
+    */
+  def singleSourceShortestPath[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], srcVertex: VertexId, destVertex: VertexId): Seq[VertexId] =
+  {
+    return bfs(graph, srcVertex, destVertex)
+  }
+
+  /***
+    * The same as the other SSSP but we return the number of hops it takes to go from the src node to dest node
+    * @param graph
+    * @param srcVertex
+    * @param destVertex
+    * @tparam VD
+    * @tparam ED
+    * @return
+    */
+  def singleSourceShortestPath[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], srcVertex: VertexId, destVertex: VertexId): Long =
+  {
+    return bfs(graph, srcVertex, destVertex).size
+  }
+
   /**
    * Finds all edges with a given property.
    */
