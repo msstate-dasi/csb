@@ -22,7 +22,9 @@ object KroFit {
 //      val tempEdges = sc.parallelize(Array((0L,1L),(1L,2L),(3L,2L),(2L, 0L), (1L, 3L)))
 
 
-      val (edgeList, nodeList) = convertLabelsToStandardForm(G.edges.map(record => (record.srcId, record.dstId)), G.vertices.map(record => record._1))
+      var newGraph = Util.convertLabelsToStandardForm(G)
+      val edgeList = newGraph.edges.map(record => (record.srcId, record.dstId))
+      val nodeList = newGraph.vertices.map(record => record._1)
 //      val (edgeList, nodeList) = (tempEdges, tempNodes)
 
       val permSwapNodeProb = 0.2
@@ -71,21 +73,6 @@ object KroFit {
       return result
     }
 
-  def convertLabelsToStandardForm(edgeList: RDD[(Long, Long)], nodeList: RDD[Long]): (RDD[(Long, Long)], RDD[Long]) =
-  {
-    val hash = new mutable.HashMap[Long, Long]
-    val nodes = nodeList.collect()
-    var counter = 0
-    for(entry <- nodes)
-      {
-        hash.put(entry, counter)
-        counter += 1
-      }
-    println("counter = " + counter)
-    val newNodes = nodeList.map(record => hash.get(record).head).sortBy(record => record, ascending = true)
-    val newEdges = edgeList.map(record => (hash.get(record._1).head, hash.get(record._2).head))
-//    val newEdges = edgeList.flatMap(record => Array((hash.get(record._1).head, hash.get(record._2).head), (hash.get(record._2).head, hash.get(record._1).head)))
-    return (newEdges, newNodes)
-  }
+
 
 }

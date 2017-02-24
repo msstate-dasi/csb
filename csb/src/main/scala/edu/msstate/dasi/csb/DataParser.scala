@@ -23,36 +23,6 @@ object DataParser {
   }
 
 
-  def tempReadFromConn(sc: SparkContext, partitions: Int, connFile: String): Graph[VertexData, EdgeData] = {
-
-    val combined = sc.textFile(connFile).filter(line => !line.contains("#")).collect.map { line =>
-      try {
-        val splits = line.split('\t')
-        (splits(0).toLong - 1, splits(1).toLong - 1)
-      } catch {
-        case _: Throwable =>
-          (-1L, -1L)
-      }
-    }.filter(record => record._1 != -1)
-
-    val vertices = combined.flatMap(record => Array(record._1, record._2)).distinct.map(record => (record, VertexData()))
-    val verticesHash = new mutable.HashMap[Long,Long]()
-
-    var idx = 0L
-    for (v <- vertices) {
-      verticesHash.put(v._1, idx)
-      idx += 1L
-    }
-
-    val edges = combined.map(record => (verticesHash(record._1), verticesHash(record._2))).map(record => new Edge[EdgeData](record._1, record._2, EdgeData()))
-
-    var hash = new mutable.HashMap[Int, Int]()
-
-    val nodeCount = verticesHash.size
-    println("nodeList " + nodeCount + "edge count " + edges.length)
-    val thing = Graph[VertexData, EdgeData](sc.parallelize(vertices), sc.parallelize(edges))
-    return thing
-  }
   def logToGraph(augLogPath: String, partitions: Int): Graph[VertexData, EdgeData] = {
     val augLogFile = sc.textFile(augLogPath, partitions)
 
@@ -93,6 +63,7 @@ object DataParser {
         desc = if (pieces.length > 21) pieces(21) else "")
       )
     })
+
 
     Graph.fromEdges(
       edges,

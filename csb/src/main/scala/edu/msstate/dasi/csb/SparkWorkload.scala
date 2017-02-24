@@ -45,7 +45,7 @@ object SparkWorkload extends Workload {
    * Breadth-first Search: returns the shortest directed-edge path from src to dst in the graph. If no path exists,
    * returns the empty list.
    */
-  private def bfs[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], src: VertexId, dst: VertexId): Seq[VertexId] = {
+  def bfs[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], src: VertexId, dst: VertexId): Seq[VertexId] = {
     if (src == dst) return List(src)
 
     // The attribute of each vertex is (dist from src, id of vertex with dist-1)
@@ -201,7 +201,7 @@ object SparkWorkload extends Workload {
     * @tparam ED reflection.  We don't care about the property that could be here
     * @return
     */
-  def singleSourceShortestPath[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], srcVertex: VertexId, destVertex: VertexId): Seq[VertexId] =
+  def singleSourceShortestPathSeq[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], srcVertex: VertexId, destVertex: VertexId): Seq[VertexId] =
   {
     return bfs(graph, srcVertex, destVertex)
   }
@@ -215,9 +215,9 @@ object SparkWorkload extends Workload {
     * @tparam ED
     * @return
     */
-  def singleSourceShortestPath[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], srcVertex: VertexId, destVertex: VertexId): Long =
+  def singleSourceShortestPathNum[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], srcVertex: VertexId, destVertex: VertexId): Long =
   {
-    return bfs(graph, srcVertex, destVertex).size
+    return bfs(graph, srcVertex, destVertex).size - 1
   }
 
   /**

@@ -4,7 +4,12 @@ import java.io.File
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, FileUtil, Path}
+import org.apache.spark.graphx._
 import org.apache.spark.rdd.RDD
+import org.apache.spark.storage.StorageLevel
+
+import scala.collection.mutable
+import scala.reflect.ClassTag
 
 object Util {
   /**
@@ -56,4 +61,25 @@ object Util {
     println("[TIME] " + taskName + " completed in " + (end - start) / 1e9 + " s")
     ret
   }
+
+  def convertLabelsToStandardForm[VD: ClassTag, ED: ClassTag](G: Graph[VD, ED]): Graph[VertexData, EdgeData] =
+  {
+   val nodeList = G.vertices
+    val edgeList = G.edges
+    val hash = new mutable.HashMap[Long, Long]
+    val nodes = nodeList.map(record => record._1).collect()
+    var counter = 0
+    for(entry <- nodes)
+    {
+      hash.put(entry, counter)
+      counter += 1
+    }
+    println("counter = " + counter)
+    val newNodes = nodeList.map(record => hash.get(record._1).head).sortBy(record => record, ascending = true)
+    val newEdges = edgeList.map(record => (hash.get(record.srcId).head, hash.get(record.dstId).head))
+    val newEdgesRDD: RDD[Edge[EdgeData]] = newEdges.map(record => Edge(record._1, record._2))
+    //    val newEdges = edgeList.flatMap(record => Array((hash.get(record._1).head, hash.get(record._2).head), (hash.get(record._2).head, hash.get(record._1).head)))
+    return Graph.fromEdges(newEdgesRDD, VertexData())
+  }
+
 }

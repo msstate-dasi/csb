@@ -2,7 +2,8 @@ package edu.msstate.dasi.csb
 
 
 import org.apache.log4j.{Level, Logger}
-import org.apache.spark.graphx.Graph
+import org.apache.spark.graphx.{Edge, Graph}
+import org.apache.spark.rdd.RDD
 import scopt.OptionParser
 
 /**
@@ -95,6 +96,7 @@ object Benchmark {
                      synth: String = "synth"
 
                    )
+
 
 
   def main(args: Array[String]) {

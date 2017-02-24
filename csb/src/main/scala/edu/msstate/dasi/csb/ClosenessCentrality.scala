@@ -48,22 +48,30 @@ object ClosenessCentrality {
         list(x) = q.dequeue()
       }
       var children: Array[VertexId] = null
-      for(x <- list)
-      {
-
-        var node: VertexId = x
-         children = graph.collectNeighborIds(EdgeDirection.Out).lookup(node).head
-//        children = hashmap.value.get(x).head
-        for(c: Long <- children)
+      if(list.length > 0)
         {
-          val childNode = graph.vertices.lookup(c)//hashmap.value.get(c).head
-          if(!visited.contains(c))
+          for(x <- list)
           {
-            q.enqueue(c)
-            visited.add(c)
+
+            var node: VertexId = x
+            if(graph.collectNeighborIds(EdgeDirection.Out).lookup(node).length > 0)
+              {
+                children = graph.collectNeighborIds(EdgeDirection.Out).lookup(node).head
+                //        children = hashmap.value.get(x).head
+                for(c: Long <- children)
+                {
+                  val childNode = graph.vertices.lookup(c)//hashmap.value.get(c).head
+                  if(!visited.contains(c))
+                  {
+                    q.enqueue(c)
+                    visited.add(c)
+                  }
+                }
+              }
+
           }
         }
-      }
+
       level += 1
     }
     totalPairs -= 1
@@ -82,7 +90,9 @@ object ClosenessCentrality {
       {
         denomenator += visitCenter.levelSize.get(x).head * x
       }
-    return graph.vertices.count() / denomenator
+    if(denomenator == 0) return -1
+    val count = graph.vertices.count().toDouble
+    return count / denomenator
   }
 
 
