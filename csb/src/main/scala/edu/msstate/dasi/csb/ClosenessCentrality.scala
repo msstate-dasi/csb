@@ -1,6 +1,5 @@
 package edu.msstate.dasi.csb
 
-import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.graphx._
 
 import scala.collection.mutable

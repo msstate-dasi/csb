@@ -3,7 +3,9 @@ package edu.msstate.dasi.csb
 /**
  *
  */
-case class VertexData()
+case class VertexData() {
+  def toMap: Map[String, Any] = Map.empty
+}
 
 object VertexData {
   /**
@@ -16,4 +18,8 @@ object VertexData {
       new VertexData()
     }
   }
+
+  def toNullMap: Map[String, Any] = Map.empty
+
+  def neo4jTemplate(prefix: String): String = ""
 }

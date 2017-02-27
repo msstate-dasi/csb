@@ -29,7 +29,8 @@ class KroSynth(partitions: Int, mtxFile: String, genIter: Int) extends GraphSynt
    */
   private def kronFit(seed: Graph[VertexData, EdgeData]): Array[Array[Double]] = {
     //inMtx already has a default value
-    KroFit.run(seed)
+//    Util.time( "KronFit", KroFit.run(seed) )
+    parseMtxDataFromFile(mtxFile)
   }
 
   private def getKroRDD(nVerts: Long, nEdges: Long, n1: Int, iter: Int, probToRCPosV_Broadcast: Broadcast[Array[(Double, Long, Long)]] ): RDD[Edge[EdgeData]] = {

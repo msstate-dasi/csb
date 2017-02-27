@@ -54,11 +54,11 @@ object Util {
    * @return the return value of the task
    */
   def time[R](taskName: String, task: => R): R = {
-    println("[TIME] " + taskName + " started...")
+    println(s"[TIME] $taskName started...")
     val start = System.nanoTime
     val ret = task // call-by-name
     val end = System.nanoTime
-    println("[TIME] " + taskName + " completed in " + (end - start) / 1e9 + " s")
+    println(s"[TIME] $taskName completed in ${(end - start) / 1e9} s")
     ret
   }
 

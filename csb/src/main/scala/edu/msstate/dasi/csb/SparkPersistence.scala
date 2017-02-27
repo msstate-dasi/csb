@@ -13,9 +13,9 @@ class SparkPersistence() extends GraphPersistence {
   /**
    * Load a graph.
    */
-  def loadGraph(name: String): Graph[VertexData, EdgeData] = {
-    val verticesPath = name + vertices_suffix
-    val edgesPath = name + edges_suffix
+  def loadGraph(graphName: String): Graph[VertexData, EdgeData] = {
+    val verticesPath = graphName + vertices_suffix
+    val edgesPath = graphName + edges_suffix
 
     val vertices = sc.objectFile[(VertexId, VertexData)](verticesPath)
     val edges = sc.objectFile[Edge[EdgeData]](edgesPath)
@@ -32,9 +32,9 @@ class SparkPersistence() extends GraphPersistence {
   /**
    * Save a graph.
    */
-  def saveGraph(graph: Graph[VertexData, EdgeData], name: String, overwrite :Boolean = false): Unit = {
-    val verticesPath = name + vertices_suffix
-    val edgesPath = name + edges_suffix
+  def saveGraph(graph: Graph[VertexData, EdgeData], graphName: String, overwrite :Boolean = false): Unit = {
+    val verticesPath = graphName + vertices_suffix
+    val edgesPath = graphName + edges_suffix
 
     if (overwrite) {
       FileUtil.fullyDelete(new File(verticesPath))
@@ -48,9 +48,9 @@ class SparkPersistence() extends GraphPersistence {
   /**
    * Load a graph from text files, one for the vertices and another for the edges.
    */
-  def loadFromText(name: String): Graph[VertexData, EdgeData] = {
-    val verticesPath = name + vertices_suffix
-    val edgesPath = name + edges_suffix
+  def loadFromText(graphName: String): Graph[VertexData, EdgeData] = {
+    val verticesPath = graphName + vertices_suffix
+    val edgesPath = graphName + edges_suffix
 
     val verticesText = sc.textFile(verticesPath)
     val edgesText = sc.textFile(edgesPath)
@@ -85,10 +85,10 @@ class SparkPersistence() extends GraphPersistence {
   /**
    * Save a graph as text files, one for the vertices and another for the edges.
    */
-  def saveAsText(graph: Graph[VertexData, EdgeData], name: String, overwrite :Boolean = false): Unit = {
-    val verticesPath = name + vertices_suffix
+  def saveAsText(graph: Graph[VertexData, EdgeData], graphName: String, overwrite :Boolean = false): Unit = {
+    val verticesPath = graphName + vertices_suffix
     val verticesTmpPath = "__" + verticesPath
-    val edgesPath = name + edges_suffix
+    val edgesPath = graphName + edges_suffix
     val edgesTmpPath = "__" + edgesPath
 
     if (overwrite) {

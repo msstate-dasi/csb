@@ -9,6 +9,9 @@ import org.apache.spark.sql.SparkSession
 package object csb {
   private[csb] val sc = SparkSession.builder()
     .appName("Cyber Security Benchmark")
+    .config("spark.neo4j.bolt.url", "bolt://localhost")
+    .config("spark.neo4j.bolt.user", "neo4j")
+    .config("spark.neo4j.bolt.password", "password")
     .getOrCreate()
     .sparkContext
 }

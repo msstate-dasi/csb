@@ -5,8 +5,6 @@ import org.apache.spark.rdd.RDD
 
 import scala.reflect.ClassTag
 
-
-
 object SparkWorkload extends Workload {
   /**
    * The number of vertices in the graph.

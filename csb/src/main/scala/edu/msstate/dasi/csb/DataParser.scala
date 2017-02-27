@@ -1,10 +1,7 @@
 package edu.msstate.dasi.csb
 
-import org.apache.spark.SparkContext
 import org.apache.spark.graphx.{Edge, Graph}
 import org.apache.spark.storage.StorageLevel
-
-import scala.collection.mutable
 
 object DataParser {
   private def isAllowedProto(line: String): Boolean = {
@@ -63,7 +60,6 @@ object DataParser {
         desc = if (pieces.length > 21) pieces(21) else "")
       )
     })
-
 
     Graph.fromEdges(
       edges,

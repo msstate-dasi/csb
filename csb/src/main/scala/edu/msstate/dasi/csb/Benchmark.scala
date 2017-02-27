@@ -1,14 +1,7 @@
 package edu.msstate.dasi.csb
 
-
 import org.apache.log4j.{Level, Logger}
-import org.apache.spark.graphx.{Edge, Graph}
-import org.apache.spark.rdd.RDD
 import scopt.OptionParser
-
-/**
-  * Created by spencer on 11/3/16.
-  */
 
 object Benchmark {
 
@@ -267,11 +260,10 @@ object Benchmark {
     val logAug = new log_Augment()
     logAug.run(params.alertLog, params.connLog, params.augLog)
 
-    var seed = null.asInstanceOf[Graph[VertexData,EdgeData]]
-
-    Util.time( "Log to graph", {
-      seed = DataParser.logToGraph(params.augLog, params.partitions)
+    val seed = Util.time( "Log to graph", {
+      val seed = DataParser.logToGraph(params.augLog, params.partitions)
       println("Vertices #: " + seed.numVertices + ", Edges #: " + seed.numEdges)
+      seed
     } )
 
     Util.time( "Seed distributions", new DataDistributions(params.augLog) )
@@ -279,7 +271,7 @@ object Benchmark {
     var graphPs = null.asInstanceOf[GraphPersistence]
     params.backend match {
       case "fs" => graphPs = new SparkPersistence()
-      case "neo4j" => graphPs = new Neo4jPersistence("bolt://localhost/7687", "neo4j", "password")
+      case "neo4j" => graphPs = new Neo4jPersistence()
     }
 
     Util.time( "Save seed graph", graphPs.saveGraph(seed, "seed", overwrite = true) )
@@ -291,11 +283,17 @@ object Benchmark {
     var graphPs = null.asInstanceOf[GraphPersistence]
     params.backend match {
       case "fs" => graphPs = new SparkPersistence()
-      case "neo4j" => graphPs = new Neo4jPersistence("bolt://localhost/7687", "neo4j", "password")
+      case "neo4j" => graphPs = new Neo4jPersistence()
     }
 
-    val seed = graphPs.loadGraph("seed")
-    println("Vertices #: " + seed.numVertices + ", Edges #: " + seed.numEdges)
+    val seed = Util.time( "Load seed graph", {
+      val seed = graphPs.loadGraph("seed")
+      println("Vertices #: " + seed.numVertices + ", Edges #: " + seed.numEdges)
+      seed
+    } )
+
+//    val neo4jPs = new Neo4jPersistence()
+//    neo4jPs.saveGraph(seed, "seed")
 
     val seedDists = new DataDistributions(params.augLog)
 
@@ -328,7 +326,7 @@ object Benchmark {
     var graphPs = null.asInstanceOf[GraphPersistence]
     params.backend match {
       case "fs" => graphPs = new SparkPersistence()
-      case "neo4j" => graphPs = new Neo4jPersistence("bolt://localhost/7687", "neo4j", "password")
+      case "neo4j" => graphPs = new Neo4jPersistence()
     }
 
     val seed = graphPs.loadGraph(params.seed)

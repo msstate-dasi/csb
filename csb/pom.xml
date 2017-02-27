@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>edu.msstate.dasi</groupId>
     <artifactId>csb</artifactId>
-    <version>0.1.0</version>
+    <version>0.1.1</version>
     <name>${project.artifactId}</name>
     <description>This is synthetic graph generation project written with Apache Spark.</description>
     <inceptionYear>2016</inceptionYear>
@@ -125,6 +125,11 @@
             <artifactId>neo4j-java-driver</artifactId>
             <version>1.1.1</version>
         </dependency>
+        <dependency>
+            <groupId>neo4j-contrib</groupId>
+            <artifactId>neo4j-spark-connector</artifactId>
+            <version>2.0.0-M2</version>
+        </dependency>
     </dependencies>
 
     <!-- repository to add org.apache.spark -->
@@ -136,6 +141,10 @@
         <repository>
             <id>central</id>
             <url>http://central.maven.org/maven2/</url>
+        </repository>
+        <repository>
+            <id>SparkPackagesRepo</id>
+            <url>http://dl.bintray.com/spark-packages/maven</url>
         </repository>
     </repositories>
 </project>

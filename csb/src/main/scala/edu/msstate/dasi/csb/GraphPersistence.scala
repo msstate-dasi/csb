@@ -7,10 +7,10 @@ trait GraphPersistence {
   /**
    * Load a graph.
    */
-  def loadGraph(name: String): Graph[VertexData, EdgeData]
+  def loadGraph(graphName: String): Graph[VertexData, EdgeData]
 
   /**
    * Save a graph.
    */
-  def saveGraph(graph: Graph[VertexData, EdgeData], name: String, overwrite :Boolean = false): Unit
+  def saveGraph(graph: Graph[VertexData, EdgeData], graphName: String, overwrite :Boolean = false): Unit
 }
