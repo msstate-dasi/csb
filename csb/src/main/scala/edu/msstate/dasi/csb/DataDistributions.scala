@@ -19,6 +19,7 @@ class DataDistributions(augLogPath: String) extends Serializable{
   private var outDegreeDistribution :Array[(String, Double)] = Array.empty
   private var degreeDistribution :Array[(String, Double)] = Array.empty
 
+  private var inEdgesDistribution :Array[(Long, Double)] = Array.empty
   private var outEdgesDistribution :Array[(Long, Double)] = Array.empty
   private var origBytesDistribution :Array[(Long, Double)] = Array.empty
 
@@ -32,6 +33,7 @@ class DataDistributions(augLogPath: String) extends Serializable{
   private var respPktsDistributions: Map[Long, Array[(Long, Double)]] = Map.empty
   private var descriptionDistributions: Map[Long, Array[(String, Double)]] = Map.empty
 
+  private val inEdgesDistributionFileName =     "inEdgesDistribution.ser"
   private val outEdgesDistributionFileName =     "outEdgesDistribution.ser"
   private val origBytesDistributionFileName =    "origBytesDistribution.ser"
   private val origPktsDistributionsFileName =    "origPktsDistributions.ser"
@@ -45,7 +47,8 @@ class DataDistributions(augLogPath: String) extends Serializable{
   private val descriptionDistributionsFilename = "descDistributions.ser"
 
 
-  if (new File(fileDir + "/" + outEdgesDistributionFileName).exists() &&
+  if (new File(fileDir + "/" + inEdgesDistributionFileName).exists() &&
+    new File(fileDir + "/" + outEdgesDistributionFileName).exists() &&
     new File(fileDir + "/" + origBytesDistributionFileName).exists() &&
     new File(fileDir + "/" + origPktsDistributionsFileName).exists() &&
     new File(fileDir + "/" + respBytesDistributionsFileName).exists() &&
@@ -85,6 +88,13 @@ class DataDistributions(augLogPath: String) extends Serializable{
 
       outEdgesPerNode.unpersist()
       inEdgesPerNode.unpersist()
+
+      // # of edges per (respIp -> origIp)
+      val inEdgesPerPair = augLog.map(entry => ((entry.respIp, entry.origIp), 1L)).reduceByKey(_ + _)
+      val pairsPerInEdgeMultiplicity = inEdgesPerPair.map(x => (x._2, 1L)).reduceByKey(_ + _).sortBy(_._2, false).persist()
+      val inPairsTotal = pairsPerInEdgeMultiplicity.map(_._2).reduce(_ + _)
+      inEdgesDistribution = pairsPerInEdgeMultiplicity.map(x => (x._1, x._2 / inPairsTotal.toDouble)).sortBy(_._2, false).collect()
+      pairsPerInEdgeMultiplicity.unpersist()
 
       // # of edges per (origIp -> respIp)
       val outEdgesPerPair = augLog.map(entry => ((entry.origIp, entry.respIp), 1L)).reduceByKey(_ + _)
@@ -346,7 +356,11 @@ class DataDistributions(augLogPath: String) extends Serializable{
 
     */
 
-    var oos = new ObjectOutputStream(new FileOutputStream(fileDir+"/"+outEdgesDistributionFileName))
+    var oos = new ObjectOutputStream(new FileOutputStream(fileDir+"/"+inEdgesDistributionFileName))
+    oos.writeObject(inEdgesDistribution)
+    oos.close()
+
+    oos = new ObjectOutputStream(new FileOutputStream(fileDir+"/"+outEdgesDistributionFileName))
     oos.writeObject(outEdgesDistribution)
     oos.close()
 
@@ -405,7 +419,11 @@ class DataDistributions(augLogPath: String) extends Serializable{
     degreeDistribution = ois.readObject().asInstanceOf[Array[(String, Double)]]
     ois.close() */
 
-    var ois = new ObjectInputStream(new FileInputStream(fileDir+"/"+outEdgesDistributionFileName))
+    var ois = new ObjectInputStream(new FileInputStream(fileDir+"/"+inEdgesDistributionFileName))
+    inEdgesDistribution = ois.readObject().asInstanceOf[Array[(Long, Double)]]
+    ois.close()
+
+    ois = new ObjectInputStream(new FileInputStream(fileDir+"/"+outEdgesDistributionFileName))
     outEdgesDistribution = ois.readObject().asInstanceOf[Array[(Long, Double)]]
     ois.close()
 
@@ -450,6 +468,18 @@ class DataDistributions(augLogPath: String) extends Serializable{
     ois.close()
   }
 
+  def getInEdgeSample: Long = {
+    val r = Random.nextDouble()
+    var accumulator :Double= 0
+
+    val iterator = inEdgesDistribution.iterator
+    var outElem : (Long, Double) = null
+    while (accumulator < r && iterator.hasNext) {
+      outElem = iterator.next()
+      accumulator = accumulator + outElem._2
+    }
+    outElem._1
+  }
 
   def getOutEdgeSample: Long = {
     val r = Random.nextDouble()

@@ -274,7 +274,7 @@ object Benchmark {
       case "neo4j" => graphPs = new Neo4jPersistence()
     }
 
-    Util.time( "Save seed graph", graphPs.saveGraph(seed, "seed", overwrite = true) )
+    Util.time( "Save seed graph", graphPs.saveGraph(seed, params.seed, overwrite = true) )
 
     true
   }
@@ -305,7 +305,10 @@ object Benchmark {
 
     val synth = synthesizer.synthesize(seed, seedDists, !params.noProp)
 
-    Util.time( "Save synth graph", graphPs.saveGraph(synth, params.outputGraphPrefix, overwrite = true) )
+    Util.time( "Save synth graph Object", graphPs.saveGraph(synth, params.outputGraphPrefix, overwrite = true))
+    if(params.backend=="fs") {
+      Util.time("Save synth graph Text", graphPs.asInstanceOf[SparkPersistence].saveAsText(synth, params.outputGraphPrefix, overwrite = true))
+    }
 
     val degVeracity = Util.time( "Degree Veracity", DegreeVeracity(seed, synth) )
     println(s"Degree Veracity: $degVeracity")

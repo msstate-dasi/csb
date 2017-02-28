@@ -12,11 +12,11 @@ import scala.util.Random
 class ParallelBaSynth(partitions: Int, baIter: Long, nodesPerIter: Long) extends GraphSynth {
 
   /**
-   *  Computes the RDD of the additional edges that should be added accordingly to the edge distribution.
-   *
-   *  @param edgeList The RDD of the edges returned by the Kronecker algorithm.
-   *  @return The RDD of the additional edges that should be added to the one returned by Kronecker algorithm.
-   */
+    *  Computes the RDD of the additional edges that should be added accordingly to the edge distribution.
+    *
+    *  @param edgeList The RDD of the edges returned by the Kronecker algorithm.
+    *  @return The RDD of the additional edges that should be added to the one returned by Kronecker algorithm.
+    */
   private def getMultiEdgesRDD(edgeList: RDD[Edge[EdgeData]], seedDists: DataDistributions): RDD[Edge[EdgeData]] = {
     val dataDistBroadcast = sc.broadcast(seedDists)
 
@@ -34,15 +34,16 @@ class ParallelBaSynth(partitions: Int, baIter: Long, nodesPerIter: Long) extends
   }
 
   /**
-   *
-   * @param inVertices RDD of vertices and their edu.msstate.dasi.VertexData
-   * @param inEdges RDD of edges and their edu.msstate.dasi.EdgeData
-   * @param iter Number of iterations to perform BA
-   * @return Graph containing vertices + edu.msstate.dasi.VertexData, edges + edu.msstate.dasi.EdgeData
-   */
-  private def generateBAGraph(inVertices: RDD[(VertexId, VertexData)], inEdges: RDD[Edge[EdgeData]], seedDists: DataDistributions, iter: Long, nodesPerIter: Long, withProperties: Boolean): Graph[VertexData,EdgeData] = {
+    *
+    * @param inVertices RDD of vertices and their edu.msstate.dasi.VertexData
+    * @param inEdges RDD of edges and their edu.msstate.dasi.EdgeData
+    * @param iter Number of iterations to perform BA
+    * @return Graph containing vertices + edu.msstate.dasi.VertexData, edges + edu.msstate.dasi.EdgeData
+    */
+  private def generateBAGraph(inVertices: RDD[(VertexId, VertexData)], inEdges: RDD[Edge[EdgeData]], seedDists: DataDistributions, iter: Long, nodesPerIter: Long, withProperties: Boolean): Graph[VertexData,EdgeData] =
+  {
     // TODO: this method shouldn't have the withProperties parameter, we have to check why it's used in the algorithm
-     
+
     var nodeIndices = Array.empty[VertexId]
     inVertices.foreach(record => nodeIndices :+= record._1)
     var totalVertices: Long = inVertices.count()
@@ -50,27 +51,30 @@ class ParallelBaSynth(partitions: Int, baIter: Long, nodesPerIter: Long) extends
     val localPartitions = math.min(nEdges, partitions).toInt
     val recordsPerPartition = math.min( (nEdges / localPartitions).toInt, Int.MaxValue )
     var edgeList: RDD[Edge[EdgeData]] = inEdges
-    
-    val averageNumOfEdges = if (nEdges / totalVertices > 0L) 2L * (nEdges / totalVertices) else { 2L }
-    
+
+    //var averageNumOfEdges = if (nEdges / totalVertices > 0L) 2L * (nEdges / totalVertices)
+    //else { 2L }
+
     var edgesToAdd: Array[Edge[EdgeData]] = Array.empty[Edge[EdgeData]]
 
     var nPI = nodesPerIter
 
-    val iters: Int = if (iter > nodesPerIter) math.ceil(iter.toDouble / nodesPerIter).toInt else {
+    val iters: Int = if (iter > nodesPerIter) math.ceil(iter.toDouble / nodesPerIter).toInt
+    else {
       nPI = iter; 1
     }
 
     val dataDistBroadcast = sc.broadcast(seedDists)
-    val averageNumOfEdgesBC = sc.broadcast(averageNumOfEdges)
+    //val averageNumOfEdgesBC = sc.broadcast(averageNumOfEdges)
 
-    for (i <- 1 to iters) {
+    for (i <- 1 to iters)
+    {
       //println("Entered the loop")
       totalVertices += 1
       var newVertices = totalVertices to (totalVertices + nPI.toInt) toList
       var newVerticesRDD = sc.parallelize(newVertices)
       val oldEdgeList = edgeList
-      val someAry:Array[Edge[EdgeData]] = oldEdgeList.collect.toArray
+      val someAry:Array[Edge[EdgeData]] = oldEdgeList.collect
       var nEdges : Long = oldEdgeList.count()
 
       val inEdgesIndexedBroadcast = sc.broadcast(someAry)
@@ -80,27 +84,35 @@ class ParallelBaSynth(partitions: Int, baIter: Long, nodesPerIter: Long) extends
         val r2 = Random
         val r3 = Random
         var attachTo: Long = 0L
-        val numEdgesToAdd = Math.abs (r2.nextLong () ) % dataDistBroadcast.value.getOutEdgeSample + 1 //averageNumOfEdgesBC.value + 1//
+        val numOutEdgesToAdd = Math.abs (r2.nextLong () ) % dataDistBroadcast.value.getOutEdgeSample + 1 //averageNumOfEdgesBC.value + 1//
 
+        //Add Out Edges
         var subsetEdges = Array.empty[Edge[EdgeData]]
-        for ( _ <- 1L to numEdgesToAdd )
+        for ( _ <- 1L to numOutEdgesToAdd )
         {
           val attachToEdge: Int = Math.abs (r.nextInt () ) % nEdges.toInt
           val edge: Edge[EdgeData] = inEdgesIndexedBroadcast.value(attachToEdge)//inEdgesIndexedRDD.lookup(attachToEdge).last
           attachTo = edge.srcId
-          val attachToIDT: Long = Math.abs (r2.nextLong () ) % 2
-          if(attachToIDT == 1L)
-          {  //select one vertex randomly
-            attachTo = edge.dstId
-          }
-  //        if(Math.abs (r3.nextDouble () )  <= 0.7D) {
-            subsetEdges :+= Edge[EdgeData](x, attachTo) //Probablilty of an incoming connection to the network
-  //        }
-  //        else {subsetEdges :+= Edge[EdgeData](attachTo, x)}
+          subsetEdges :+= Edge[EdgeData](x, attachTo)
+        }
+
+        //Add In Edges
+        val numInEdgesToAdd = Math.abs (r2.nextLong () ) % dataDistBroadcast.value.getInEdgeSample + 1 //averageNumOfEdgesBC.value + 1//
+        //IN DEGREE
+        for ( _ <- 1L to numInEdgesToAdd )
+        {
+          val attachToEdge: Int = Math.abs (r.nextInt () ) % nEdges.toInt
+          val edge: Edge[EdgeData] = inEdgesIndexedBroadcast.value(attachToEdge)
+          attachTo = edge.srcId
+          subsetEdges :+= Edge[EdgeData](attachTo, x)
+
         }
 
         subsetEdges
       }
+
+
+
       edgeList = oldEdgeList.union(curEdges).distinct().coalesce(partitions).setName("edgeList#" + curEdges).persist(StorageLevel.MEMORY_AND_DISK)
       nEdges = edgeList.count()
 
@@ -113,8 +125,9 @@ class ParallelBaSynth(partitions: Int, baIter: Long, nodesPerIter: Long) extends
 
     // TODO: finalEdgeList should be un-persisted after the next action (but the action will probably be outside this method)
     //val finalEdgeList = edgeList.union(newEdges)
-      //.coalesce(partitions).setName("finalEdgeList").persist(StorageLevel.MEMORY_AND_DISK)
+    //.coalesce(partitions).setName("finalEdgeList").persist(StorageLevel.MEMORY_AND_DISK)
     println("Total # of Edges (including multi edges): " + edgeList.count())
+
 
     Graph.fromEdges(
       edgeList,
