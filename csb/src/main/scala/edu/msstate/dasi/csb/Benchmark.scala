@@ -1,6 +1,7 @@
 package edu.msstate.dasi.csb
 
 import org.apache.log4j.{Level, Logger}
+import org.apache.spark.graphx.Edge
 import scopt.OptionParser
 
 object Benchmark {
@@ -89,7 +90,6 @@ object Benchmark {
                      synth: String = "synth"
 
                    )
-
 
 
   def main(args: Array[String]) {

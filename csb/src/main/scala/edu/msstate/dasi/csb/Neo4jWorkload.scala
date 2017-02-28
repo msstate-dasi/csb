@@ -134,10 +134,5 @@ object Neo4jWorkload extends Workload {
   /**
    * Finds all edges with a given property.
    */
-  def edgesWithProperty[VD: ClassTag](graph: Graph[VD, EdgeData], property: EdgeData): RDD[Edge[EdgeData]] = ???
-
-  /**
-   * Finds all edges with a given property range.
-   */
-  def edgesWithProperty[VD: ClassTag](graph: Graph[VD, EdgeData], min: EdgeData, max: EdgeData): RDD[Edge[EdgeData]] = ???
+  def edgesWithProperty[VD: ClassTag](graph: Graph[VD, EdgeData], filter: Edge[EdgeData] => Boolean): RDD[Edge[EdgeData]] = ???
 }

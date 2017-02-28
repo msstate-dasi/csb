@@ -221,15 +221,18 @@ object SparkWorkload extends Workload {
   /**
    * Finds all edges with a given property.
    */
-  def edgesWithProperty[VD: ClassTag](graph: Graph[VD, EdgeData], property: EdgeData): RDD[Edge[EdgeData]] = {
-    graph.edges.filter(edge => property ~= edge.attr)
+  def edgesWithProperty[VD: ClassTag](graph: Graph[VD, EdgeData], filter: Edge[EdgeData] => Boolean): RDD[Edge[EdgeData]] = {
+    graph.edges.filter(filter)
   }
+//  def edgesWithProperty[VD: ClassTag](graph: Graph[VD, EdgeData], property: EdgeData): RDD[Edge[EdgeData]] = {
+//    graph.edges.filter(edge => property ~= edge.attr)
+//  }
 
   /**
    * Finds all edges with a given property range.
    */
-  def edgesWithProperty[VD: ClassTag](graph: Graph[VD, EdgeData], propertyMin: EdgeData, propertyMax: EdgeData): RDD[Edge[EdgeData]] = {
-    if(propertyMin > propertyMax || !(propertyMin < propertyMax || propertyMax < propertyMin)) throw new IllegalArgumentException("propertyMin MUST be lower for all values of Edge data"); //If the properties are not set correctly then this function will output nonsense.
-    graph.edges.filter(edge => propertyMax > edge.attr && propertyMin < edge.attr)
-  }
+//  def edgesWithProperty[VD: ClassTag](graph: Graph[VD, EdgeData], propertyMin: EdgeData, propertyMax: EdgeData): RDD[Edge[EdgeData]] = {
+//    if(propertyMin > propertyMax || !(propertyMin < propertyMax || propertyMax < propertyMin)) throw new IllegalArgumentException("propertyMin MUST be lower for all values of Edge data"); //If the properties are not set correctly then this function will output nonsense.
+//    graph.edges.filter(edge => propertyMax > edge.attr && propertyMin < edge.attr)
+//  }
 }
