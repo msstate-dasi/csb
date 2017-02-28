@@ -287,7 +287,7 @@ object Benchmark {
     }
 
     val seed = Util.time( "Load seed graph", {
-      val seed = graphPs.loadGraph("seed")
+      val seed = graphPs.loadGraph(params.seed)
       println("Vertices #: " + seed.numVertices + ", Edges #: " + seed.numEdges)
       seed
     } )
