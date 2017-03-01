@@ -1,23 +1,17 @@
 package edu.msstate.dasi.csb
 
 import java.io._
-import java.net.InetAddress
-
-import org.apache.spark.SparkContext
 
 import scala.util.Random
 
-/**
- * Created by scordio on 12/17/16.
- */
 class DataDistributions(augLogPath: String) extends Serializable{
   private val bucketSize = 10
 
   private val fileDir = "."
 
-  private var inDegreeDistribution :Array[(String, Double)] = Array.empty
-  private var outDegreeDistribution :Array[(String, Double)] = Array.empty
-  private var degreeDistribution :Array[(String, Double)] = Array.empty
+//  private var inDegreeDistribution :Array[((String, Integer), Double)] = Array.empty
+//  private var outDegreeDistribution :Array[((String, Integer), Double)] = Array.empty
+//  private var degreeDistribution :Array[((String, Integer), Double)] = Array.empty
 
   private var inEdgesDistribution :Array[(Long, Double)] = Array.empty
   private var outEdgesDistribution :Array[(Long, Double)] = Array.empty
@@ -63,41 +57,42 @@ class DataDistributions(augLogPath: String) extends Serializable{
   ) {
     readDistributionsFromDisk(fileDir)
   } else {
-    if (inDegreeDistribution.isEmpty) {
+    if (inEdgesDistribution.isEmpty) {
       val augLogFile = sc.textFile(augLogPath)
 
-      val augLogFiltered = augLogFile.mapPartitionsWithIndex { (idx, lines) => if (idx == 0) lines.drop(8) else lines }.filter(isTcpUdp)
+      val augLogFiltered = augLogFile.mapPartitionsWithIndex { (idx, lines) => if (idx == 0) lines.drop(8) else lines }
+        .filter(isInet4).filter(isAllowedProto)
 
       /* Cache augLog because it is the basis for any distribution computation */
       val augLog = augLogFiltered.map(line => parseAugLog(line)).persist()
 
-      // # of incoming edges per vertex
-      val inEdgesPerNode = augLog.map(entry => (entry.respIp, 1L)).reduceByKey(_ + _).persist()
-      val inEdgesTotal = inEdgesPerNode.map(_._2).reduce(_ + _)
-      inDegreeDistribution = inEdgesPerNode.map(x => (x._1, x._2 / inEdgesTotal.toDouble)).sortBy(_._2, false).collect()
+//      // # of incoming edges per vertex
+//      val inEdgesPerNode = augLog.map(entry => ( (entry.respIp, entry.respPort), 1L )).reduceByKey(_ + _).persist()
+//      val inEdgesTotal = inEdgesPerNode.map(_._2).reduce(_ + _)
+//      inDegreeDistribution = inEdgesPerNode.map(x => (x._1, x._2 / inEdgesTotal.toDouble)).sortBy(_._2, false).collect()
+//
+//      // # of outgoing edges per vertex
+//      val outEdgesPerNode = augLog.map(entry => ( (entry.origIp, entry.origPort), 1L)).reduceByKey(_ + _).persist()
+//      val outEdgesTotal = outEdgesPerNode.map(_._2).reduce(_ + _)
+//      outDegreeDistribution = outEdgesPerNode.map(x => (x._1, x._2 / outEdgesTotal.toDouble)).sortBy(_._2, false).collect()
+//
+//      // # of incoming and outgoing edges per each vertex
+//      val edgesPerNode = inEdgesPerNode.union(outEdgesPerNode).reduceByKey(_ + _)
+//      val edgesTotal = inEdgesTotal + outEdgesTotal
+//      degreeDistribution = edgesPerNode.map(x => (x._1, x._2 / edgesTotal.toDouble)).sortBy(_._2, false).collect()
 
-      // # of outgoing edges per vertex
-      val outEdgesPerNode = augLog.map(entry => (entry.origIp, 1L)).reduceByKey(_ + _).persist()
-      val outEdgesTotal = outEdgesPerNode.map(_._2).reduce(_ + _)
-      outDegreeDistribution = outEdgesPerNode.map(x => (x._1, x._2 / outEdgesTotal.toDouble)).sortBy(_._2, false).collect()
+//      outEdgesPerNode.unpersist()
+//      inEdgesPerNode.unpersist()
 
-      // # of incoming and outgoing edges per each vertex
-      val edgesPerNode = inEdgesPerNode.union(outEdgesPerNode).reduceByKey(_ + _)
-      val edgesTotal = inEdgesTotal + outEdgesTotal
-      degreeDistribution = edgesPerNode.map(x => (x._1, x._2 / edgesTotal.toDouble)).sortBy(_._2, false).collect()
-
-      outEdgesPerNode.unpersist()
-      inEdgesPerNode.unpersist()
-
-      // # of edges per (respIp -> origIp)
-      val inEdgesPerPair = augLog.map(entry => ((entry.respIp, entry.origIp), 1L)).reduceByKey(_ + _)
+      // # of edges per (respIp,respPort -> origIp,origPort)
+      val inEdgesPerPair = augLog.map(entry => (( (entry.respIp, entry.respPort), (entry.origIp, entry.origPort) ), 1L)).reduceByKey(_ + _)
       val pairsPerInEdgeMultiplicity = inEdgesPerPair.map(x => (x._2, 1L)).reduceByKey(_ + _).sortBy(_._2, false).persist()
       val inPairsTotal = pairsPerInEdgeMultiplicity.map(_._2).reduce(_ + _)
       inEdgesDistribution = pairsPerInEdgeMultiplicity.map(x => (x._1, x._2 / inPairsTotal.toDouble)).sortBy(_._2, false).collect()
       pairsPerInEdgeMultiplicity.unpersist()
 
-      // # of edges per (origIp -> respIp)
-      val outEdgesPerPair = augLog.map(entry => ((entry.origIp, entry.respIp), 1L)).reduceByKey(_ + _)
+      // # of edges per (origIp,origPort -> respIp,respPort)
+      val outEdgesPerPair = augLog.map(entry => (( (entry.origIp, entry.origPort), (entry.respIp, entry.respPort) ), 1L)).reduceByKey(_ + _)
       val pairsPerOutEdgeMultiplicity = outEdgesPerPair.map(x => (x._2, 1L)).reduceByKey(_ + _).sortBy(_._2, false).persist()
       val pairsTotal = pairsPerOutEdgeMultiplicity.map(_._2).reduce(_ + _)
       outEdgesDistribution = pairsPerOutEdgeMultiplicity.map(x => (x._1, x._2 / pairsTotal.toDouble)).sortBy(_._2, false).collect()
@@ -105,6 +100,8 @@ class DataDistributions(augLogPath: String) extends Serializable{
 
       // Distribution of the number of origBytes
       val edgesPerOrigBytes = augLog.map(entry => (entry.origBytes, 1L)).reduceByKey(_ + _).persist()
+      val outEdgesPerNode = augLog.map(entry => ( (entry.origIp, entry.origPort), 1L)).reduceByKey(_ + _)
+      val outEdgesTotal = outEdgesPerNode.values.sum()
       val origBytesDistributionRDD = edgesPerOrigBytes.map(x => (x._1, x._2 / outEdgesTotal.toDouble)).sortBy(_._2, false)
 
       origBytesDistribution = origBytesDistributionRDD.collect()
@@ -293,50 +290,55 @@ class DataDistributions(augLogPath: String) extends Serializable{
     writeDistributionsToDisk(fileDir)
   }
 
-
-  private def isTcpUdp(line: String): Boolean = {
-    line.contains("tcp") || line.contains("udp")
+  private def isAllowedProto(line: String): Boolean = {
+    val pieces = line.split('\t')
+    pieces(6).contains("tcp") || pieces(6).contains("udp")
   }
 
-  case class AugLogLine(ts: java.util.Date, /* uid: String, */ origIp: String, origPort: Integer, respIp: String,
-                        respPort: Integer, proto: String, service: String, duration: Double, origBytes: Long,
-                        respBytes: Long, connState: String, /* localOrig: Boolean, localResp: Boolean, */
-                        missedBytes: Long, history: String, origPkts: Long, origIpBytes: Long, respPkts: Long,
-                        respIpBytes: Long, tunnelParents: String, desc: String)
-
-  def parseAugLog(line: String) = {
+  private def isInet4(line: String): Boolean = {
     val pieces = line.split('\t')
-    val tsPieces = pieces(0).split('.')
-    val ts = new java.util.Date(tsPieces(0).toLong * 1000)
+    ! ( pieces(2).contains(':') || pieces(4).contains(':') )
+  }
+
+  private case class AugLogLine(/* ts: java.util.Date, uid: String, */ origIp: String, origPort: Integer, respIp: String,
+                        respPort: Integer, proto: String, /* service: String, */ duration: Double, origBytes: Long,
+                        respBytes: Long, connState: String, /* localOrig: Boolean, localResp: Boolean, */
+                        /* missedBytes: Long, history: String, */ origPkts: Long, origIpBytes: Long, respPkts: Long,
+                        respIpBytes: Long, /* tunnelParents: String, */ desc: String)
+
+  private def parseAugLog(line: String) = {
+    val pieces = line.split('\t')
+    // val tsPieces = pieces(0).split('.')
+    // val ts = new java.util.Date(tsPieces(0).toLong * 1000)
     //val uid = pieces(1)
     val origIp = pieces(2)
     val origPort = pieces(3).toInt
     val respIp = pieces(4)
     val respPort = pieces(5).toInt
     val proto = pieces(6)
-    val service = pieces(7)
+    //val service = pieces(7)
     val duration = pieces(8).toDouble
     val origBytes = pieces(9).toLong
     val respBytes = pieces(10).toLong
     val connState = pieces(11)
     //val localOrig = pieces(12).toBoolean
     //val localResp = pieces(13).toBoolean
-    val missedBytes = pieces(14).toLong
-    val history = pieces(15)
+    //val missedBytes = pieces(14).toLong
+    //val history = pieces(15)
     val origPkts = pieces(16).toLong
     val origIpBytes = pieces(17).toLong
     val respPkts = pieces(18).toLong
     val respIpBytes = pieces(19).toLong
-    val tunnelParents = pieces(20)
+    //val tunnelParents = pieces(20)
     var desc     = ""
     if(pieces.length > 21)
       {
         desc = pieces(21)
       }
-    AugLogLine(ts, origIp, origPort, respIp, respPort, proto, service, duration,
-      origBytes - origBytes % bucketSize, respBytes - respBytes % bucketSize, connState, missedBytes, history,
-      origPkts - origPkts % bucketSize, origIpBytes - origIpBytes % bucketSize, respPkts - respPkts % bucketSize,
-      respIpBytes - respIpBytes % bucketSize, tunnelParents, desc)
+    AugLogLine(origIp, origPort, respIp, respPort, proto, duration, origBytes - origBytes % bucketSize,
+      respBytes - respBytes % bucketSize, connState, origPkts - origPkts % bucketSize,
+      origIpBytes - origIpBytes % bucketSize, respPkts - respPkts % bucketSize, respIpBytes - respIpBytes % bucketSize,
+      desc)
   }
 
   def  writeDistributionsToDisk(fileDir: String) = {
@@ -406,18 +408,18 @@ class DataDistributions(augLogPath: String) extends Serializable{
   }
 
   def readDistributionsFromDisk(fileDir: String) = {
-    /* Not needed at this time
-    var ois = new ObjectInputStream(new FileInputStream(fileDir+"/"+inDegreeDistributionFileName))
-    inDegreeDistribution = ois.readObject().asInstanceOf[Array[(String, Double)]]
-    ois.close()
 
-    ois = new ObjectInputStream(new FileInputStream(fileDir+"/"+outDegreeDistributionFileName))
-    outDegreeDistribution = ois.readObject().asInstanceOf[Array[(String, Double)]]
-    ois.close()
-
-    ois = new ObjectInputStream(new FileInputStream(fileDir+"/"+degreeDistributionFileName))
-    degreeDistribution = ois.readObject().asInstanceOf[Array[(String, Double)]]
-    ois.close() */
+//    var ois = new ObjectInputStream(new FileInputStream(fileDir+"/"+inDegreeDistributionFileName))
+//    inDegreeDistribution = ois.readObject().asInstanceOf[Array[(String, Double)]]
+//    ois.close()
+//
+//    ois = new ObjectInputStream(new FileInputStream(fileDir+"/"+outDegreeDistributionFileName))
+//    outDegreeDistribution = ois.readObject().asInstanceOf[Array[(String, Double)]]
+//    ois.close()
+//
+//    ois = new ObjectInputStream(new FileInputStream(fileDir+"/"+degreeDistributionFileName))
+//    degreeDistribution = ois.readObject().asInstanceOf[Array[(String, Double)]]
+//    ois.close()
 
     var ois = new ObjectInputStream(new FileInputStream(fileDir+"/"+inEdgesDistributionFileName))
     inEdgesDistribution = ois.readObject().asInstanceOf[Array[(Long, Double)]]
