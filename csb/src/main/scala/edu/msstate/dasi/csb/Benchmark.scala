@@ -299,15 +299,16 @@ object Benchmark {
 
     var synthesizer: GraphSynth = null
     params.mode match {
-      case "ba" => synthesizer = new BaSynth (params.partitions, params.baIter, params.numNodesPerIter)
+      case "ba" => synthesizer = new ParallelBaSynth (params.partitions, params.baIter, params.numNodesPerIter)
       case "kro" => synthesizer = new KroSynth (params.partitions, params.seedMtx, params.kroIter)
     }
 
     val synth = synthesizer.synthesize(seed, seedDists, !params.noProp)
 
     Util.time( "Save synth graph Object", graphPs.saveGraph(synth, params.outputGraphPrefix, overwrite = true))
+
     if(params.backend=="fs") {
-      Util.time("Save synth graph Text", graphPs.asInstanceOf[SparkPersistence].saveAsText(synth, params.outputGraphPrefix, overwrite = true))
+      Util.time("Save synth graph Text", graphPs.asInstanceOf[SparkPersistence].saveAsText(synth, params.outputGraphPrefix /*+ "_text"*/, overwrite = true))
     }
 
     val degVeracity = Util.time( "Degree Veracity", DegreeVeracity(seed, synth) )
