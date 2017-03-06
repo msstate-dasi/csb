@@ -35,31 +35,28 @@ class ParallelBaSynth(partitions: Int, baIter: Long, nodesPerIter: Long) extends
 
   /**
     *
-    * @param inVertices RDD of vertices and their edu.msstate.dasi.VertexData
-    * @param inEdges RDD of edges and their edu.msstate.dasi.EdgeData
+    * @param seed Seed graph
     * @param iter Number of iterations to perform BA
     * @return Graph containing vertices + edu.msstate.dasi.VertexData, edges + edu.msstate.dasi.EdgeData
     */
-  private def generateBAGraph(inVertices: RDD[(VertexId, VertexData)], inEdges: RDD[Edge[EdgeData]], seedDists: DataDistributions, iter: Long, nodesPerIter: Long, withProperties: Boolean): Graph[VertexData,EdgeData] =
+  private def generateBAGraph(seed: Graph[VertexData, EdgeData], seedDists: DataDistributions, iter: Long, nodesPerIter: Long): Graph[VertexData,EdgeData] =
   {
-    // TODO: this method shouldn't have the withProperties parameter, we have to check why it's used in the algorithm
-
-    var nodeIndices = Array.empty[VertexId]
-    inVertices.foreach(record => nodeIndices :+= record._1)
-    var totalVertices: Long = inVertices.count()
-    val nEdges: Long = inEdges.count()
-    val localPartitions = math.min(nEdges, partitions).toInt
-    val recordsPerPartition = math.min( (nEdges / localPartitions).toInt, Int.MaxValue )
-    var edgeList: RDD[Edge[EdgeData]] = inEdges
+//    var nodeIndices = Array.empty[VertexId]
+//    seed.vertices.foreach(record => nodeIndices :+= record._1)
+    var totalVertices: Long = seed.vertices.count()
+//    val nEdges: Long = seed.edges.count()
+//    val localPartitions = math.min(nEdges, partitions).toInt
+//    val recordsPerPartition = math.min( (nEdges / localPartitions).toInt, Int.MaxValue )
+    var edgeList: RDD[Edge[EdgeData]] = seed.edges
 
     //var averageNumOfEdges = if (nEdges / totalVertices > 0L) 2L * (nEdges / totalVertices)
     //else { 2L }
 
-    var edgesToAdd: Array[Edge[EdgeData]] = Array.empty[Edge[EdgeData]]
+//    var edgesToAdd: Array[Edge[EdgeData]] = Array.empty[Edge[EdgeData]]
 
     var nPI = nodesPerIter
 
-    val iters: Int = if (iter > nodesPerIter) math.ceil(iter.toDouble / nodesPerIter).toInt
+    val iters = if (iter > nodesPerIter) math.ceil(iter.toDouble / nodesPerIter).toInt
     else {
       nPI = iter; 1
     }
@@ -67,12 +64,12 @@ class ParallelBaSynth(partitions: Int, baIter: Long, nodesPerIter: Long) extends
     val dataDistBroadcast = sc.broadcast(seedDists)
     //val averageNumOfEdgesBC = sc.broadcast(averageNumOfEdges)
 
-    for (i <- 1 to iters)
+    for (_ <- 1 to iters)
     {
       //println("Entered the loop")
       totalVertices += 1
-      var newVertices = totalVertices to (totalVertices + nPI.toInt) toList
-      var newVerticesRDD = sc.parallelize(newVertices)
+      val newVertices = totalVertices to (totalVertices + nPI.toInt) toList
+      val newVerticesRDD = sc.parallelize(newVertices)
       val oldEdgeList = edgeList
       val someAry:Array[Edge[EdgeData]] = oldEdgeList.collect
       var nEdges : Long = oldEdgeList.count()
@@ -82,7 +79,6 @@ class ParallelBaSynth(partitions: Int, baIter: Long, nodesPerIter: Long) extends
       val curEdges: RDD[Edge[EdgeData]] = newVerticesRDD.flatMap{ x =>
         val r = Random
         val r2 = Random
-        val r3 = Random
         var attachTo: Long = 0L
         val numOutEdgesToAdd = Math.abs (r2.nextLong () ) % dataDistBroadcast.value.getOutEdgeSample + 1 //averageNumOfEdgesBC.value + 1//
 
@@ -111,8 +107,6 @@ class ParallelBaSynth(partitions: Int, baIter: Long, nodesPerIter: Long) extends
         subsetEdges
       }
 
-
-
       edgeList = oldEdgeList.union(curEdges).distinct().coalesce(partitions).setName("edgeList#" + curEdges).persist(StorageLevel.MEMORY_AND_DISK)
       nEdges = edgeList.count()
 
@@ -128,7 +122,6 @@ class ParallelBaSynth(partitions: Int, baIter: Long, nodesPerIter: Long) extends
     //.coalesce(partitions).setName("finalEdgeList").persist(StorageLevel.MEMORY_AND_DISK)
     println("Total # of Edges (including multi edges): " + edgeList.count())
 
-
     Graph.fromEdges(
       edgeList,
       null.asInstanceOf[VertexData],
@@ -142,6 +135,6 @@ class ParallelBaSynth(partitions: Int, baIter: Long, nodesPerIter: Long) extends
     println("Running BA with " + baIter + " iterations.")
     println()
 
-    generateBAGraph(seed.vertices, seed.edges, seedDists, baIter.toLong, nodesPerIter, withProperties = true)
+    generateBAGraph(seed, seedDists, baIter, nodesPerIter)
   }
 }
