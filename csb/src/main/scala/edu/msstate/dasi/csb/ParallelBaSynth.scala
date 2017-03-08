@@ -107,7 +107,7 @@ class ParallelBaSynth(partitions: Int, baIter: Long, nodesPerIter: Long) extends
         subsetEdges
       }
 
-      edgeList = oldEdgeList.union(curEdges).distinct().coalesce(partitions).setName("edgeList#" + curEdges).persist(StorageLevel.MEMORY_AND_DISK)
+      edgeList = oldEdgeList.union(curEdges.distinct()).coalesce(partitions).setName("edgeList#" + curEdges).persist(StorageLevel.MEMORY_AND_DISK)
       nEdges = edgeList.count()
 
       oldEdgeList.unpersist()
