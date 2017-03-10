@@ -6,7 +6,6 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, FileUtil, Path}
 import org.apache.spark.graphx._
 import org.apache.spark.rdd.RDD
-import org.apache.spark.storage.StorageLevel
 
 import scala.collection.mutable
 import scala.reflect.ClassTag

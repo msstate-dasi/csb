@@ -1,7 +1,7 @@
 package edu.msstate.dasi.csb
 
 import org.apache.log4j.{Level, Logger}
-import org.apache.spark.graphx.Edge
+
 import scopt.OptionParser
 
 object Benchmark {
@@ -31,6 +31,7 @@ object Benchmark {
                            */
                          noProp_desc: String = "Specify whether to generate random properties during generation or not.",
                          numNodesPerIter_desc: String = "The number of nodes to add to the graph per iteration.",
+                         fractionPerIter_desc: String = "The fraction of vertices to add to the graph per iteration.",
                          baIter_desc: String = "Number of iterations for Barabasi–Albert model.",
 
                          /**
@@ -45,7 +46,12 @@ object Benchmark {
                          veracity_Desc: String = "The veracity metric you want to compute. Options include: degree, inDegree, outDegree, pageRank.",
                          veracity_File: String = "The file to save the metric information.",
                          seed_Metric: String = "Serialized file to use as a seed.",
-                         synth_Metric: String = "Serialized file to use as a synth."
+                         synth_Metric: String = "Serialized file to use as a synth.",
+
+                         /**
+                           * Workload Arguments
+                           */
+                         graph: String = "The input graph."
                        )
 
   case class Params(
@@ -73,6 +79,7 @@ object Benchmark {
                        */
                      noProp: Boolean = false,
                      numNodesPerIter: Long = 120,
+                     fractionPerIter: Double = 0.1,
                      seed: String = "seed",
                      baIter: Long = 1000,
 
@@ -83,12 +90,16 @@ object Benchmark {
                      kroIter: Int = 10,
 
                      /**
-                       * veracity arguements
+                       * Veracity Arguments
                        */
                      metric: String = "hop-plot",
                      metricSave: String = "hop-plotSave",
-                     synth: String = "synth"
+                     synth: String = "synth",
 
+                     /**
+                       * Workload Arguments
+                       */
+                     graph: String = ""
                    )
 
 
@@ -162,6 +173,9 @@ object Benchmark {
           opt[Long]("nodes-per-iter")
             .text(s"${h.numNodesPerIter_desc} default: ${dP.numNodesPerIter}")
             .action((x, c) => c.copy(numNodesPerIter = x)),
+          opt[Double]("fraction-per-iter")
+            .text(s"${h.fractionPerIter_desc} default: ${dP.fractionPerIter}")
+            .action((x, c) => c.copy(fractionPerIter = x)),
           arg[String]("seed")
             .text(s"${h.seed_desc} default: ${dP.seed}")
             .required()
@@ -195,8 +209,11 @@ object Benchmark {
             .validate(x => if (x > 0) success else failure("Iteration count must be greater than 0."))
             .action((x, c) => c.copy(kroIter = x))
         )
-      note("\n")
 
+      /**
+       * Veracity Arguments
+       */
+      note("\n")
       cmd("ver").action((_, c) => c.copy(mode = "ver"))
         .text(s"Compute veracity metrics on a given vertices and edge seed files")
         .children(
@@ -216,6 +233,19 @@ object Benchmark {
             .text(s"${h.veracity_File}")
             .required()
             .action((x,c) => c.copy(metricSave = x))
+        )
+
+      /**
+       * Workload Arguments
+       */
+      note("\n")
+      cmd("workload").action((_, c) => c.copy(mode = "workload"))
+        .text(s"Execute the workloads on an existing graph")
+        .children(
+          arg[String]("graph")
+              .text(s"${h.graph} default: ${dP.graph}")
+              .required()
+              .action((x,c) => c.copy(graph = x))
         )
 
     }
@@ -248,6 +278,7 @@ object Benchmark {
       case "ba" => run_synth(params)
       case "kro" => run_synth(params)
       case "ver" => run_ver(params)
+      case "workload" => run_workload(params)
       case _ => sys.exit(1)
     }
 
@@ -292,14 +323,11 @@ object Benchmark {
       seed
     } )
 
-//    val neo4jPs = new Neo4jPersistence()
-//    neo4jPs.saveGraph(seed, "seed")
-
     val seedDists = new DataDistributions(params.augLog)
 
     var synthesizer: GraphSynth = null
     params.mode match {
-      case "ba" => synthesizer = new ParallelBaSynth (params.partitions, params.baIter, params.numNodesPerIter)
+      case "ba" => synthesizer = new ParallelBaSynth (params.partitions, params.baIter, params.numNodesPerIter, params.fractionPerIter)
       case "kro" => synthesizer = new KroSynth (params.partitions, params.seedMtx, params.kroIter)
     }
 
@@ -310,6 +338,9 @@ object Benchmark {
     if(params.backend=="fs") {
       Util.time("Save synth graph Text", graphPs.asInstanceOf[SparkPersistence].saveAsText(synth, params.outputGraphPrefix + "_text", overwrite = true))
     }
+
+//    val neo4jPs = new Neo4jPersistence()
+//    neo4jPs.saveAsCsv(synth, "synth-csv", overwrite = true)
 
     val degVeracity = Util.time( "Degree Veracity", DegreeVeracity(seed, synth) )
     println(s"Degree Veracity: $degVeracity")
@@ -364,6 +395,42 @@ object Benchmark {
 
       case _ => println("Invalid metric:" + params.metric)
     }
+
+    true
+  }
+
+  def run_workload(params: Params): Boolean = {
+    var graphPs = null.asInstanceOf[GraphPersistence]
+    params.backend match {
+      case "fs" => graphPs = new SparkPersistence()
+      case "neo4j" => graphPs = new Neo4jPersistence()
+    }
+
+    val graph = Util.time( "Load graph", graphPs.loadGraph(params.graph) )
+
+    Util.time( "Count vertices", SparkWorkload.countVertices(graph) )
+    Util.time( "Count edges", SparkWorkload.countEdges(graph) )
+
+    Util.time( "Neighbors", SparkWorkload.neighbors(graph) )
+    Util.time( "In-neighbors", SparkWorkload.inNeighbors(graph) )
+    Util.time( "Out-neighbors", SparkWorkload.outNeighbors(graph) )
+
+    Util.time( "In-edges", SparkWorkload.inEdges(graph) )
+    Util.time( "Out-edges", SparkWorkload.outEdges(graph) )
+
+    Util.time( "Degree", SparkWorkload.degree(graph) )
+    Util.time( "In-degree", SparkWorkload.inDegree(graph) )
+    Util.time( "Out-degree", SparkWorkload.outDegree(graph) )
+
+    Util.time( "Connected Components", SparkWorkload.connectedComponents(graph) )
+    Util.time( "Strongly Connected Components", SparkWorkload.stronglyConnectedComponents(graph, 1) )
+    Util.time( "PageRank", SparkWorkload.pageRank(graph) )
+    Util.time( "Triangle Counting", SparkWorkload.triangleCount(graph) )
+    Util.time( "Betweenness Centrality", SparkWorkload.betweennessCentrality(graph, 10) )
+//    Util.time( "Closeness Centrality", SparkWorkload.closenessCentrality(vertex, graph) )
+//    Util.time( "Breadth-first Search", SparkWorkload.bfs(graph, src, dst) )
+//    Util.time( "Breadth-first Search", SparkWorkload.ssspSeq(graph, src, dst) )
+//    Util.time( "Breadth-first Search", SparkWorkload.ssspNum(graph, src, dst) )
 
     true
   }

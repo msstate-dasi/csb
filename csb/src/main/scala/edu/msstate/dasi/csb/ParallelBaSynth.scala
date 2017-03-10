@@ -1,36 +1,98 @@
 package edu.msstate.dasi.csb
 
-import org.apache.spark.graphx.{Graph, Edge, VertexId}
+import org.apache.spark.graphx.{Edge, Graph, VertexId}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
 import scala.util.Random
 
-/**
-  * Created by spencer on 11/3/16.
-  */
-class ParallelBaSynth(partitions: Int, baIter: Long, nodesPerIter: Long) extends GraphSynth {
+class ParallelBaSynth(partitions: Int, baIter: Long, nodesPerIter: Long, fractionPerIter: Double) extends GraphSynth {
 
   /**
-    *  Computes the RDD of the additional edges that should be added accordingly to the edge distribution.
-    *
-    *  @param edgeList The RDD of the edges returned by the Kronecker algorithm.
-    *  @return The RDD of the additional edges that should be added to the one returned by Kronecker algorithm.
-    */
-  private def getMultiEdgesRDD(edgeList: RDD[Edge[EdgeData]], seedDists: DataDistributions): RDD[Edge[EdgeData]] = {
-    val dataDistBroadcast = sc.broadcast(seedDists)
+   * Generates a graph using a parallel implementation of the Barabási–Albert algorithm.
+   */
+  def parallelBa(seed: Graph[VertexData, EdgeData], seedDists: DataDistributions, iter: Long, fractionPerIter: Double): Graph[VertexData,EdgeData] = {
+    /*
+     * GraphX does not offer a way to generate a unique ID for new vertices on an existing graph, therefore we must
+     * ensure that all the existing IDs are ordered and as close as possible between them, so as to be able to pick new
+     * vertices IDs starting from the highest unused ID.
+     *
+     * We use zipWithUniqueId() instead of zipWithIndex() because the former does not trigger a spark job.
+     */
 
-    val multiEdgeList = edgeList.flatMap { edge =>
-      val multiEdgesNum = dataDistBroadcast.value.getOutEdgeSample
-      var multiEdges = Array.empty[Edge[EdgeData]]
+    // Map each vertex ID to a new ID
+    val verticesIdMap = seed.vertices
+      .keys // Discard vertices data
+      .zipWithUniqueId() // (id) => (id, newId)
+      .persist(StorageLevel.MEMORY_AND_DISK) // The result will be used multiple times
 
-      for ( _ <- 1L until multiEdgesNum.toLong ) {
-        multiEdges :+= Edge[EdgeData](edge.srcId, edge.dstId)
+    var nextVertexId = verticesIdMap.values.max()
+
+    // Update vertex IDs in the existing edges according to verticesIdMap
+    var edges = seed.edges
+      .map( edge => (edge.srcId, edge.dstId) )  // Discard edge data and build a PairRDD[(srcId, dstId)]
+      .join(verticesIdMap).values // (srcId, dstId) => ( srcId, (dstId, newSrcId) ) => (dstId, newSrcId)
+      .join(verticesIdMap).values // (dstId, newSrcId) => ( dstId, (newSrcId, newDstId) ) => (newSrcId, newDstId)
+      .map { case (seqSrcId, seqDstId) => Edge[EdgeData](seqSrcId, seqDstId)} // (newSrcId, newDstId) => Edge
+      .persist(StorageLevel.MEMORY_AND_DISK) // The result will be used multiple times
+
+    var oldRawEdges = sc.emptyRDD[(VertexId, VertexId)]
+    var oldEdges = sc.emptyRDD[Edge[EdgeData]]
+
+    for (_ <- 1L to iter ) {
+      /*
+       * The following statement picks random edges and, for each picked edge, creates a new edge which starts from a
+       * new vertex and arrives to the destination vertex of the picked edge.
+       */
+      val newRawEdges = edges.sample(withReplacement = true, fractionPerIter) // Extract a fraction of the edges
+        .repartition(partitions) // Balance the RDD among the workers
+        .zipWithUniqueId() // Edge => (Edge, baseId)
+        .map { case ( edge, id ) =>
+          if (Random.nextBoolean) {
+            (nextVertexId + id, edge.srcId) // (Edge, baseId) => (newId, srcId)
+          } else {
+            (nextVertexId + id, edge.dstId) // (Edge, baseId) => (newId, dstId)
+          } }
+        .persist(StorageLevel.MEMORY_AND_DISK)
+
+      // Keep track of the max vertex ID used
+      nextVertexId += newRawEdges.keys.max()
+
+      // Un-persist intermediate raw edges from the previous iteration
+      oldRawEdges.unpersist()
+      oldRawEdges = newRawEdges
+
+      // Un-persist intermediate edges from the previous iteration
+      oldEdges.unpersist()
+      oldEdges = edges
+
+      val seedDistsBroadcast = sc.broadcast(seedDists)
+
+      // Create incoming/outgoing edges in place of each new raw edge
+      val newEdges = newRawEdges.flatMap { case (newId, dstId) =>
+        var multiEdges = Array.empty[Edge[EdgeData]]
+
+        val outEdgesNum = seedDistsBroadcast.value.getOutEdgeSample
+        val inEdgesNum = seedDistsBroadcast.value.getInEdgeSample
+
+        for ( _ <- 1L until outEdgesNum ) multiEdges :+= Edge[EdgeData](newId, dstId)
+        for ( _ <- 1L until inEdgesNum ) multiEdges :+= Edge[EdgeData](dstId, newId)
+
+        multiEdges
       }
 
-      multiEdges
+      // Merge new edges with existing ones
+      edges = edges.union(newEdges).coalesce(partitions).persist(StorageLevel.MEMORY_AND_DISK)
     }
-    multiEdgeList
+
+    verticesIdMap.unpersist()
+
+    Graph.fromEdges(
+      edges,
+      null.asInstanceOf[VertexData],
+      StorageLevel.MEMORY_AND_DISK,
+      StorageLevel.MEMORY_AND_DISK
+    )
   }
 
   /**
@@ -72,21 +134,21 @@ class ParallelBaSynth(partitions: Int, baIter: Long, nodesPerIter: Long) extends
       val newVerticesRDD = sc.parallelize(newVertices)
       val oldEdgeList = edgeList
       val someAry:Array[Edge[EdgeData]] = oldEdgeList.collect
-      var nEdges : Long = oldEdgeList.count()
+      var nEdges = oldEdgeList.count()
 
       val inEdgesIndexedBroadcast = sc.broadcast(someAry)
 
       val curEdges: RDD[Edge[EdgeData]] = newVerticesRDD.flatMap{ x =>
         val r = Random
         val r2 = Random
-        var attachTo: Long = 0L
+        var attachTo = 0L
         val numOutEdgesToAdd = Math.abs (r2.nextLong () ) % dataDistBroadcast.value.getOutEdgeSample + 1 //averageNumOfEdgesBC.value + 1//
 
         //Add Out Edges
         var subsetEdges = Array.empty[Edge[EdgeData]]
         for ( _ <- 1L to numOutEdgesToAdd )
         {
-          val attachToEdge: Int = Math.abs (r.nextInt () ) % nEdges.toInt
+          val attachToEdge = Math.abs (r.nextInt () ) % nEdges.toInt
           val edge: Edge[EdgeData] = inEdgesIndexedBroadcast.value(attachToEdge)//inEdgesIndexedRDD.lookup(attachToEdge).last
           attachTo = edge.srcId
           subsetEdges :+= Edge[EdgeData](x, attachTo)
@@ -97,7 +159,7 @@ class ParallelBaSynth(partitions: Int, baIter: Long, nodesPerIter: Long) extends
         //IN DEGREE
         for ( _ <- 1L to numInEdgesToAdd )
         {
-          val attachToEdge: Int = Math.abs (r.nextInt () ) % nEdges.toInt
+          val attachToEdge = Math.abs (r.nextInt () ) % nEdges.toInt
           val edge: Edge[EdgeData] = inEdgesIndexedBroadcast.value(attachToEdge)
           attachTo = edge.srcId
           subsetEdges :+= Edge[EdgeData](attachTo, x)
@@ -135,6 +197,7 @@ class ParallelBaSynth(partitions: Int, baIter: Long, nodesPerIter: Long) extends
     println("Running BA with " + baIter + " iterations.")
     println()
 
-    generateBAGraph(seed, seedDists, baIter, nodesPerIter)
+//    generateBAGraph(seed, seedDists, baIter, nodesPerIter)
+    parallelBa(seed, seedDists, baIter, fractionPerIter)
   }
 }
