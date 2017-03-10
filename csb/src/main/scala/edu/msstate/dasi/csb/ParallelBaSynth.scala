@@ -11,7 +11,7 @@ class ParallelBaSynth(partitions: Int, baIter: Long, nodesPerIter: Long, fractio
   /**
    * Generates a graph using a parallel implementation of the Barabási–Albert algorithm.
    */
-  def parallelBa(seed: Graph[VertexData, EdgeData], seedDists: DataDistributions, iter: Long, fractionPerIter: Double): Graph[VertexData,EdgeData] = {
+  private def parallelBa(seed: Graph[VertexData, EdgeData], seedDists: DataDistributions, iter: Long, fractionPerIter: Double): Graph[VertexData,EdgeData] = {
     /*
      * GraphX does not offer a way to generate a unique ID for new vertices on an existing graph, therefore we must
      * ensure that all the existing IDs are ordered and as close as possible between them, so as to be able to pick new
@@ -192,7 +192,7 @@ class ParallelBaSynth(partitions: Int, baIter: Long, nodesPerIter: Long, fractio
     )
   }
 
-  def genGraph(seed: Graph[VertexData, EdgeData], seedDists : DataDistributions): Graph[VertexData, EdgeData] = {
+  protected def genGraph(seed: Graph[VertexData, EdgeData], seedDists : DataDistributions): Graph[VertexData, EdgeData] = {
     println()
     println("Running BA with " + baIter + " iterations.")
     println()
