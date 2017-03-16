@@ -360,13 +360,13 @@ class kroneckerLL() {
     val (pid1, pid2) = (nodePerm(nid1.toInt), nodePerm(nid2.toInt))
 
 
-    if(adjArrHash(nid1.toInt).contains(nid2) != null)
+    if(adjArrHash(nid1.toInt).contains(nid2))
     {
 
       logLike += -LLMtx.getApxNoEdgeLL(pid1, pid2, kronIters) + LLMtx.getEdgeLL(pid1, pid2, kronIters)
     }
 
-    if(adjArrHash(nid2.toInt).contains(nid1) != null)
+    if(adjArrHash(nid2.toInt).contains(nid1))
     {
       logLike += -LLMtx.getApxNoEdgeLL(pid2, pid1, kronIters) + LLMtx.getEdgeLL(pid2, pid1, kronIters)
     }
@@ -379,12 +379,12 @@ class kroneckerLL() {
 
 
 //    if(edgeList.contains((nid1, nid2)))
-    if(adjArrHash(nid1.toInt).contains(nid2) != null)
+    if(adjArrHash(nid1.toInt).contains(nid2))
     {
       logLike += +LLMtx.getApxNoEdgeLL(nnid1, nnid2, kronIters) - LLMtx.getEdgeLL(nnid1, nnid2, kronIters)
     }
 //    if(edgeList.contains((nid2, nid1)))
-    if(adjArrHash(nid2.toInt).contains(nid1) != null)
+    if(adjArrHash(nid2.toInt).contains(nid1))
     {
       logLike += +LLMtx.getApxNoEdgeLL(nnid2, nnid1, kronIters) - LLMtx.getEdgeLL(nnid2, nnid1, kronIters)
     }
