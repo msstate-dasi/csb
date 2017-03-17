@@ -164,58 +164,42 @@ object SparkWorkload extends Workload {
   }
 
   /**
+   * Computes the betweenness centrality of a graph given a max k value.
+   *
    * Credits: Daniel Marcous (https://github.com/dmarcous/spark-betweenness/blob/master/src/main/scala/com/centrality/kBC/KBetweenness.scala)
-   * Computes the betweenness centrality of a graph given a max k value
    *
    * @param graph The input graph
    * @param k The maximum number of hops to compute
-   * @tparam VD Node attribute type for input graph
-   * @tparam ED Edge attribute type for input graph
    * @return Graph containing the betweenness double values
    */
   def betweennessCentrality[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], k: Int): Graph[Double, Double] = {
     KBetweenness.run(graph, k)
   }
 
-  /***
-    * Returns the closeness centrality of a node using the formula N/(sum(distances)).
-    * @param vertex The vertext to calculate centraility
-    * @param graph the graph the vertex exists in
-    * @tparam VD reflection.  We don't care about the data
-    * @tparam ED reflection.  We don't care about the data
-    * @return
-    */
-  def closenessCentrality[VD: ClassTag, ED: ClassTag](vertex: VertexId, graph: Graph[VD, ED]): Double =
-  {
+  /**
+   * Computes the closeness centrality of a node using the formula N/(sum(distances)).
+   */
+  def closenessCentrality[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], vertex: VertexId): Double = {
     ClosenessCentrality.getClosenessOfVert(vertex, graph)
   }
 
-  /***
-    * This returns the shortest path from srcVertex to destVertex.  By returning in this case we mean returning a list of the vertexId's from srcVertex to destVertex by following the least number of edges possible.
-    * @param graph the graph
-    * @param srcVertex source vertex
-    * @param destVertex destination vertex
-    * @tparam VD reflection.  We don't care about the property that could be here
-    * @tparam ED reflection.  We don't care about the property that could be here
-    * @return
-    */
-  def ssspSeq[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], srcVertex: VertexId, destVertex: VertexId): Seq[VertexId] =
-  {
-    bfs(graph, srcVertex, destVertex)
+  /**
+   * Computes the shortest path from a source vertex to a destination vertex.
+   *
+   * By computing in this case we mean returning a list of the vertexId's from srcVertex to destVertex by following the
+   * least number of edges possible.
+   */
+  def ssspSeq[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], srcVertex: VertexId, dstVertex: VertexId): Seq[VertexId] = {
+    bfs(graph, srcVertex, dstVertex)
   }
 
-  /***
-    * The same as the other SSSP but we return the number of hops it takes to go from the src node to dest node
-    * @param graph
-    * @param srcVertex
-    * @param destVertex
-    * @tparam VD
-    * @tparam ED
-    * @return
-    */
-  def ssspNum[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], srcVertex: VertexId, destVertex: VertexId): Long =
-  {
-    bfs(graph, srcVertex, destVertex).size - 1
+  /**
+   * Computes the shortest path from a source vertex to a destination vertex.
+   *
+   * The same as the above SSSP but we return the number of hops it takes to go from the src node to dest node.
+   */
+  def ssspNum[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], srcVertex: VertexId, dstVertex: VertexId): Long = {
+    bfs(graph, srcVertex, dstVertex).size - 1
   }
 
   /**

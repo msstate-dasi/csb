@@ -132,6 +132,24 @@ object Neo4jWorkload extends Workload {
   def betweennessCentrality[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], k: Int): Graph[Double, Double] = ???
 
   /**
+   * Computes the closeness centrality of a node using the formula N/(sum(distances)).
+   */
+  def closenessCentrality[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], vertex: VertexId): Double = ???
+
+  /**
+   * Computes the shortest path from a source vertex to a destination vertex.
+   *
+   * By computing in this case we mean returning a list of the vertexId's from srcVertex to destVertex by following the
+   * least number of edges possible.
+   */
+  def ssspSeq[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], srcVertex: VertexId, dstVertex: VertexId): Seq[VertexId] = ???
+
+  /** *
+   * Computes the shortest path from a source vertex to a destination vertex.
+   *
+   * The same as the above SSSP but we return the number of hops it takes to go from the src node to dest node. */
+  def ssspNum[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], srcVertex: VertexId, dstVertex: VertexId): VertexId = ???
+  /**
    * Finds all edges with a given property.
    */
   def edgesWithProperty[VD: ClassTag](graph: Graph[VD, EdgeData], filter: Edge[EdgeData] => Boolean): RDD[Edge[EdgeData]] = ???
