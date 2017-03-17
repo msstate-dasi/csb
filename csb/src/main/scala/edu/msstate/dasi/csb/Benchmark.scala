@@ -323,6 +323,11 @@ object Benchmark {
       seed
     } )
 
+//    Util.time( "Neo4j Importer", Neo4jImporter(seed) )
+
+//    val neo4jPs = new Neo4jPersistence()
+//    neo4jPs.useImportTool(seed, "seed", overwrite = true)
+
     val seedDists = new DataDistributions(params.augLog)
 
     var synthesizer: GraphSynth = null
@@ -335,12 +340,9 @@ object Benchmark {
 
     Util.time( "Save synth graph Object", graphPs.saveGraph(synth, params.outputGraphPrefix, overwrite = true))
 
-    if(params.backend=="fs") {
+    if ( params.backend == "fs" ) {
       Util.time("Save synth graph Text", graphPs.asInstanceOf[SparkPersistence].saveAsText(synth, params.outputGraphPrefix + "_text", overwrite = true))
     }
-
-//    val neo4jPs = new Neo4jPersistence()
-//    neo4jPs.saveAsCsv(synth, "synth-csv", overwrite = true)
 
     val degVeracity = Util.time( "Degree Veracity", DegreeVeracity(seed, synth) )
     println(s"Degree Veracity: $degVeracity")

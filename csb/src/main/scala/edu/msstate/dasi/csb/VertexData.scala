@@ -21,5 +21,5 @@ object VertexData {
 
   def toNullMap: Map[String, Any] = Map.empty
 
-  def neo4jTemplate(prefix: String): String = ""
+  def neo4jQueryTemplate(prefix: String): String = ""
 }
