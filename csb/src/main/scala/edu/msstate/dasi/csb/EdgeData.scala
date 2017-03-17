@@ -32,16 +32,8 @@ case class EdgeData(/* ts: Date, */
                     respIpBytes: Long = Long.MinValue,
                     /* tunnelParents: String, */
                     desc: String = "") {
-
-
-  def toNeo4jString: String = {
-    s"proto:'$proto', duration:$duration, origBytes:$origBytes, respBytes:$respBytes, connState:'$connState', " +
-      s"origPkts:$origPkts, origIpBytes:$origIpBytes, respPkts:$respPkts, respIpBytes:$respIpBytes, desc:'$desc'"
-  }
-
-  def toMap: Map[String, Any] = Map("proto" -> proto, "duration" -> duration, "origBytes" -> origBytes,
-    "respBytes" -> respBytes, "connState" -> connState, "origPkts" -> origPkts, "origIpBytes" -> origIpBytes,
-    "respPkts" -> respPkts, "respIpBytes" -> respIpBytes, "desc" -> desc)
+  def toCsv: String = s"$proto,$duration,$origBytes,$respBytes,$connState,$origPkts,$origIpBytes,$respPkts," +
+    s"$respIpBytes,$desc"
 }
 
 object EdgeData {
@@ -86,12 +78,6 @@ object EdgeData {
     }
   }
 
-  def toNullMap: Map[String, Any] = Map("proto" -> null, "duration" -> null, "origBytes" -> null, "respBytes" -> null,
-    "connState" -> null, "origPkts" -> null, "origIpBytes" -> null, "respPkts" -> null, "respIpBytes" -> null,
-    "desc" -> null)
-
-  def neo4jTemplate(prefix: String): String = s"proto: $prefix.proto, duration: $prefix.duration, " +
-    s"origBytes: $prefix.origBytes, respBytes: $prefix.respBytes, connState: $prefix.connState, " +
-    s"origPkts: $prefix.origPkts, origIpBytes: $prefix.origIpBytes, respPkts: $prefix.respPkts, " +
-    s"respIpBytes: $prefix.respIpBytes, desc: $prefix.desc"
+  def neo4jCsvHeader: String = "proto,duration:double,origBytes:long,respBytes:long,connState,origPkts:long," +
+    "origIpBytes:long,respPkts:long,respIpBytes:long,desc"
 }

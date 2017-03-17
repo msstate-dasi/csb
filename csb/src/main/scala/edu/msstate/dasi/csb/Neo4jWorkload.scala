@@ -35,7 +35,7 @@ object Neo4jWorkload extends Workload {
    * Run a dynamic version of PageRank returning a graph with vertex attributes containing the
    * PageRank and edge attributes containing the normalized edge weight.
    */
-  def pageRank[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], tol: Double, resetProb: Double): Graph[Double, Double] = ???
+  def pageRank[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], tol: Double = 0.001, resetProb: Double): Graph[Double, Double] = ???
 
   /**
    * Breadth-first Search: returns the shortest directed-edge path from src to dst in the graph. If no path exists,

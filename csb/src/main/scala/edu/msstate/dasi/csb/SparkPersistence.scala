@@ -6,7 +6,7 @@ import org.apache.hadoop.fs.FileUtil
 import org.apache.spark.graphx.{Edge, Graph, VertexId}
 import org.apache.spark.storage.StorageLevel
 
-class SparkPersistence() extends GraphPersistence {
+class SparkPersistence extends GraphPersistence {
   private val vertices_suffix = "_vertices"
   private val edges_suffix = "_edges"
 
@@ -32,7 +32,7 @@ class SparkPersistence() extends GraphPersistence {
   /**
    * Save a graph.
    */
-  def saveGraph(graph: Graph[VertexData, EdgeData], graphName: String, overwrite :Boolean = false): Unit = {
+  def saveGraph(graph: Graph[VertexData, EdgeData], graphName: String, overwrite: Boolean = false): Unit = {
     val verticesPath = graphName + vertices_suffix
     val edgesPath = graphName + edges_suffix
 
@@ -46,7 +46,7 @@ class SparkPersistence() extends GraphPersistence {
   }
 
   /**
-   * Load a graph from text files, one for the vertices and another for the edges.
+   * Load a graph from a textual representation.
    */
   def loadFromText(graphName: String): Graph[VertexData, EdgeData] = {
     val verticesPath = graphName + vertices_suffix
@@ -83,9 +83,9 @@ class SparkPersistence() extends GraphPersistence {
   }
 
   /**
-   * Save a graph as text files, one for the vertices and another for the edges.
+   * Save a graph as a textual representation.
    */
-  def saveAsText(graph: Graph[VertexData, EdgeData], graphName: String, overwrite :Boolean = false): Unit = {
+  def saveAsText(graph: Graph[VertexData, EdgeData], graphName: String, overwrite: Boolean = false): Unit = {
     val verticesPath = graphName + vertices_suffix
     val verticesTmpPath = "__" + verticesPath
     val edgesPath = graphName + edges_suffix

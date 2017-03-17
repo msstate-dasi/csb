@@ -35,7 +35,7 @@ object SparkWorkload extends Workload {
    * Run a dynamic version of PageRank returning a graph with vertex attributes containing the
    * PageRank and edge attributes containing the normalized edge weight.
    */
-  def pageRank[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], tol: Double, resetProb: Double = 0.15): Graph[Double, Double] = {
+  def pageRank[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], tol: Double = 0.001, resetProb: Double = 0.15): Graph[Double, Double] = {
     graph.pageRank(tol, resetProb)
   }
 
@@ -111,7 +111,7 @@ object SparkWorkload extends Workload {
    * @return RDD of Arrays which contain VertexId and VD for each neighbor
    */
   def neighbors[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED]): VertexRDD[Array[(VertexId, VD)]] = {
-    graph.collectNeighbors(EdgeDirection.Both)
+    graph.collectNeighbors(EdgeDirection.Either)
   }
 
   /**
@@ -187,7 +187,7 @@ object SparkWorkload extends Workload {
     */
   def closenessCentrality[VD: ClassTag, ED: ClassTag](vertex: VertexId, graph: Graph[VD, ED]): Double =
   {
-    return ClosenessCentrality.getClosenessOfVert(vertex, graph)
+    ClosenessCentrality.getClosenessOfVert(vertex, graph)
   }
 
   /***
@@ -199,9 +199,9 @@ object SparkWorkload extends Workload {
     * @tparam ED reflection.  We don't care about the property that could be here
     * @return
     */
-  def singleSourceShortestPathSeq[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], srcVertex: VertexId, destVertex: VertexId): Seq[VertexId] =
+  def ssspSeq[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], srcVertex: VertexId, destVertex: VertexId): Seq[VertexId] =
   {
-    return bfs(graph, srcVertex, destVertex)
+    bfs(graph, srcVertex, destVertex)
   }
 
   /***
@@ -213,9 +213,9 @@ object SparkWorkload extends Workload {
     * @tparam ED
     * @return
     */
-  def singleSourceShortestPathNum[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], srcVertex: VertexId, destVertex: VertexId): Long =
+  def ssspNum[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], srcVertex: VertexId, destVertex: VertexId): Long =
   {
-    return bfs(graph, srcVertex, destVertex).size - 1
+    bfs(graph, srcVertex, destVertex).size - 1
   }
 
   /**
@@ -224,15 +224,4 @@ object SparkWorkload extends Workload {
   def edgesWithProperty[VD: ClassTag](graph: Graph[VD, EdgeData], filter: Edge[EdgeData] => Boolean): RDD[Edge[EdgeData]] = {
     graph.edges.filter(filter)
   }
-//  def edgesWithProperty[VD: ClassTag](graph: Graph[VD, EdgeData], property: EdgeData): RDD[Edge[EdgeData]] = {
-//    graph.edges.filter(edge => property ~= edge.attr)
-//  }
-
-  /**
-   * Finds all edges with a given property range.
-   */
-//  def edgesWithProperty[VD: ClassTag](graph: Graph[VD, EdgeData], propertyMin: EdgeData, propertyMax: EdgeData): RDD[Edge[EdgeData]] = {
-//    if(propertyMin > propertyMax || !(propertyMin < propertyMax || propertyMax < propertyMin)) throw new IllegalArgumentException("propertyMin MUST be lower for all values of Edge data"); //If the properties are not set correctly then this function will output nonsense.
-//    graph.edges.filter(edge => propertyMax > edge.attr && propertyMin < edge.attr)
-//  }
 }
