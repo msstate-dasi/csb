@@ -69,7 +69,7 @@ object SparkWorkload extends Workload {
       if (msgs.count == 0) return
 
       g = g.ops.joinVertices(msgs) {
-        (id, oldAttr, newAttr) =>
+        (_, oldAttr, newAttr) =>
           if (newAttr._1 < oldAttr._1) newAttr else oldAttr
       }.cache()
 
@@ -82,7 +82,7 @@ object SparkWorkload extends Workload {
       path = g.vertices.filter(_._1 == path.head).first()._2._2 :: path
     }
 
-    path
+//    path
   }
 
   /**
