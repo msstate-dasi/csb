@@ -94,13 +94,13 @@ trait Workload {
    * Computes the connected component membership of each vertex and return a graph with the vertex
    * value containing the lowest vertex id in the connected component containing that vertex.
    */
-  def connectedComponents[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED], maxIterations: Int = 0): Unit
+  def connectedComponents[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED], maxIterations: Int = Int.MaxValue): Unit
 
   /**
    * Compute the strongly connected component (SCC) of each vertex and return a graph with the
    * vertex value containing the lowest vertex id in the SCC containing that vertex.
    */
-  def stronglyConnectedComponents[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED], numIter: Int): Graph[VertexId, ED]
+  def stronglyConnectedComponents[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED], numIter: Int): Unit
 
   /**
    * Computes the number of triangles passing through each vertex.

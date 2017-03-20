@@ -146,19 +146,15 @@ object SparkWorkload extends Workload {
    * Computes the connected component membership of each vertex and return a graph with the vertex
    * value containing the lowest vertex id in the connected component containing that vertex.
    */
-  def connectedComponents[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED], maxIterations: Int = 0): Unit = {
-    if (maxIterations > 0) {
-      graph.connectedComponents(maxIterations)
-    } else {
-      graph.connectedComponents()
-    }
+  def connectedComponents[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED], maxIterations: Int = Int.MaxValue): Unit = {
+    graph.connectedComponents(maxIterations)
   }
 
   /**
    * Compute the strongly connected component (SCC) of each vertex and return a graph with the
    * vertex value containing the lowest vertex id in the SCC containing that vertex.
    */
-  def stronglyConnectedComponents[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED], numIter: Int): Graph[VertexId, ED] = {
+  def stronglyConnectedComponents[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED], numIter: Int): Unit = {
     graph.stronglyConnectedComponents(numIter)
   }
 
