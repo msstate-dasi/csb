@@ -48,8 +48,9 @@ object SparkWorkload extends Workload {
    * Breadth-first Search: returns the shortest directed-edge path from src to dst in the graph. If no path exists,
    * returns the empty list.
    */
-  def bfs[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], src: VertexId, dst: VertexId): Seq[VertexId] = {
-    if (src == dst) return List(src)
+  def bfs[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], src: VertexId, dst: VertexId): Unit = {
+//    if (src == dst) return List(src)
+    if (src == dst) return
 
     // The attribute of each vertex is (dist from src, id of vertex with dist-1)
     var g: Graph[(Int, VertexId), ED] =
@@ -64,7 +65,8 @@ object SparkWorkload extends Workload {
         },
         (a, b) => if (a._1 < b._1) a else b).cache()
 
-      if (msgs.count == 0) return List.empty
+//      if (msgs.count == 0) return List.empty
+      if (msgs.count == 0) return
 
       g = g.ops.joinVertices(msgs) {
         (id, oldAttr, newAttr) =>
@@ -193,18 +195,7 @@ object SparkWorkload extends Workload {
    * By computing in this case we mean returning a list of the vertexId's from srcVertex to destVertex by following the
    * least number of edges possible.
    */
-  def ssspSeq[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], srcVertex: VertexId, dstVertex: VertexId): Seq[VertexId] = {
-    bfs(graph, srcVertex, dstVertex)
-  }
-
-  /**
-   * Computes the shortest path from a source vertex to a destination vertex.
-   *
-   * The same as the above SSSP but we return the number of hops it takes to go from the src node to dest node.
-   */
-  def ssspNum[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], srcVertex: VertexId, dstVertex: VertexId): Long = {
-    bfs(graph, srcVertex, dstVertex).size - 1
-  }
+  def sssp[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], srcVertex: VertexId, dstVertex: VertexId): Unit = ???
 
   /**
    * Finds all edges with a given property.

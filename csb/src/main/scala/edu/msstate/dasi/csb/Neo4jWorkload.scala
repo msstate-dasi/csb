@@ -93,26 +93,26 @@ object Neo4jWorkload extends Workload {
    */
   def pageRank[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], tol: Double = 0.001, resetProb: Double): Unit = {
     val query = "MATCH (a) " +
-    "set a.pagerank = 0.0 " +
-    "WITH collect(distinct a) AS nodes,count(a) as num_nodes " +
-    "UNWIND nodes AS a " +
-    "MATCH (a)-[r]-(b) " +
-    "WITH a,collect(r) AS rels, count(r) AS num_rels, 1.0/num_nodes AS rank " +
-    "UNWIND rels AS rel " +
-      "SET endnode(rel).pagerank = " +
-    "CASE " +
-    "WHEN num_rels > 0 AND id(startnode(rel)) = id(a) THEN " +
-      "endnode(rel).pagerank + rank/(num_rels) " +
-    "ELSE endnode(rel).pagerank " +
-    "END " +
-    ",startnode(rel).pagerank = " +
-    "CASE " +
-    "WHEN num_rels > 0 AND id(endnode(rel)) = id(a) THEN " +
-      "startnode(rel).pagerank + rank/(num_rels) " +
-    "ELSE startnode(rel).pagerank " +
-    "END " +
-    "WITH collect(distinct a) AS a,rank " +
-    "RETURN a"
+      "set a.pagerank = 0.0 " +
+      "WITH collect(distinct a) AS nodes,count(a) as num_nodes " +
+      "UNWIND nodes AS a " +
+      "MATCH (a)-[r]-(b) " +
+      "WITH a,collect(r) AS rels, count(r) AS num_rels, 1.0/num_nodes AS rank " +
+      "UNWIND rels AS rel " +
+        "SET endnode(rel).pagerank = " +
+      "CASE " +
+      "WHEN num_rels > 0 AND id(startnode(rel)) = id(a) THEN " +
+        "endnode(rel).pagerank + rank/(num_rels) " +
+      "ELSE endnode(rel).pagerank " +
+      "END " +
+      ",startnode(rel).pagerank = " +
+      "CASE " +
+      "WHEN num_rels > 0 AND id(endnode(rel)) = id(a) THEN " +
+        "startnode(rel).pagerank + rank/(num_rels) " +
+      "ELSE startnode(rel).pagerank " +
+      "END " +
+      "WITH collect(distinct a) AS a,rank " +
+      "RETURN a"
 
     run(query)
   }
@@ -121,7 +121,11 @@ object Neo4jWorkload extends Workload {
    * Breadth-first Search: returns the shortest directed-edge path from src to dst in the graph. If no path exists,
    * returns the empty list.
    */
-  def bfs[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], src: VertexId, dst: VertexId): Seq[VertexId] = ???
+  def bfs[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], src: VertexId, dst: VertexId): Unit = {
+    val query = "MATCH path = shortestPath(({name:\"" + src + "\"})-[*]-({name:\"" + dst + "\"})) RETURN path;"
+
+    run(query)
+  }
 
   /**
    * Collects list of neighbors based solely on incoming direction, and returns a list of
@@ -236,11 +240,11 @@ object Neo4jWorkload extends Workload {
    */
   def betweennessCentrality[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], k: Int): Unit = {
     val query = s"MATCH (n), pthroughn = shortestPath((a)-[*..$k]->(b)) " +
-    "WHERE n IN nodes(pthroughn) AND n <> a AND n <> b AND a <> b " +
-    "WITH n,a,b,count(pthroughn) AS sum " +
-    "MATCH p = shortestPath((a)-[*]->(b)) " +
-    "WITH n, a, b, tofloat(sumn)/ tofloat(count(p)) AS fraction " +
-    "RETURN n, sum(fraction);"
+      "WHERE n IN nodes(pthroughn) AND n <> a AND n <> b AND a <> b " +
+      "WITH n,a,b,count(pthroughn) AS sum " +
+      s"MATCH p = shortestPath((a)-[*..$k]->(b)) " +
+      "WITH n, a, b, tofloat(sumn)/ tofloat(count(p)) AS fraction " +
+      "RETURN n, sum(fraction);"
 
     run(query)
   }
@@ -256,13 +260,8 @@ object Neo4jWorkload extends Workload {
    * By computing in this case we mean returning a list of the vertexId's from srcVertex to destVertex by following the
    * least number of edges possible.
    */
-  def ssspSeq[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], srcVertex: VertexId, dstVertex: VertexId): Seq[VertexId] = ???
+  def sssp[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], srcVertex: VertexId, dstVertex: VertexId): Unit = ???
 
-  /** *
-   * Computes the shortest path from a source vertex to a destination vertex.
-   *
-   * The same as the above SSSP but we return the number of hops it takes to go from the src node to dest node. */
-  def ssspNum[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], srcVertex: VertexId, dstVertex: VertexId): VertexId = ???
   /**
    * Finds all edges with a given property.
    */

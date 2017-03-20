@@ -41,7 +41,7 @@ trait Workload {
    * Breadth-first Search: returns the shortest directed-edge path from src to dst in the graph. If no path exists,
    * returns the empty list.
    */
-  def bfs[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], src: VertexId, dst: VertexId): Seq[VertexId]
+  def bfs[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], src: VertexId, dst: VertexId): Unit
 
   /**
    * Collects list of neighbors based solely on incoming direction, and returns a list of
@@ -127,14 +127,7 @@ trait Workload {
    * By computing in this case we mean returning a list of the vertexId's from srcVertex to destVertex by following the
    * least number of edges possible.
    */
-  def ssspSeq[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], srcVertex: VertexId, dstVertex: VertexId): Seq[VertexId]
-
-  /**
-   * Computes the shortest path from a source vertex to a destination vertex.
-   *
-   * The same as the above SSSP but we return the number of hops it takes to go from the src node to dest node.
-   */
-  def ssspNum[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], srcVertex: VertexId, dstVertex: VertexId): Long
+  def sssp[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], srcVertex: VertexId, dstVertex: VertexId): Unit
 
   /**
    * Finds all edges with a given property.
