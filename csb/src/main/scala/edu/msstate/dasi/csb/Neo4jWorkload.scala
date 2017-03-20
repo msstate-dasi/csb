@@ -2,7 +2,7 @@ package edu.msstate.dasi.csb
 
 import java.util.concurrent.TimeUnit
 
-import org.apache.spark.graphx.{Edge, Graph, VertexId, VertexRDD}
+import org.apache.spark.graphx.{Edge, Graph, VertexId}
 import org.apache.spark.rdd.RDD
 import org.neo4j.driver.v1.summary.ResultSummary
 import org.neo4j.driver.v1.{AccessMode, AuthTokens, GraphDatabase}
@@ -21,56 +21,62 @@ object Neo4jWorkload extends Workload {
     println(s"[NEO4J] Execution completed in ${timeAfter + timeConsumed} s")
   }
 
+  private def run(query: String, accessMode: AccessMode = AccessMode.READ): Unit = {
+    val session = driver.session(accessMode)
+
+    val result = session.run(query)
+
+    while ( result.hasNext ) result.next()
+
+    printSummary( result.consume() )
+
+    session.close()
+  }
+
   /**
    * The number of vertices in the graph.
    */
-  def countVertices[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Long = {
+  def countVertices[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = {
     val query = "MATCH () RETURN count(*);"
 
-    val session = driver.session(AccessMode.READ)
-
-    val result = session.run(query)
-    val count = result.next().get(0).asLong
-
-    printSummary(result.consume())
-
-    session.close()
-
-    count
+    run(query)
   }
 
   /**
    * The number of edges in the graph.
    */
-  def countEdges[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Long = {
+  def countEdges[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = {
     val query = "MATCH ()-->() RETURN count(*);"
 
-    val session = driver.session(AccessMode.READ)
-
-    val result = session.run(query)
-    val count = result.next().get(0).asLong
-
-    printSummary(result.consume())
-
-    session.close()
-
-    count
+    run(query)
   }
 
   /**
    * The degree of each vertex in the graph.
    */
-  def degree[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): VertexRDD[Int] = ???
+  def degree[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = {
+    val query = "MATCH (n)-[r]-() RETURN n, count(r);"
+
+    run(query)
+  }
 
   /**
    * The in-degree of each vertex in the graph.
    */
-  def inDegree[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): VertexRDD[Int] = ???
+  def inDegree[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = {
+    val query = "MATCH (n)<-[r]-() RETURN n, count(r);"
+
+    run(query)
+  }
 
   /**
    * The out-degree of each vertex in the graph.
    */
-  def outDegree[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): VertexRDD[Int] = ???
+  def outDegree[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = {
+    val query = "MATCH (n)-[r]->() RETURN n, count(r);"
+
+    run(query)
+  }
 
   /**
    * Run a dynamic version of PageRank returning a graph with vertex attributes containing the
@@ -89,12 +95,14 @@ object Neo4jWorkload extends Workload {
    * those neighbors as well as their node attribute
    *
    * @param graph The input graph
-   * @tparam VD Node attribute type for input graph
-   * @tparam ED Edge attribute type for input graph
    *
    * @return RDD of Arrays which contain VertexId and VD for each neighbor
    */
-  def inNeighbors[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): VertexRDD[Array[(VertexId, VD)]] = ???
+  def inNeighbors[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = {
+    val query = "MATCH (n) RETURN n, [ (n)<--(m) | m ];"
+
+    run(query)
+  }
 
   /**
    * Collects list of neighbors based solely on outgoing direction, and returns a list of
@@ -106,7 +114,11 @@ object Neo4jWorkload extends Workload {
    *
    * @return RDD of Arrays which contain VertexId and VD for each neighbor
    */
-  def outNeighbors[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): VertexRDD[Array[(VertexId, VD)]] = ???
+  def outNeighbors[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = {
+    val query = "MATCH (n) RETURN n, [ (n)-->(m) | m ];"
+
+    run(query)
+  }
 
   /**
    * Collects list of neighbors in both incoming and outgoing direction, and returns a list of
@@ -118,7 +130,11 @@ object Neo4jWorkload extends Workload {
    *
    * @return RDD of Arrays which contain VertexId and VD for each neighbor
    */
-  def neighbors[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): VertexRDD[Array[(VertexId, VD)]] = ???
+  def neighbors[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = {
+    val query = "MATCH (n) RETURN n, [ (n)--(m) | m ];"
+
+    run(query)
+  }
 
   /**
    * Grabs all of the edges entering a node by grouping the edges by dstId attribute
@@ -129,7 +145,11 @@ object Neo4jWorkload extends Workload {
    *
    * @return RDD containing pairs of (VertexID, Iterable of Edges) for every vertex in the graph
    */
-  def inEdges[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): RDD[(VertexId, Iterable[Edge[ED]])] = ???
+  def inEdges[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = {
+    val query = "MATCH (n) RETURN n, [ (n)<-[r]-() | r ];"
+
+    run(query)
+  }
 
   /**
    * Grabs all of the edges exiting a node by grouping the edges by srcId attribute
@@ -140,7 +160,11 @@ object Neo4jWorkload extends Workload {
    *
    * @return RDD containing pairs of (VertexID, Iterable of Edges) for every vertex in the graph
    */
-  def outEdges[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): RDD[(VertexId, Iterable[Edge[ED]])] = ???
+  def outEdges[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = {
+    val query = "MATCH (n) RETURN n, [ (n)-[r]->() | r ];"
+
+    run(query)
+  }
 
   /**
    * Computes the connected component membership of each vertex and return a graph with the vertex

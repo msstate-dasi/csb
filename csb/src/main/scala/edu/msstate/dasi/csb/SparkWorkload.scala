@@ -7,29 +7,34 @@ import scala.reflect.ClassTag
 
 object SparkWorkload extends Workload {
   /**
+   * The following is used together with RDD::foreach() to force the RDD computation.
+   */
+  private def doNothing(x: Any): Unit = {}
+
+  /**
    * The number of vertices in the graph.
    */
-  def countVertices[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Long = graph.numVertices
+  def countVertices[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = graph.numVertices
 
   /**
    * The number of edges in the graph.
    */
-  def countEdges[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Long = graph.numEdges
+  def countEdges[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = graph.numEdges
 
   /**
    * The degree of each vertex in the graph.
    */
-  def degree[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): VertexRDD[Int] = graph.degrees
+  def degree[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = graph.degrees.foreach(doNothing)
 
   /**
    * The in-degree of each vertex in the graph.
    */
-  def inDegree[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): VertexRDD[Int] = graph.inDegrees
+  def inDegree[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = graph.inDegrees.foreach(doNothing)
 
   /**
    * The out-degree of each vertex in the graph.
    */
-  def outDegree[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): VertexRDD[Int] = graph.outDegrees
+  def outDegree[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = graph.outDegrees.foreach(doNothing)
 
   /**
    * Run a dynamic version of PageRank returning a graph with vertex attributes containing the
@@ -82,12 +87,11 @@ object SparkWorkload extends Workload {
    * Collects list of neighbors based solely on incoming direction, and returns a list of
    * those neighbors as well as their node attribute
    * @param graph The input graph
-   * @tparam VD Node attribute type for input graph
-   * @tparam ED Edge attribute type for input graph
+   *
    * @return RDD of Arrays which contain VertexId and VD for each neighbor
    */
-  def inNeighbors[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED]): VertexRDD[Array[(VertexId, VD)]] = {
-    graph.collectNeighbors(EdgeDirection.In)
+  def inNeighbors[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED]): Unit = {
+    graph.collectNeighbors(EdgeDirection.In).foreach(doNothing)
   }
 
   /**
@@ -98,8 +102,8 @@ object SparkWorkload extends Workload {
    * @tparam ED Edge attribute type for input graph
    * @return RDD of Arrays which contain VertexId and VD for each neighbor
    */
-  def outNeighbors[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED]): VertexRDD[Array[(VertexId, VD)]] = {
-    graph.collectNeighbors(EdgeDirection.Out)
+  def outNeighbors[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED]): Unit = {
+    graph.collectNeighbors(EdgeDirection.Out).foreach(doNothing)
   }
 
   /**
@@ -110,8 +114,8 @@ object SparkWorkload extends Workload {
    * @tparam ED Edge attribute type for input graph
    * @return RDD of Arrays which contain VertexId and VD for each neighbor
    */
-  def neighbors[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED]): VertexRDD[Array[(VertexId, VD)]] = {
-    graph.collectNeighbors(EdgeDirection.Either)
+  def neighbors[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED]): Unit = {
+    graph.collectNeighbors(EdgeDirection.Either).foreach(doNothing)
   }
 
   /**
@@ -121,8 +125,8 @@ object SparkWorkload extends Workload {
    * @tparam ED Edge attribute type for input graph
    * @return RDD containing pairs of (VertexID, Iterable of Edges) for every vertex in the graph
    */
-  def inEdges[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED]): RDD[(VertexId, Iterable[Edge[ED]])] = {
-    graph.edges.groupBy(record => record.dstId)
+  def inEdges[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED]): Unit = {
+    graph.edges.groupBy(record => record.dstId).foreach(doNothing)
   }
 
   /**
@@ -132,8 +136,8 @@ object SparkWorkload extends Workload {
    * @tparam ED Edge attribute type for input graph
    * @return RDD containing pairs of (VertexID, Iterable of Edges) for every vertex in the graph
    */
-  def outEdges[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED]): RDD[(VertexId, Iterable[Edge[ED]])] = {
-    graph.edges.groupBy(record => record.srcId)
+  def outEdges[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED]): Unit = {
+    graph.edges.groupBy(record => record.srcId).foreach(doNothing)
   }
 
   /**

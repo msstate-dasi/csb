@@ -9,27 +9,27 @@ trait Workload {
   /**
    * The number of vertices in the graph.
    */
-  def countVertices[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Long
+  def countVertices[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit
 
   /**
    * The number of edges in the graph.
    */
-  def countEdges[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Long
+  def countEdges[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit
 
   /**
    * The degree of each vertex in the graph.
    */
-  def degree[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): VertexRDD[Int]
+  def degree[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit
 
   /**
    * The in-degree of each vertex in the graph.
    */
-  def inDegree[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): VertexRDD[Int]
+  def inDegree[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit
 
   /**
    * The out-degree of each vertex in the graph.
    */
-  def outDegree[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): VertexRDD[Int]
+  def outDegree[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit
 
   /**
    * Run a dynamic version of PageRank returning a graph with vertex attributes containing the
@@ -47,11 +47,10 @@ trait Workload {
    * Collects list of neighbors based solely on incoming direction, and returns a list of
    * those neighbors as well as their node attribute
    * @param graph The input graph
-   * @tparam VD Node attribute type for input graph
-   * @tparam ED Edge attribute type for input graph
+   *
    * @return RDD of Arrays which contain VertexId and VD for each neighbor
    */
-  def inNeighbors[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED]): VertexRDD[Array[(VertexId, VD)]]
+  def inNeighbors[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED]): Unit
 
   /**
    * Collects list of neighbors based solely on outgoing direction, and returns a list of
@@ -61,7 +60,7 @@ trait Workload {
    * @tparam ED Edge attribute type for input graph
    * @return RDD of Arrays which contain VertexId and VD for each neighbor
    */
-  def outNeighbors[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED]): VertexRDD[Array[(VertexId, VD)]]
+  def outNeighbors[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED]): Unit
 
   /**
    * Collects list of neighbors in both incoming and outgoing direction, and returns a list of
@@ -71,7 +70,7 @@ trait Workload {
    * @tparam ED Edge attribute type for input graph
    * @return RDD of Arrays which contain VertexId and VD for each neighbor
    */
-  def neighbors[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED]): VertexRDD[Array[(VertexId, VD)]]
+  def neighbors[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED]): Unit
 
   /**
    * Grabs all of the edges entering a node by grouping the edges by dstId attribute
@@ -80,7 +79,7 @@ trait Workload {
    * @tparam ED Edge attribute type for input graph
    * @return RDD containing pairs of (VertexID, Iterable of Edges) for every vertex in the graph
    */
-  def inEdges[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED]): RDD[(VertexId, Iterable[Edge[ED]])]
+  def inEdges[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED]): Unit
 
   /**
    * Grabs all of the edges exiting a node by grouping the edges by srcId attribute
@@ -89,7 +88,7 @@ trait Workload {
    * @tparam ED Edge attribute type for input graph
    * @return RDD containing pairs of (VertexID, Iterable of Edges) for every vertex in the graph
    */
-  def outEdges[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED]): RDD[(VertexId, Iterable[Edge[ED]])]
+  def outEdges[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED]): Unit
 
   /**
    * Computes the connected component membership of each vertex and return a graph with the vertex
