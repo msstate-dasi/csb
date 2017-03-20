@@ -1,20 +1,61 @@
 package edu.msstate.dasi.csb
 
+import java.util.concurrent.TimeUnit
+
 import org.apache.spark.graphx.{Edge, Graph, VertexId, VertexRDD}
 import org.apache.spark.rdd.RDD
+import org.neo4j.driver.v1.summary.ResultSummary
+import org.neo4j.driver.v1.{AccessMode, AuthTokens, GraphDatabase}
 
 import scala.reflect.ClassTag
 
 object Neo4jWorkload extends Workload {
+  private val driver = GraphDatabase.driver("bolt://localhost", AuthTokens.basic("neo4j", "password"))
+
+  private def printSummary(querySummary: ResultSummary): Unit = {
+    val timeAfter = querySummary.resultAvailableAfter(TimeUnit.MILLISECONDS) / 1000.0
+    val timeConsumed = querySummary.resultConsumedAfter(TimeUnit.MILLISECONDS) / 1000.0
+
+    println(s"[NEO4J] Query completed in $timeAfter s")
+    println(s"[NEO4J] Result consumed in $timeConsumed s")
+    println(s"[NEO4J] Execution completed in ${timeAfter + timeConsumed} s")
+  }
+
   /**
    * The number of vertices in the graph.
    */
-  def countVertices[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Long = ???
+  def countVertices[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Long = {
+    val query = "MATCH () RETURN count(*);"
+
+    val session = driver.session(AccessMode.READ)
+
+    val result = session.run(query)
+    val count = result.next().get(0).asLong
+
+    printSummary(result.consume())
+
+    session.close()
+
+    count
+  }
 
   /**
    * The number of edges in the graph.
    */
-  def countEdges[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Long = ???
+  def countEdges[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Long = {
+    val query = "MATCH ()-->() RETURN count(*);"
+
+    val session = driver.session(AccessMode.READ)
+
+    val result = session.run(query)
+    val count = result.next().get(0).asLong
+
+    printSummary(result.consume())
+
+    session.close()
+
+    count
+  }
 
   /**
    * The degree of each vertex in the graph.
