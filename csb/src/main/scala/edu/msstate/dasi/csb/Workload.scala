@@ -35,7 +35,7 @@ trait Workload {
    * Run a dynamic version of PageRank returning a graph with vertex attributes containing the
    * PageRank and edge attributes containing the normalized edge weight.
    */
-  def pageRank[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], tol: Double = 0.001, resetProb: Double = 0.15): Graph[Double, Double]
+  def pageRank[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], tol: Double = 0.001, resetProb: Double = 0.15): Unit
 
   /**
    * Breadth-first Search: returns the shortest directed-edge path from src to dst in the graph. If no path exists,
@@ -94,7 +94,7 @@ trait Workload {
    * Computes the connected component membership of each vertex and return a graph with the vertex
    * value containing the lowest vertex id in the connected component containing that vertex.
    */
-  def connectedComponents[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED], maxIterations: Int = 0): Graph[VertexId, ED]
+  def connectedComponents[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED], maxIterations: Int = 0): Unit
 
   /**
    * Compute the strongly connected component (SCC) of each vertex and return a graph with the
@@ -114,7 +114,7 @@ trait Workload {
    * @param k The maximum number of hops to compute
    * @return Graph containing the betweenness double values
    */
-  def betweennessCentrality[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], k: Int): Graph[Double, Double]
+  def betweennessCentrality[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], k: Int): Unit
 
   /**
    * Computes the closeness centrality of a node using the formula N/(sum(distances)).

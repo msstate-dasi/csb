@@ -10,8 +10,14 @@ import org.neo4j.driver.v1.{AccessMode, AuthTokens, GraphDatabase}
 import scala.reflect.ClassTag
 
 object Neo4jWorkload extends Workload {
+  /**
+   * The Neo4j driver instance responsible for obtaining new sessions.
+   */
   private val driver = GraphDatabase.driver("bolt://localhost", AuthTokens.basic("neo4j", "password"))
 
+  /**
+   *
+   */
   private def printSummary(querySummary: ResultSummary): Unit = {
     val timeAfter = querySummary.resultAvailableAfter(TimeUnit.MILLISECONDS) / 1000.0
     val timeConsumed = querySummary.resultConsumedAfter(TimeUnit.MILLISECONDS) / 1000.0
@@ -21,6 +27,9 @@ object Neo4jWorkload extends Workload {
     println(s"[NEO4J] Execution completed in ${timeAfter + timeConsumed} s")
   }
 
+  /**
+   *
+   */
   private def run(query: String, accessMode: AccessMode = AccessMode.READ): Unit = {
     val session = driver.session(accessMode)
 
@@ -82,7 +91,31 @@ object Neo4jWorkload extends Workload {
    * Run a dynamic version of PageRank returning a graph with vertex attributes containing the
    * PageRank and edge attributes containing the normalized edge weight.
    */
-  def pageRank[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], tol: Double = 0.001, resetProb: Double): Graph[Double, Double] = ???
+  def pageRank[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], tol: Double = 0.001, resetProb: Double): Unit = {
+    val query = "MATCH (a) " +
+    "set a.pagerank = 0.0 " +
+    "WITH collect(distinct a) AS nodes,count(a) as num_nodes " +
+    "UNWIND nodes AS a " +
+    "MATCH (a)-[r]-(b) " +
+    "WITH a,collect(r) AS rels, count(r) AS num_rels, 1.0/num_nodes AS rank " +
+    "UNWIND rels AS rel " +
+      "SET endnode(rel).pagerank = " +
+    "CASE " +
+    "WHEN num_rels > 0 AND id(startnode(rel)) = id(a) THEN " +
+      "endnode(rel).pagerank + rank/(num_rels) " +
+    "ELSE endnode(rel).pagerank " +
+    "END " +
+    ",startnode(rel).pagerank = " +
+    "CASE " +
+    "WHEN num_rels > 0 AND id(endnode(rel)) = id(a) THEN " +
+      "startnode(rel).pagerank + rank/(num_rels) " +
+    "ELSE startnode(rel).pagerank " +
+    "END " +
+    "WITH collect(distinct a) AS a,rank " +
+    "RETURN a"
+
+    run(query)
+  }
 
   /**
    * Breadth-first Search: returns the shortest directed-edge path from src to dst in the graph. If no path exists,
@@ -170,7 +203,17 @@ object Neo4jWorkload extends Workload {
    * Computes the connected component membership of each vertex and return a graph with the vertex
    * value containing the lowest vertex id in the connected component containing that vertex.
    */
-  def connectedComponents[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], maxIterations: Int): Graph[VertexId, ED] = ???
+  def connectedComponents[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], maxIterations: Int = 0): Unit = {
+    val query = "MATCH (n) WITH COLLECT(n) as nodes " +
+      "RETURN REDUCE(graphs = [], n in nodes | " +
+      "case when " +
+      "ANY (g in graphs WHERE shortestPath( (n)-[*]-(g) ) ) " +
+      "then graphs " +
+      "else graphs + [n]" +
+      "end );"
+
+    run(query)
+  }
 
   /**
    * Compute the strongly connected component (SCC) of each vertex and return a graph with the
@@ -184,17 +227,23 @@ object Neo4jWorkload extends Workload {
   def triangleCount[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Graph[Int, ED] = ???
 
   /**
-   * Credits: Daniel Marcous (https://github.com/dmarcous/spark-betweenness/blob/master/src/main/scala/com/centrality/kBC/KBetweenness.scala)
    * Computes the betweenness centrality of a graph given a max k value
    *
    * @param graph The input graph
    * @param k     The maximum number of hops to compute
-   * @tparam VD Node attribute type for input graph
-   * @tparam ED Edge attribute type for input graph
    *
    * @return Graph containing the betweenness double values
    */
-  def betweennessCentrality[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], k: Int): Graph[Double, Double] = ???
+  def betweennessCentrality[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], k: Int): Unit = {
+    val query = s"MATCH (n), pthroughn = shortestPath((a)-[*..$k]->(b)) " +
+    "WHERE n IN nodes(pthroughn) AND n <> a AND n <> b AND a <> b " +
+    "WITH n,a,b,count(pthroughn) AS sum " +
+    "MATCH p = shortestPath((a)-[*]->(b)) " +
+    "WITH n, a, b, tofloat(sumn)/ tofloat(count(p)) AS fraction " +
+    "RETURN n, sum(fraction);"
+
+    run(query)
+  }
 
   /**
    * Computes the closeness centrality of a node using the formula N/(sum(distances)).
