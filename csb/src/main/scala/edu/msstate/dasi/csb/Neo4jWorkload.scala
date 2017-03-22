@@ -62,6 +62,7 @@ object Neo4jWorkload extends Workload {
 
   /**
    * The degree of each vertex in the graph.
+   * @note Vertices with no edges not considered.
    */
   def degree[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = {
     val query = "MATCH (n)-[r]-() RETURN n, count(r);"
@@ -71,6 +72,7 @@ object Neo4jWorkload extends Workload {
 
   /**
    * The in-degree of each vertex in the graph.
+   * @note Vertices with no incoming edges are not considered.
    */
   def inDegree[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = {
     val query = "MATCH (n)<-[r]-() RETURN n, count(r);"
@@ -80,6 +82,7 @@ object Neo4jWorkload extends Workload {
 
   /**
    * The out-degree of each vertex in the graph.
+   * @note Vertices with no outgoing edges are not considered.
    */
   def outDegree[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = {
     val query = "MATCH (n)-[r]->() RETURN n, count(r);"
@@ -239,7 +242,11 @@ object Neo4jWorkload extends Workload {
   /**
    * Computes the number of triangles passing through each vertex.
    */
-  def triangleCount[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Graph[Int, ED] = ???
+  def triangleCount[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = {
+    val query = "MATCH (n)-->()-->()-->(n) RETURN n, count(*);"
+
+    run(query)
+  }
 
   /**
    * Computes the betweenness centrality of a graph given a max k value
@@ -266,12 +273,15 @@ object Neo4jWorkload extends Workload {
   def closenessCentrality[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], vertex: VertexId): Double = ???
 
   /**
-   * Computes the shortest path from a source vertex to a destination vertex.
-   *
-   * By computing in this case we mean returning a list of the vertexId's from srcVertex to destVertex by following the
-   * least number of edges possible.
+   * Computes the shortest path from a source vertex to all other vertices.
    */
-  def sssp[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], srcVertex: VertexId, dstVertex: VertexId): Unit = ???
+  def sssp[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], src: VertexId): Unit = {
+    val query ="MATCH (src {name:\"" + src + "\"}), (dst)," +
+      "path = shortestPath((src)-[*]->(dst))" +
+      "RETURN src, dst, path;"
+
+    run(query)
+  }
 
   /**
    * Finds all edges with a given property.
