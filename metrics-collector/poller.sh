@@ -4,7 +4,6 @@ SNMPCOMMUNITY="CSB"
 SNMPPORT=16100
 
 IFNAME="ib0"
-IF_POLLING_TIME=5
 
 CPU_USER_OID="UCD-SNMP-MIB::ssCpuUser.0"  # The percentage of CPU time spent processing user-level code, calculated over the last minute.
 CPU_IDLE_OID="UCD-SNMP-MIB::ssCpuIdle.0"  # The percentage of CPU time spent idle, calculated over the last minute.
@@ -13,11 +12,11 @@ IF_IN_OCTETS_OID="IF-MIB::ifHCInOctets"   # The total number of octets received 
 IF_OUT_OCTETS_OID="IF-MIB::ifHCOutOctets" # The total number of octets transmitted out of the interface, including framing characters.
 
 function snmp_get {
-	snmpget -v $SNMPVERSION -c $SNMPCOMMUNITY $HOST:$SNMPPORT $1
+	snmpget -v $SNMPVERSION -c $SNMPCOMMUNITY $1:$SNMPPORT $2
 }
 
 function snmp_walk {
-	snmpwalk -v $SNMPVERSION -c $SNMPCOMMUNITY $HOST:$SNMPPORT $1
+	snmpwalk -v $SNMPVERSION -c $SNMPCOMMUNITY $1:$SNMPPORT $2
 }
 
 function get_value {
@@ -31,6 +30,7 @@ function get_index {
 }
 
 MASTER=$1
+
 while [ /bin/true ]; do
 	APPID=$(wget -qO- http://$MASTER:4040/api/v1/applications/  |  jq -M -r '.[0].id')
 	CACHE=$(wget -qO- http://$MASTER:4040/api/v1/applications/$APPID/executors)
@@ -65,31 +65,41 @@ while [ /bin/true ]; do
 		CPUUSAGE=$((100 - $CPUIDLE))
 		CPUSYSTEM=$(($CPUUSAGE - $CPUUSER))
 
-		DATE=$(date +%s)
-		echo "spark.$ID.custom.host $HOST $DATE" | nc localhost 2003
-		echo "spark.$ID.custom.port $PORT $DATE" | nc localhost 2003
-		echo "spark.$ID.custom.isActive $ISACTIVE $DATE" | nc localhost 2003
-		echo "spark.$ID.custom.rddBlocks $RDDBLOCKS $DATE" | nc localhost 2003
-		echo "spark.$ID.custom.memoryUsed $MEMORYUSED $DATE" | nc localhost 2003
-		echo "spark.$ID.custom.diskUsed $DISKUSED $DATE" | nc localhost 2003
-		echo "spark.$ID.custom.totalCores $TOTALCORES $DATE" | nc localhost 2003
-		echo "spark.$ID.custom.maxTasks $MAXTASKS $DATE" | nc localhost 2003
-		echo "spark.$ID.custom.activeTasks $ACTIVETASKS $DATE" | nc localhost 2003
-		echo "spark.$ID.custom.failedTasks $FAILEDTASKS $DATE" | nc localhost 2003
-		echo "spark.$ID.custom.completedTasks $COMPLETEDTASKS $DATE" | nc localhost 2003
-		echo "spark.$ID.custom.totalTasks $TOTALTASKS $DATE" | nc localhost 2003
-		echo "spark.$ID.custom.totalDuration $TOTALDURATION $DATE" | nc localhost 2003
-		echo "spark.$ID.custom.totalGCTime $TOTALGCTIME $DATE" | nc localhost 2003
-		echo "spark.$ID.custom.totalInputBytes $TOTALINPUTBYTES $DATE" | nc localhost 2003
-		echo "spark.$ID.custom.totalShuffleRead $TOTALSHUFFLEREAD $DATE" | nc localhost 2003
-		echo "spark.$ID.custom.totalShuffleWrite $TOTALSHUFFLEWRITE $DATE" | nc localhost 2003
-		echo "spark.$ID.custom.maxMemory $MAXMEMORY $DATE" | nc localhost 2003
-		echo "spark.$ID.custom.appid $APPID $DATE" | nc localhost 2003
+		IFINDEX=$(get_index "$(snmp_walk $HOST $IF_NAME_OID | grep $IFNAME)")
 
-		echo "spark.$ID.custom.cpuUsage $CPUUSAGE $DATE" | nc localhost 2003
-		echo "spark.$ID.custom.cpuUser $CPUUSER $DATE" | nc localhost 2003
-		echo "spark.$ID.custom.cpuSystem $CPUSYSTEM $DATE" | nc localhost 2003
-		echo "spark.$ID.custom.cpuIdle $CPUIDLE $DATE" | nc localhost 2003
+		INBYTES=$(get_value "$(snmp_get $HOST $IF_IN_OCTETS_OID.$IFINDEX)")
+		OUTBYTES=$(get_value "$(snmp_get $HOST $IF_OUT_OCTETS_OID.$IFINDEX)")
+
+		DATE=$(date +%s)
+		echo "spark.$ID.csb.host $HOST $DATE" | nc localhost 2003
+		echo "spark.$ID.csb.port $PORT $DATE" | nc localhost 2003
+		echo "spark.$ID.csb.isActive $ISACTIVE $DATE" | nc localhost 2003
+		echo "spark.$ID.csb.rddBlocks $RDDBLOCKS $DATE" | nc localhost 2003
+		echo "spark.$ID.csb.memoryUsed $MEMORYUSED $DATE" | nc localhost 2003
+		echo "spark.$ID.csb.diskUsed $DISKUSED $DATE" | nc localhost 2003
+		echo "spark.$ID.csb.totalCores $TOTALCORES $DATE" | nc localhost 2003
+		echo "spark.$ID.csb.maxTasks $MAXTASKS $DATE" | nc localhost 2003
+		echo "spark.$ID.csb.activeTasks $ACTIVETASKS $DATE" | nc localhost 2003
+		echo "spark.$ID.csb.failedTasks $FAILEDTASKS $DATE" | nc localhost 2003
+		echo "spark.$ID.csb.completedTasks $COMPLETEDTASKS $DATE" | nc localhost 2003
+		echo "spark.$ID.csb.totalTasks $TOTALTASKS $DATE" | nc localhost 2003
+		echo "spark.$ID.csb.totalDuration $TOTALDURATION $DATE" | nc localhost 2003
+		echo "spark.$ID.csb.totalGCTime $TOTALGCTIME $DATE" | nc localhost 2003
+		echo "spark.$ID.csb.totalInputBytes $TOTALINPUTBYTES $DATE" | nc localhost 2003
+		echo "spark.$ID.csb.totalShuffleRead $TOTALSHUFFLEREAD $DATE" | nc localhost 2003
+		echo "spark.$ID.csb.totalShuffleWrite $TOTALSHUFFLEWRITE $DATE" | nc localhost 2003
+		echo "spark.$ID.csb.maxMemory $MAXMEMORY $DATE" | nc localhost 2003
+		echo "spark.$ID.csb.appid $APPID $DATE" | nc localhost 2003
+
+		echo "spark.$ID.csb.cpuUsage $CPUUSAGE $DATE" | nc localhost 2003
+		echo "spark.$ID.csb.cpuUser $CPUUSER $DATE" | nc localhost 2003
+		echo "spark.$ID.csb.cpuSystem $CPUSYSTEM $DATE" | nc localhost 2003
+		echo "spark.$ID.csb.cpuIdle $CPUIDLE $DATE" | nc localhost 2003
+		echo "spark.$ID.csb.cpuIdle $CPUIDLE $DATE" | nc localhost 2003
+
+		echo "spark.$ID.csb.networkIn $INBYTES $DATE" | nc localhost 2003
+		echo "spark.$ID.csb.networkOut $OUTBYTES $DATE" | nc localhost 2003
+
 	done
 
 	sleep 1
