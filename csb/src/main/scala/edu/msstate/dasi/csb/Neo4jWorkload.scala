@@ -65,7 +65,7 @@ object Neo4jWorkload extends Workload {
    * @note Vertices with no edges not considered.
    */
   def degree[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = {
-    val query = "MATCH (n)-[r]-() RETURN n, count(r);"
+    val query = "MATCH (n)--() RETURN n, count(*);"
 
     run(query)
   }
@@ -75,7 +75,7 @@ object Neo4jWorkload extends Workload {
    * @note Vertices with no incoming edges are not considered.
    */
   def inDegree[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = {
-    val query = "MATCH (n)<-[r]-() RETURN n, count(r);"
+    val query = "MATCH (n)<--() RETURN n, count(*);"
 
     run(query)
   }
@@ -85,7 +85,7 @@ object Neo4jWorkload extends Workload {
    * @note Vertices with no outgoing edges are not considered.
    */
   def outDegree[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = {
-    val query = "MATCH (n)-[r]->() RETURN n, count(r);"
+    val query = "MATCH (n)-->() RETURN n, count(*);"
 
     run(query)
   }
