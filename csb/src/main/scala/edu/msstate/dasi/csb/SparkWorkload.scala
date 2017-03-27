@@ -191,7 +191,11 @@ object SparkWorkload extends Workload {
   /**
    * Computes the shortest path from a source vertex to all other vertices.
    */
-  def sssp[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], src: VertexId): Unit = ???
+  def sssp[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], src: VertexId): Unit = {
+    for (dst <- graph.vertices.keys.toLocalIterator) {
+      bfs(graph, src, dst)
+    }
+  }
 
   /**
    * Finds all edges with a given property.
