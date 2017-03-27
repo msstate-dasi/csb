@@ -88,6 +88,6 @@ object Util {
   }
 
   def mergeEdges[VD: ClassTag, ED: ClassTag](e1: ED, e2: ED): ED = {
-    return e1
+    return null.asInstanceOf[ED]
   }
 }
