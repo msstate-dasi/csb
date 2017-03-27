@@ -99,7 +99,7 @@ object Benchmark {
                        */
                      graph: String = ""
                    )
-  
+
 
   def main(args: Array[String]) {
 

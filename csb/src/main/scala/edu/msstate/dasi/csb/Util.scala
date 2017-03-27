@@ -80,10 +80,14 @@ object Util {
     return Graph.fromEdges(newEdgesRDD, VertexData())
   }
 
-  def stripMultiEdges(G: Graph[VertexData, EdgeData]): Graph[VertexData, EdgeData] =
+  def stripMultiEdges[VD: ClassTag, ED: ClassTag](G: Graph[VD, ED]): Graph[VD, ED] =
   {
-    val stripedEdges = G.edges.groupBy(record => (record.srcId, record.dstId)).map(record => record._2.head)
-    return Graph.fromEdges(EdgeRDD.fromEdges(stripedEdges), VertexData())
+    G.groupEdges(mergeEdges)
+//    val stripedEdges = G.edges.groupBy(record => (record.srcId, record.dstId)).map(record => record._2.head)
+//    return Graph.fromEdges(EdgeRDD.fromEdges(stripedEdges), VertexData())
   }
 
+  def mergeEdges[VD: ClassTag, ED: ClassTag](e1: ED, e2: ED): ED = {
+    return e1
+  }
 }
