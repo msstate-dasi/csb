@@ -73,12 +73,17 @@ object Util {
       hash.put(entry, counter)
       counter += 1
     }
-    println("counter = " + counter)
     val newNodes = nodeList.map(record => hash.get(record._1).head).sortBy(record => record, ascending = true)
     val newEdges = edgeList.map(record => (hash.get(record.srcId).head, hash.get(record.dstId).head))
     val newEdgesRDD: RDD[Edge[EdgeData]] = newEdges.map(record => Edge(record._1, record._2))
     //    val newEdges = edgeList.flatMap(record => Array((hash.get(record._1).head, hash.get(record._2).head), (hash.get(record._2).head, hash.get(record._1).head)))
     return Graph.fromEdges(newEdgesRDD, VertexData())
+  }
+
+  def stripMultiEdges(G: Graph[VertexData, EdgeData]): Graph[VertexData, EdgeData] =
+  {
+    val stripedEdges = G.edges.groupBy(record => (record.srcId, record.dstId)).map(record => record._2.head)
+    return Graph.fromEdges(EdgeRDD.fromEdges(stripedEdges), VertexData())
   }
 
 }

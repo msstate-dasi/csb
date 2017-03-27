@@ -23,6 +23,7 @@ object KroFit {
 
 
       var newGraph = Util.convertLabelsToStandardForm(G)
+      newGraph = Util.stripMultiEdges(newGraph)
       val edgeList = newGraph.edges.map(record => (record.srcId, record.dstId))
       val nodeList = newGraph.vertices.map(record => record._1)
 //      val (edgeList, nodeList) = (tempEdges, tempNodes)
@@ -51,6 +52,8 @@ object KroFit {
       {
         kronLL.kronIters = initKronMtx.setForEdges(kronLL.nodes, kronLL.edges) //we very much need this
       }
+
+
       kronLL.InitLL(edgeList, nodeList, initKronMtx)
 
       initKronMtx.dump()
@@ -66,7 +69,8 @@ object KroFit {
       val result = Array.ofDim[Double](mtxDim, mtxDim)
 
       for (i <- 0 until mtxDim)
-        for (j <- 0 until mtxDim) {
+        for (j <- 0 until mtxDim)
+        {
           result(i)(j) = fittedMtx(i+j)
         }
 
