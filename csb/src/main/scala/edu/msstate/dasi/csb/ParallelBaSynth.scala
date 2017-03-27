@@ -6,7 +6,7 @@ import org.apache.spark.storage.StorageLevel
 
 import scala.util.Random
 
-class ParallelBaSynth(partitions: Int, baIter: Long, nodesPerIter: Long, fractionPerIter: Double) extends GraphSynth {
+class ParallelBaSynth(partitions: Int, baIter: Long, fractionPerIter: Double) extends GraphSynth {
 
   /**
    * Generates a graph using a parallel implementation of the Barabási–Albert algorithm.
@@ -95,109 +95,7 @@ class ParallelBaSynth(partitions: Int, baIter: Long, nodesPerIter: Long, fractio
     )
   }
 
-  /**
-    *
-    * @param seed Seed graph
-    * @param iter Number of iterations to perform BA
-    * @return Graph containing vertices + edu.msstate.dasi.VertexData, edges + edu.msstate.dasi.EdgeData
-    */
-  private def generateBAGraph(seed: Graph[VertexData, EdgeData], seedDists: DataDistributions, iter: Long, nodesPerIter: Long): Graph[VertexData,EdgeData] =
-  {
-//    var nodeIndices = Array.empty[VertexId]
-//    seed.vertices.foreach(record => nodeIndices :+= record._1)
-    var totalVertices: Long = seed.vertices.count()
-//    val nEdges: Long = seed.edges.count()
-//    val localPartitions = math.min(nEdges, partitions).toInt
-//    val recordsPerPartition = math.min( (nEdges / localPartitions).toInt, Int.MaxValue )
-    var edgeList: RDD[Edge[EdgeData]] = seed.edges
-
-    //var averageNumOfEdges = if (nEdges / totalVertices > 0L) 2L * (nEdges / totalVertices)
-    //else { 2L }
-
-//    var edgesToAdd: Array[Edge[EdgeData]] = Array.empty[Edge[EdgeData]]
-
-    var nPI = nodesPerIter
-
-    val iters = if (iter > nodesPerIter) math.ceil(iter.toDouble / nodesPerIter).toInt
-    else {
-      nPI = iter; 1
-    }
-
-    val dataDistBroadcast = sc.broadcast(seedDists)
-    //val averageNumOfEdgesBC = sc.broadcast(averageNumOfEdges)
-
-    for (_ <- 1 to iters)
-    {
-      //println("Entered the loop")
-      totalVertices += 1
-      val newVertices = totalVertices to (totalVertices + nPI.toInt) toList
-      val newVerticesRDD = sc.parallelize(newVertices)
-      val oldEdgeList = edgeList
-      val someAry:Array[Edge[EdgeData]] = oldEdgeList.collect
-      var nEdges = oldEdgeList.count()
-
-      val inEdgesIndexedBroadcast = sc.broadcast(someAry)
-
-      val curEdges: RDD[Edge[EdgeData]] = newVerticesRDD.flatMap{ x =>
-        val r = Random
-        val r2 = Random
-        var attachTo = 0L
-        val numOutEdgesToAdd = Math.abs (r2.nextLong () ) % dataDistBroadcast.value.getOutEdgeSample + 1 //averageNumOfEdgesBC.value + 1//
-
-        //Add Out Edges
-        var subsetEdges = Array.empty[Edge[EdgeData]]
-        for ( _ <- 1L to numOutEdgesToAdd )
-        {
-          val attachToEdge = Math.abs (r.nextInt () ) % nEdges.toInt
-          val edge: Edge[EdgeData] = inEdgesIndexedBroadcast.value(attachToEdge)//inEdgesIndexedRDD.lookup(attachToEdge).last
-          attachTo = edge.srcId
-          subsetEdges :+= Edge[EdgeData](x, attachTo)
-        }
-
-        //Add In Edges
-        val numInEdgesToAdd = Math.abs (r2.nextLong () ) % dataDistBroadcast.value.getInEdgeSample + 1 //averageNumOfEdgesBC.value + 1//
-        //IN DEGREE
-        for ( _ <- 1L to numInEdgesToAdd )
-        {
-          val attachToEdge = Math.abs (r.nextInt () ) % nEdges.toInt
-          val edge: Edge[EdgeData] = inEdgesIndexedBroadcast.value(attachToEdge)
-          attachTo = edge.srcId
-          subsetEdges :+= Edge[EdgeData](attachTo, x)
-
-        }
-
-        subsetEdges
-      }
-
-      edgeList = oldEdgeList.union(curEdges.distinct()).coalesce(partitions).setName("edgeList#" + curEdges).persist(StorageLevel.MEMORY_AND_DISK)
-      nEdges = edgeList.count()
-
-      oldEdgeList.unpersist()
-
-      totalVertices += nPI.toInt
-    }
-
-    //val newEdges = getMultiEdgesRDD(edgeList, seedDists).setName("newEdges")
-
-    // TODO: finalEdgeList should be un-persisted after the next action (but the action will probably be outside this method)
-    //val finalEdgeList = edgeList.union(newEdges)
-    //.coalesce(partitions).setName("finalEdgeList").persist(StorageLevel.MEMORY_AND_DISK)
-    println("Total # of Edges (including multi edges): " + edgeList.count())
-
-    Graph.fromEdges(
-      edgeList,
-      null.asInstanceOf[VertexData],
-      StorageLevel.MEMORY_AND_DISK,
-      StorageLevel.MEMORY_AND_DISK
-    )
-  }
-
   protected def genGraph(seed: Graph[VertexData, EdgeData], seedDists : DataDistributions): Graph[VertexData, EdgeData] = {
-    println()
-    println("Running BA with " + baIter + " iterations.")
-    println()
-
-//    generateBAGraph(seed, seedDists, baIter, nodesPerIter)
     parallelBa(seed, seedDists, baIter, fractionPerIter)
   }
 }

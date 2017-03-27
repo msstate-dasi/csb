@@ -30,7 +30,6 @@ object Benchmark {
                            * BA Arguments
                            */
                          noProp_desc: String = "Specify whether to generate random properties during generation or not.",
-                         numNodesPerIter_desc: String = "The number of nodes to add to the graph per iteration.",
                          fractionPerIter_desc: String = "The fraction of vertices to add to the graph per iteration.",
                          baIter_desc: String = "Number of iterations for Barabasi–Albert model.",
 
@@ -78,7 +77,6 @@ object Benchmark {
                        * BA Arguments
                        */
                      noProp: Boolean = false,
-                     numNodesPerIter: Long = 120,
                      fractionPerIter: Double = 0.1,
                      seed: String = "seed",
                      baIter: Long = 1000,
@@ -172,9 +170,6 @@ object Benchmark {
           opt[Unit]("no-prop")
             .text(s"${h.noProp_desc} default: ${dP.noProp}")
             .action((_, c) => c.copy(noProp = true)),
-          opt[Long]("nodes-per-iter")
-            .text(s"${h.numNodesPerIter_desc} default: ${dP.numNodesPerIter}")
-            .action((x, c) => c.copy(numNodesPerIter = x)),
           opt[Double]("fraction-per-iter")
             .text(s"${h.fractionPerIter_desc} default: ${dP.fractionPerIter}")
             .action((x, c) => c.copy(fractionPerIter = x)),
@@ -329,7 +324,7 @@ object Benchmark {
 
     var synthesizer: GraphSynth = null
     params.mode match {
-      case "ba" => synthesizer = new ParallelBaSynth (params.partitions, params.baIter, params.numNodesPerIter, params.fractionPerIter)
+      case "ba" => synthesizer = new ParallelBaSynth (params.partitions, params.baIter, params.fractionPerIter)
       case "kro" => synthesizer = new KroSynth (params.partitions, params.seedMtx, params.kroIter)
     }
 
