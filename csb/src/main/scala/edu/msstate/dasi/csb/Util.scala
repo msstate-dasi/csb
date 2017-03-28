@@ -82,12 +82,12 @@ object Util {
 
   def stripMultiEdges[VD: ClassTag, ED: ClassTag](G: Graph[VD, ED]): Graph[VD, ED] =
   {
-    G.groupEdges(mergeEdges)
+    G.groupEdges(mergeEdges[ED])
 //    val stripedEdges = G.edges.groupBy(record => (record.srcId, record.dstId)).map(record => record._2.head)
 //    return Graph.fromEdges(EdgeRDD.fromEdges(stripedEdges), VertexData())
   }
 
-  def mergeEdges[VD: ClassTag, ED: ClassTag](e1: ED, e2: ED): ED = {
-    return null.asInstanceOf[ED]
+  def mergeEdges[ED: ClassTag](e1: ED, e2: ED): ED = {
+    null.asInstanceOf[ED]
   }
 }

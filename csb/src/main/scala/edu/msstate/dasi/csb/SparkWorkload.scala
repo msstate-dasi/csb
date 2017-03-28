@@ -203,4 +203,9 @@ object SparkWorkload extends Workload {
   def edgesWithProperty[VD: ClassTag](graph: Graph[VD, EdgeData], filter: Edge[EdgeData] => Boolean): RDD[Edge[EdgeData]] = {
     graph.edges.filter(filter)
   }
+
+  /**
+   * Verifies if graph contains a subgraph that is isomorphic to pattern.
+   */
+  def subgraphIsomorphism[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], pattern: Graph[VD, ED]): Unit = ???
 }
