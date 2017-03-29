@@ -95,7 +95,6 @@ while [ /bin/true ]; do
 		echo "spark.$ID.csb.cpuUser $CPUUSER $DATE" | nc localhost 2003
 		echo "spark.$ID.csb.cpuSystem $CPUSYSTEM $DATE" | nc localhost 2003
 		echo "spark.$ID.csb.cpuIdle $CPUIDLE $DATE" | nc localhost 2003
-		echo "spark.$ID.csb.cpuIdle $CPUIDLE $DATE" | nc localhost 2003
 
 		echo "spark.$ID.csb.networkIn $INBYTES $DATE" | nc localhost 2003
 		echo "spark.$ID.csb.networkOut $OUTBYTES $DATE" | nc localhost 2003
