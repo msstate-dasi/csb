@@ -205,7 +205,148 @@ object SparkWorkload extends Workload {
   }
 
   /**
-   * Verifies if graph contains a subgraph that is isomorphic to pattern.
+   * Finds one or more subgraphs of the graph which are isomorphic to the pattern.
    */
-  def subgraphIsomorphism[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], pattern: Graph[VD, ED]): Unit = ???
+  def subgraphIsomorphism[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], pattern: Graph[VD, ED]): Unit = {
+    def refine(candidates: RDD[(VertexId, Array[VertexId])], graphNeighbors: VertexRDD[Array[VertexId]],
+               patternNeighbors: RDD[(VertexId, VertexId)]): RDD[(VertexId, Array[VertexId])] = {
+      val neighborsOfCandidates = candidates
+        .flatMap{ case (patternVertex, candidatesArray) => candidatesArray.map( (patternVertex, _) ) }
+        .map(_.swap).join(graphNeighbors)
+        .map{ case (candidate, (vertex, candidateNeighbors)) => (vertex, (candidate, candidateNeighbors)) }
+
+      val candidatesOfPatternNeighbors = patternNeighbors.map(_.swap).join(candidates)
+        .map{ case (_, (vertex, candidatesArray)) => (vertex, Array(candidatesArray))}
+        .reduceByKey( (array1, array2) => array1 ++ array2 )
+
+      val refinedCandidates = neighborsOfCandidates.join(candidatesOfPatternNeighbors)
+        .filter{ case (_, ((_, candidateNeighbors), candidatesOfNeighbors)) =>
+          candidatesOfNeighbors.forall( _.intersect(candidateNeighbors).nonEmpty ) }
+        .map{ case (vertex, ((candidate, _), _)) => (vertex, Array(candidate)) }
+        .reduceByKey( (array1, array2) => array1 ++ array2 )
+
+      refinedCandidates
+    }
+
+    def purgeUniques(candidates: RDD[(VertexId, Array[VertexId])], partitions: Int): RDD[(VertexId, Array[VertexId])] = {
+      val uniqueCandidates = candidates.filter{ case (_, candidatesArray) => candidatesArray.length == 1 }.values
+
+      if ( ! uniqueCandidates.isEmpty() ) {
+        val purgedCandidates = candidates.cartesian(uniqueCandidates).coalesce(partitions).map { case ((vertex, candidatesArray), uniqueCandidate) => if (candidatesArray.length > 1) {
+          (vertex, candidatesArray.diff(uniqueCandidate))
+        } else {
+          (vertex, candidatesArray)
+        }
+        }.reduceByKey((array1, array2) => array1.intersect(array2))
+
+        purgedCandidates
+      } else {
+        candidates
+      }
+    }
+
+    def select(candidates: RDD[(VertexId, Array[VertexId])], selectedVertex: VertexId,
+               selectedCandidate: VertexId): RDD[(VertexId, Array[VertexId])] = {
+      candidates.map{ case (vertex, candidatesArray) =>
+        if (vertex == selectedVertex) {
+          (vertex, Array(selectedCandidate))
+        } else {
+          (vertex, candidatesArray.filter(_ != selectedCandidate))
+        }
+      }
+    }
+
+    def printCandidates(candidates: RDD[(VertexId, Array[VertexId])]): Unit = {
+      for ( (vertex, candidatesArray) <- candidates.toLocalIterator ) {
+        println(s"$vertex -> ${candidatesArray.mkString(",")}")
+      }
+    }
+
+    def backtracking(candidates: RDD[(VertexId, Array[VertexId])], patternVerticesCount: Long,
+                     graphNeighbors: VertexRDD[Array[VertexId]], patternNeighbors: RDD[(VertexId, VertexId)],
+                     partitions: Int): Boolean = {
+      val purgedCandidates = purgeUniques(candidates, partitions).cache()
+
+      val actualCandidates = purgedCandidates.filter{ case (_, candidatesArray) => candidatesArray.length > 1 }
+
+      if ( actualCandidates.isEmpty() ) {
+        printCandidates(purgedCandidates)
+        purgedCandidates.unpersist()
+        return true
+      }
+
+      val (currentVertex, currentArray) = actualCandidates.sortBy(_._2.length).first()
+
+      var found = false
+
+      for (candidate <- currentArray) {
+        val candidatesAttempt = select(purgedCandidates, currentVertex, candidate).cache()
+
+        val candidatesResult = refine(candidatesAttempt, graphNeighbors, patternNeighbors).cache()
+        val candidatesResultCount = candidatesResult.count
+
+        candidatesAttempt.unpersist()
+        purgedCandidates.unpersist()
+
+        if (candidatesResultCount == patternVerticesCount) {
+          if ( candidatesResult.filter{ case (_, candidatesArray) => candidatesArray.length > 1 }.isEmpty() ) {
+            printCandidates(candidatesResult)
+            found = true
+          } else {
+            found = backtracking(candidatesResult, patternVerticesCount, graphNeighbors, patternNeighbors, partitions: Int)
+          }
+          candidatesResult.unpersist()
+        }
+      }
+      found
+    }
+
+    val patternVerticesCount = pattern.vertices.count
+
+    val partitions = graph.vertices.getNumPartitions
+
+    val candidates = pattern.degrees.sortBy(_._2, ascending = false)
+      .cartesian(graph.degrees).coalesce(partitions)
+      .filter{ case ( (_, vertexDegree), (_, candidateDegree) ) => candidateDegree >= vertexDegree }
+      .map{ case ( (vertex, _), (candidate, _) ) => (vertex, Array(candidate)) }
+      .reduceByKey( (array1, array2) => array1 ++ array2 )
+      .cache()
+
+    if (candidates.count < patternVerticesCount) {
+      // One or more vertices of the pattern have no candidates
+      println("Subgraph not found, one or more vertices of the pattern have no initial candidates.")
+
+      candidates.unpersist()
+      return
+    }
+
+    val graphNeighbors = graph.collectNeighborIds(EdgeDirection.Either).cache()
+
+    val patternNeighbors = pattern.collectNeighborIds(EdgeDirection.Either)
+      .flatMap{ case (vertex, neighbors) => neighbors.map( (vertex, _) ) } // Unroll the neighbors array into separate entries
+      .cache()
+
+    val refinedCandidates = refine(candidates, graphNeighbors, patternNeighbors).cache()
+    val refinedCandidatesCount = refinedCandidates.count
+
+    candidates.unpersist()
+
+    if (refinedCandidatesCount < patternVerticesCount) {
+      // One or more vertices of the pattern have no candidates
+      println("Subgraph not found, one or more vertices of the pattern have no refined candidates.")
+
+      refinedCandidates.unpersist()
+      graphNeighbors.unpersist()
+      patternNeighbors.unpersist()
+      return
+    }
+
+    val found = backtracking(refinedCandidates, patternVerticesCount, graphNeighbors, patternNeighbors, partitions)
+
+    if (found) println("One or more subgraphs found.") else println("Subgraph not found.")
+
+    refinedCandidates.unpersist()
+    graphNeighbors.unpersist()
+    patternNeighbors.unpersist()
+  }
 }

@@ -135,7 +135,7 @@ trait Workload {
   def edgesWithProperty[VD: ClassTag](graph: Graph[VD, EdgeData], filter: Edge[EdgeData] => Boolean): RDD[Edge[EdgeData]]
 
   /**
-   * Verifies if graph contains a subgraph that is isomorphic to pattern.
+   * Finds one or more subgraphs of the graph which are isomorphic to the pattern.
    */
   def subgraphIsomorphism[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], pattern: Graph[VD, ED]): Unit
 }
