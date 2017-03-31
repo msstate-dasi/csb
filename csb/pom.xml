@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>edu.msstate.dasi</groupId>
     <artifactId>csb</artifactId>
-    <version>0.1.2</version>
+    <version>0.1.3-SNAPSHOT</version>
     <name>${project.artifactId}</name>
     <description>This is synthetic graph generation project written with Apache Spark.</description>
     <inceptionYear>2016</inceptionYear>
