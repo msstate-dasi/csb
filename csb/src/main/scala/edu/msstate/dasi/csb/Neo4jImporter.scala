@@ -116,6 +116,8 @@ object Neo4jImporter {
     )
   }
 
+  private def createDbConfig(): Config = Config.defaults()
+
   def apply(graph: Graph[VertexData, EdgeData], dbPath: String, logsPath: String = "__logs"): Unit = {
     FileUtils.deleteRecursively(new File(dbPath))
 
@@ -125,7 +127,7 @@ object Neo4jImporter {
     fs.mkdirs(logsDir)
 
     val importer = new ParallelBatchImporter(dbDir, createConfiguration(), createLogging(), createExecutionMonitors(),
-      Config.defaults())
+      createDbConfig())
 
     importer.doImport(new SparkInput(graph))
   }
