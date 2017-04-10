@@ -24,9 +24,9 @@ The suite is composed of three main components:
 2. Representative workloads
 3. Metrics of interest and visualization
 
-The first and second components are provided by the [CSB](csb/README.md) module, while the third component is provided by the [Metrics Collector](metrics-collector/README.md) module.
+The first and second components are provided by the [CSB](csb/) module, while the third component is provided by the [Metrics Collector](metrics-collector/) module.
 
-In addition, some example [datasets](data/README.md) are provided.
+In addition, some example [datasets](data/) are provided.
 
 ## Licensing
 
