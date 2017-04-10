@@ -17,7 +17,8 @@
         <scala.tools.version>2.11</scala.tools.version>
         <scala.version>2.11.8</scala.version>
         <spark.version>2.1.0</spark.version>
-        <neo4j-driver.version>1.2.0</neo4j-driver.version>
+        <neo4j.version>3.1.2</neo4j.version>
+        <neo4j.driver.version>1.2.0</neo4j.driver.version>
     </properties>
 
     <repositories>
@@ -126,7 +127,22 @@
         <dependency>
             <groupId>org.neo4j.driver</groupId>
             <artifactId>neo4j-java-driver</artifactId>
-            <version>${neo4j-driver.version}</version>
+            <version>${neo4j.driver.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.neo4j</groupId>
+            <artifactId>neo4j-csv</artifactId>
+            <version>${neo4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.neo4j</groupId>
+            <artifactId>neo4j-lucene-index</artifactId>
+            <version>${neo4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.neo4j</groupId>
+            <artifactId>neo4j-kernel</artifactId>
+            <version>${neo4j.version}</version>
         </dependency>
     </dependencies>
 
