@@ -286,7 +286,7 @@ object Neo4jWorkload extends Workload {
   /**
    * Finds all edges with a given property.
    */
-  def edgesWithProperty[VD: ClassTag](graph: Graph[VD, EdgeData], filter: Edge[EdgeData] => Boolean): RDD[Edge[EdgeData]] = ???
+  def edgesWithProperty[VD: ClassTag](graph: Graph[VD, EdgeData], filter: Edge[EdgeData] => Boolean): Unit = ???
 
   /**
    * Finds one or more subgraphs of the graph which are isomorphic to the pattern.

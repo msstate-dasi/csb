@@ -1,7 +1,6 @@
 package edu.msstate.dasi.csb
 
-import org.apache.spark.graphx.{Edge, Graph, VertexId, VertexRDD}
-import org.apache.spark.rdd.RDD
+import org.apache.spark.graphx.{Edge, Graph, VertexId}
 
 import scala.reflect.ClassTag
 
@@ -132,11 +131,10 @@ trait Workload {
   /**
    * Finds all edges with a given property.
    */
-  def edgesWithProperty[VD: ClassTag](graph: Graph[VD, EdgeData], filter: Edge[EdgeData] => Boolean): RDD[Edge[EdgeData]]
+  def edgesWithProperty[VD: ClassTag](graph: Graph[VD, EdgeData], filter: Edge[EdgeData] => Boolean): Unit
 
   /**
    * Finds one or more subgraphs of the graph which are isomorphic to the pattern.
    */
   def subgraphIsomorphism[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], pattern: Graph[VD, ED]): Unit
 }
-

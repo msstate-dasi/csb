@@ -44,7 +44,7 @@ object SparkWorkload extends Workload {
    * PageRank and edge attributes containing the normalized edge weight.
    */
   def pageRank[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], tol: Double = 0.001, resetProb: Double = 0.15): Unit = {
-    graph.pageRank(tol, resetProb)
+    graph.pageRank(tol, resetProb).vertices.foreach(doNothing)
   }
 
   /**
@@ -150,7 +150,7 @@ object SparkWorkload extends Workload {
    * value containing the lowest vertex id in the connected component containing that vertex.
    */
   def connectedComponents[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED], maxIterations: Int = Int.MaxValue): Unit = {
-    graph.connectedComponents(maxIterations)
+    graph.connectedComponents(maxIterations).vertices.foreach(doNothing)
   }
 
   /**
@@ -158,14 +158,14 @@ object SparkWorkload extends Workload {
    * vertex value containing the lowest vertex id in the SCC containing that vertex.
    */
   def stronglyConnectedComponents[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED], numIter: Int): Unit = {
-    graph.stronglyConnectedComponents(numIter)
+    graph.stronglyConnectedComponents(numIter).vertices.foreach(doNothing)
   }
 
   /**
    * Computes the number of triangles passing through each vertex.
    */
   def triangleCount[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED]): Unit = {
-    graph.triangleCount()
+    graph.triangleCount().vertices.foreach(doNothing)
   }
 
   /**
@@ -200,8 +200,8 @@ object SparkWorkload extends Workload {
   /**
    * Finds all edges with a given property.
    */
-  def edgesWithProperty[VD: ClassTag](graph: Graph[VD, EdgeData], filter: Edge[EdgeData] => Boolean): RDD[Edge[EdgeData]] = {
-    graph.edges.filter(filter)
+  def edgesWithProperty[VD: ClassTag](graph: Graph[VD, EdgeData], filter: Edge[EdgeData] => Boolean): Unit = {
+    graph.edges.filter(filter).foreach(doNothing)
   }
 
   /**
