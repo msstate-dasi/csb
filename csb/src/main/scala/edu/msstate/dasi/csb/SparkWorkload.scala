@@ -184,7 +184,7 @@ object SparkWorkload extends Workload {
   /**
    * Computes the closeness centrality of a node using the formula N/(sum(distances)).
    */
-  def closenessCentrality[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], vertex: VertexId): Double = {
+  def closenessCentrality[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], vertex: VertexId): Unit = {
     ClosenessCentrality.getClosenessOfVert(vertex, graph)
   }
 
