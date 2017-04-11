@@ -245,6 +245,19 @@ object Benchmark {
               .action((x,c) => c.copy(graph = x))
         )
 
+      /**
+       * Neo4j-import Arguments
+       */
+      note("\n")
+      cmd("neo4j-import").action((_, c) => c.copy(mode = "neo4j-import"))
+        .text(s"Import an existing graph to Neo4j")
+        .children(
+          arg[String]("graph")
+              .text(s"${h.graph} default: ${dP.graph}")
+              .required()
+              .action((x,c) => c.copy(graph = x))
+        )
+
     }
 
     parser.parse(args, dP) match {
@@ -276,6 +289,7 @@ object Benchmark {
       case "kro" => run_synth(params)
       case "ver" => run_ver(params)
       case "workload" => run_workload(params)
+      case "neo4j-import" => run_neo4jimport(params)
       case _ => sys.exit(1)
     }
 
@@ -425,6 +439,20 @@ object Benchmark {
 //    Util.time( "Breadth-first Search", SparkWorkload.bfs(graph, src, dst) )
 //    Util.time( "Breadth-first Search", SparkWorkload.ssspSeq(graph, src, dst) )
 //    Util.time( "Breadth-first Search", SparkWorkload.ssspNum(graph, src, dst) )
+
+    true
+  }
+
+  def run_neo4jimport(params: Params): Boolean = {
+    var graphPs = null.asInstanceOf[GraphPersistence]
+    params.backend match {
+      case "fs" => graphPs = new SparkPersistence()
+      case "neo4j" => graphPs = new Neo4jPersistence()
+    }
+
+    val graph = Util.time( "Load graph", graphPs.loadGraph(params.graph) )
+
+    Neo4jImporter(graph, "test.db")
 
     true
   }
