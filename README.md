@@ -1,58 +1,33 @@
-# Big Data Benchmarking Suite for Cyber-security Analytics
+# Big Data Benchmarking Suite for Cyber-Security Analytics
 
-## Getting Started
+The first publicly-available Big Data benchmarking suite for next-generation Intrusion Detection Systems, based on Property-Graphs.
 
-### Prerequisites
+## Motivation
 
-* [Java SDK](https://www.java.com/) - Version 1.8
-* [Scala](https://www.scala-lang.org/) - Version 2.11.8
-* [Apache Spark](https://spark.apache.org/) - Version 2.1.0
-* [Maven](https://maven.apache.org/) - Version 3.3.9
+A common trend in Intrusion Detection Systems (IDSs) is to consider data structures based on graphs to analyze network traffic and attack patterns. Timely detecting a threat is fundamental to reduce the risk to which the system is exposed, but no current studies aim at providing useful information to size Cloud or HPC infrastructures to meet certain service level objectives.
 
-### Compiling
+In this project we are researching, designing and implementing a distributed benchmark for the evaluation of the performance of next-generation IDSs.
 
-```
-mvn -f csb/pom.xml package
-```
+Several studies employing big data benchmarks have been conducted over the years to evaluate and characterize various big data systems and architectures. However, most of the state-of-the-art big data benchmarks are designed for specific types of systems, and lack diversity of data and workloads. Moreover, the diversity and rapid evolution of big data systems impose challenges on workload selection and implementation, as it is unpractical to implement all big data workloads
 
-## Running
+Furthermore, the fidelity of the performance results in context of real applications, such as in the area of Cyber-Security, mandates the use of application-specific benchmarks that require application-specific data generators which synthetically scales up and down a synthetic data set and keeps this dataset similar to the real data. Synthetic graphs have advantage over the real graphs in terms of feasibility of finding a set of them covering a rich configuration space. However, very less approaches pays attention to keeping veracity of the real life data during the data generation.
 
-The execution of the application is split in two different phases:
-1. Analysis of the input dataset and generation of the seed graph and the probability distributions of the connections properties 
-2. Data generation with either Barabási–Albert or Kronecker algorithms
+For the above reasons, we offer a comprehensive suite which provides:
+* Fast and flexible synthetic data generators with high degree veracity
+* Intrusion detection representative workloads
+* A user-friendly interface to monitor the cluster performance, showing application and system metrics
 
-### Running phase 1
+## Architecture
 
-```
-$SPARK_HOME/bin/spark-submit csb/target/csb-dep.jar gen_dist data/dataset_01/conn.log data/dataset_01/alert aug.log seed_vert seed_edges
-```
+The suite is composed of three main components:
+1. A dataset generator
+2. Representative workloads
+3. Metrics of interest and visualization
 
-The output will be:
-* An *aug.log* file which represents the join between the input log files
-* A set of *.ser* files which represent the probability distributions of the connections properties
-* *seed_vert* and *seed_edges* files which are the textual representation of the vertices and edges of the seed graph
+The first and second components are provided by the [CSB](csb/) module, while the third component is provided by the [Metrics Collector](metrics-collector/) module.
 
-### Running phase 2
+In addition, some example [datasets](data/) are provided.
 
-The phase 2 is composed of three separate steps:
-1. Synthetic graph generation, which is done using either one the algorithms listed below
-2. Properties generation, which can be skipped with the *--no-prop* parameter
-3. Graph saving using Spark serialization methods (Neo4j serialization is under development)
-4. Veracity computation of degree, in-degree, out-degree and PageRank metrics
+## Licensing
 
-#### Barabási–Albert
-
-The following will run the Barabási–Albert algorithm with 1000 iterations:
-
-```
-$SPARK_HOME/bin/spark-submit csb/target/csb-dep.jar ba seed_vert seed_edges 100
-```
-
-#### Kronecker
-**Note:** the KronFit algorithm is currently under development, so a static version of the seed matrix (*seed.mtx*) of the provided dataset is included in the same folder.
-
-The following will run the stochastic Kronecker algorithm with 15 iterations using the *seed.mtx* matrix:
-
-```
-$SPARK_HOME/bin/spark-submit csb/target/csb-dep.jar kro data/dataset_01/seed.mtx seed_vert seed_edges 10
-```
+This project is an open source product and it is supported under the GPLv3 license. For more information, see [LICENSE.txt](LICENSE.txt).
