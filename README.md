@@ -24,6 +24,8 @@ The suite is composed of three main components:
 2. Representative workloads
 3. Metrics of interest and visualization
 
+![Benchmark Architecture](benchmark_architecture.png?raw=true "Benchmark Architecture")
+
 The first and second components are provided by the [CSB](csb/) module, while the third component is provided by the [Metrics Collector](metrics-collector/) module.
 
 In addition, some example [datasets](data/) are provided.
