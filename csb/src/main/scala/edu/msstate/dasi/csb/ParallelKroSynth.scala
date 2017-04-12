@@ -1,14 +1,23 @@
 package edu.msstate.dasi.csb
 
 import org.apache.spark.graphx.{Edge, Graph}
+import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
-class ParallelKroSynth(partitions: Int, iterations: Int) extends GraphSynth {
+class ParallelKroSynth(partitions: Int, mtxFile: String, iterations: Int) extends GraphSynth {
+
+  private def loadMtx(mtxFile: String): RDD[(Long, Long, Double)] = {
+    sc.textFile(mtxFile)
+      .zipWithIndex()
+      .map{ case (line, rowIndex) => (rowIndex, line.split(" ")) }
+      .flatMap{ case (rowIndex, values) => values.map( (rowIndex, _) ).zipWithIndex }
+      .map{ case ( (rowIndex, value), columnIndex) => (rowIndex, columnIndex.toLong, value.toDouble) }
+  }
 
   /**
    * Generates a graph using a parallel implementation of the deterministic Kronecker algorithm.
    */
-  private def parallelKro(seed: Graph[VertexData, EdgeData], seedDists: DataDistributions): Graph[VertexData,EdgeData] = {
+  private def deterministicKro(seed: Graph[VertexData, EdgeData], seedDists: DataDistributions): Graph[VertexData,EdgeData] = {
     /*
      * We must ensure that all the existing IDs are all adjacent because the algorithm relies heavily on the size of the
      * adjacency matrix.
@@ -64,6 +73,6 @@ class ParallelKroSynth(partitions: Int, iterations: Int) extends GraphSynth {
    * Generates a synthetic graph with no properties starting from a seed graph.
    */
   protected def genGraph(seed: Graph[VertexData, EdgeData], seedDists: DataDistributions): Graph[VertexData, EdgeData] = {
-    parallelKro(seed, seedDists)
+    deterministicKro(seed, seedDists)
   }
 }
