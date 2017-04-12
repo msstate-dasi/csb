@@ -1,52 +1,53 @@
 package edu.msstate.dasi.csb
 
-import org.apache.spark.graphx.{Edge, Graph}
-import org.apache.spark.rdd.RDD
+import org.apache.spark.graphx.{Edge, Graph, VertexId}
 import org.apache.spark.storage.StorageLevel
+
+import scala.io.Source
+import scala.util.Random
 
 class ParallelKroSynth(partitions: Int, mtxFile: String, iterations: Int) extends GraphSynth {
 
-  private def loadMtx(mtxFile: String): RDD[(Long, Long, Double)] = {
-    sc.textFile(mtxFile)
-      .zipWithIndex()
+  private def loadMtx(mtxFile: String): Array[(Long, Long, Double)] = {
+    val lines = Source.fromFile(mtxFile).getLines().toArray
+
+    lines.zipWithIndex
       .map{ case (line, rowIndex) => (rowIndex, line.split(" ")) }
       .flatMap{ case (rowIndex, values) => values.map( (rowIndex, _) ).zipWithIndex }
-      .map{ case ( (rowIndex, value), columnIndex) => (rowIndex, columnIndex.toLong, value.toDouble) }
+      .map{ case ( (rowIndex, value), columnIndex) => (rowIndex.toLong, columnIndex.toLong, value.toDouble) }
   }
 
   /**
-   * Generates a graph using a parallel implementation of the deterministic Kronecker algorithm.
+   * Generates a small probability matrix from a graph.
+   *
+   * The KronFit algorithm is a gradient descent based algorithm which ensures that the probability of generating the
+   * original graph from the small probability matrix after performing Kronecker multiplications is very high.
    */
-  private def deterministicKro(seed: Graph[VertexData, EdgeData], seedDists: DataDistributions): Graph[VertexData,EdgeData] = {
-    /*
-     * We must ensure that all the existing IDs are all adjacent because the algorithm relies heavily on the size of the
-     * adjacency matrix.
-     *
-     * We use zipWithIndex() instead of zipWithUniqueId() because we want to avoid any hole between indexes.
-     */
+  private def kronFit(seed: Graph[VertexData, EdgeData]): Array[(Long, Long, Double)] = {
+    loadMtx(mtxFile)
+  }
 
-    // Map each vertex ID to a new ID
-    val verticesIdMap = seed.vertices
-      .keys // Discard vertices data
-      .zipWithIndex() // (id) => (id, newId)
-      .persist(StorageLevel.MEMORY_AND_DISK) // The result will be used multiple times
+  /**
+   * Generates a graph using a parallel implementation of the stochastic Kronecker algorithm.
+   */
+  private def stochasticKro(seedMtx: Array[(Long, Long, Double)], seedDists: DataDistributions): Graph[VertexData,EdgeData] = {
+    val seedSize = seedMtx.length
 
-    val verticesCount = verticesIdMap.count() // The size of the adjacency matrix
-
-    // Update vertex IDs in the existing edges according to verticesIdMap
-    var rawEdges = seed.edges
-      .map( edge => (edge.srcId, edge.dstId) )  // Discard edge data and build a PairRDD[(srcId, dstId)]
-      .join(verticesIdMap).values // (srcId, dstId) => ( srcId, (dstId, newSrcId) ) => (dstId, newSrcId)
-      .join(verticesIdMap).values // (dstId, newSrcId) => ( dstId, (newSrcId, newDstId) ) => (newSrcId, newDstId)
-      .persist(StorageLevel.MEMORY_AND_DISK) // The result will be used multiple times
-
-    val seedEdges = rawEdges
+    var rawEdges = sc.parallelize(seedMtx.map{ case (src, dst, _) => (src, dst) })
 
     for (_ <- 1 to iterations) {
-      rawEdges = rawEdges.cartesian(seedEdges).coalesce(partitions)
-        .map{ case ( (srcId, dstId), (seedSrcId, seedDstId) ) =>
-          (srcId * verticesCount + seedSrcId, dstId * verticesCount + seedDstId)
+      rawEdges = rawEdges.flatMap{ case (srcId, dstId) =>
+        var edges = Array.empty[(VertexId, VertexId)]
+
+        for ( (seedEdgeSrc, seedEdgeDst, seedEdgeProb) <- seedMtx ) {
+          if (Random.nextDouble() < seedEdgeProb) {
+            edges :+= (srcId * seedSize + seedEdgeSrc, dstId * seedSize + seedEdgeDst)
+          }
         }
+        edges
+      }
+
+      rawEdges = rawEdges.repartition(partitions)
     }
 
     val seedDistsBroadcast = sc.broadcast(seedDists)
@@ -73,6 +74,6 @@ class ParallelKroSynth(partitions: Int, mtxFile: String, iterations: Int) extend
    * Generates a synthetic graph with no properties starting from a seed graph.
    */
   protected def genGraph(seed: Graph[VertexData, EdgeData], seedDists: DataDistributions): Graph[VertexData, EdgeData] = {
-    deterministicKro(seed, seedDists)
+    stochasticKro(kronFit(seed), seedDists)
   }
 }
