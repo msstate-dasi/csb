@@ -8,7 +8,7 @@ import scala.util.Random
 
 class ParallelKroSynth(partitions: Int, mtxFile: String, iterations: Int) extends GraphSynth {
 
-  private def loadMtx(mtxFile: String): Array[(Long, Long, Double)] = {
+  private def loadMtx(mtxFile: String): Array[(VertexId, VertexId, Double)] = {
     val lines = Source.fromFile(mtxFile).getLines().toArray
 
     lines.zipWithIndex
@@ -30,12 +30,20 @@ class ParallelKroSynth(partitions: Int, mtxFile: String, iterations: Int) extend
   /**
    * Generates a graph using a parallel implementation of the stochastic Kronecker algorithm.
    */
-  private def stochasticKro(seedMtx: Array[(Long, Long, Double)], seedDists: DataDistributions): Graph[VertexData,EdgeData] = {
+  private def stochasticKro(seedMtx: Array[(VertexId, VertexId, Double)], seedDists: DataDistributions): Graph[VertexData,EdgeData] = {
     val seedSize = seedMtx.length
 
-    var rawEdges = sc.parallelize(seedMtx.map{ case (src, dst, _) => (src, dst) })
+    var rawEdges = sc.parallelize(
+      seedMtx.flatMap{ case (src, dst, prob) =>
+        if (Random.nextDouble() < prob) {
+          Array((src, dst))
+        } else {
+          None
+        }
+      }
+    )
 
-    for (_ <- 1 to iterations) {
+    for (_ <- 1 until iterations) {
       rawEdges = rawEdges.flatMap{ case (srcId, dstId) =>
         var edges = Array.empty[(VertexId, VertexId)]
 
@@ -45,9 +53,7 @@ class ParallelKroSynth(partitions: Int, mtxFile: String, iterations: Int) extend
           }
         }
         edges
-      }
-
-      rawEdges = rawEdges.repartition(partitions)
+      }.repartition(partitions)
     }
 
     val seedDistsBroadcast = sc.broadcast(seedDists)
@@ -57,7 +63,7 @@ class ParallelKroSynth(partitions: Int, mtxFile: String, iterations: Int) extend
 
       val outEdgesNum = seedDistsBroadcast.value.getOutEdgeSample
 
-      for ( _ <- 1L until outEdgesNum ) multiEdges :+= Edge[EdgeData](srcId, dstId)
+      for ( _ <- 1L to outEdgesNum ) multiEdges :+= Edge[EdgeData](srcId, dstId)
 
       multiEdges
     }
@@ -74,6 +80,10 @@ class ParallelKroSynth(partitions: Int, mtxFile: String, iterations: Int) extend
    * Generates a synthetic graph with no properties starting from a seed graph.
    */
   protected def genGraph(seed: Graph[VertexData, EdgeData], seedDists: DataDistributions): Graph[VertexData, EdgeData] = {
+    println()
+    println(s"Running parallel Kronecker with $iterations iterations.")
+    println()
+
     stochasticKro(kronFit(seed), seedDists)
   }
 }
