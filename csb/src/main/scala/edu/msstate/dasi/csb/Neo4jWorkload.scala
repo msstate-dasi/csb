@@ -270,7 +270,7 @@ object Neo4jWorkload extends Workload {
   /**
    * Computes the closeness centrality of a node using the formula N/(sum(distances)).
    */
-  def closenessCentrality[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], vertex: VertexId): Double = ???
+  def closenessCentrality[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], vertex: VertexId): Unit = ???
 
   /**
    * Computes the shortest path from a source vertex to all other vertices.
@@ -286,7 +286,7 @@ object Neo4jWorkload extends Workload {
   /**
    * Finds all edges with a given property.
    */
-  def edgesWithProperty[VD: ClassTag](graph: Graph[VD, EdgeData], filter: Edge[EdgeData] => Boolean): RDD[Edge[EdgeData]] = ???
+  def edgesWithProperty[VD: ClassTag](graph: Graph[VD, EdgeData], filter: Edge[EdgeData] => Boolean): Unit = ???
 
   /**
    * Finds one or more subgraphs of the graph which are isomorphic to the pattern.
