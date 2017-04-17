@@ -1,7 +1,6 @@
 package edu.msstate.dasi.csb
 
-import org.apache.spark.broadcast.Broadcast
-import org.apache.spark.graphx.{Edge, Graph}
+import org.apache.spark.graphx.{Edge, Graph, VertexId}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
@@ -33,11 +32,7 @@ class KroSynth(partitions: Int, mtxFile: String, genIter: Int) extends GraphSynt
     parseMtxDataFromFile(mtxFile)
   }
 
-  private def getKroRDD(nVerts: Long, nEdges: Long, n1: Int, iter: Int, probToRCPosV_Broadcast: Broadcast[Array[(Double, Long, Long)]] ): RDD[Edge[EdgeData]] = {
-    // TODO: the algorithm must be commented and meaningful variable names must be used
-
-    val r = Random
-
+  private def getKroRDD(nVerts: Long, nEdges: Long, mtxVerticesNum: Int, iter: Int, cumulativeProbMtx: Array[(Double, VertexId, VertexId)] ): RDD[Edge[EdgeData]] = {
     val localPartitions = math.min(nEdges, partitions).toInt
     val recordsPerPartition = math.min( (nEdges / localPartitions).toInt, Int.MaxValue )
     val i = sc.parallelize(Seq.empty[Char], localPartitions).mapPartitions( _ =>  (1 to recordsPerPartition).iterator )
@@ -49,19 +44,15 @@ class KroSynth(partitions: Int, mtxFile: String, genIter: Int) extends GraphSynt
       var dstId = 0L
 
       for ( _ <- 1 to iter ) {
-        val probToRCPosV = probToRCPosV_Broadcast.value
-        val prob = r.nextDouble()
-        var n = 0
-        while (prob > probToRCPosV(n)._1) {
-          n += 1
+        val prob = Random.nextDouble()
+        var index = 0
+        while (prob > cumulativeProbMtx(index)._1) {
+          index += 1
         }
 
-        val u = probToRCPosV(n)._2
-        val v = probToRCPosV(n)._3
-
-        range = range / n1
-        srcId += u * range
-        dstId += v * range
+        range = range / mtxVerticesNum
+        srcId += cumulativeProbMtx(index)._2 * range
+        dstId += cumulativeProbMtx(index)._3 * range
       }
       Edge[EdgeData](srcId, dstId)
     }
@@ -97,31 +88,25 @@ class KroSynth(partitions: Int, mtxFile: String, genIter: Int) extends GraphSynt
     * @return Graph containing vertices + VertexData, edges + EdgeData
     */
   private def generateKroGraph(probMtx: Array[Array[Double]], seedDists: DataDistributions): Graph[VertexData, EdgeData] = {
+    val mtxVerticesNum = probMtx.length
+    val mtxSum = probMtx.map(record => record.sum).sum
 
-    val n1 = probMtx.length
-    println("n1 = " + n1)
-
-    val mtxSum: Double = probMtx.map(record => record.sum).sum
-    val nVerts = math.pow(n1, genIter).toLong
+    val nVerts = math.pow(mtxVerticesNum, genIter).toLong
     val nEdges = math.pow(mtxSum, genIter).toLong
-    println("Total # of Vertices: " + nVerts)
-    println("Total # of Edges: " + nEdges)
 
-    var cumProb: Double = 0f
-    var probToRCPosV_Private: Array[(Double, Long, Long)] = Array.empty
+    println("Expected # of Vertices: " + nVerts)
+    println("Expected # of Edges: " + nEdges)
 
-    for (i <- 0 until n1; j <- 0 until n1) {
-        val prob = probMtx(i)(j)
-        cumProb+=prob
+    var cumProb: Double = 0.0
+    var cumulativeProbMtx = Array.empty[(Double, VertexId, VertexId)]
 
-        //println((cumProb/mtxSum, i, j))
-
-        probToRCPosV_Private = probToRCPosV_Private :+ (cumProb/mtxSum, i.toLong, j.toLong)
+    for (i <- 0 until mtxVerticesNum; j <- 0 until mtxVerticesNum) {
+      val prob = probMtx(i)(j)
+      cumProb += prob
+      cumulativeProbMtx :+= (cumProb/mtxSum, i.toLong, j.toLong)
     }
 
     var startTime = System.nanoTime()
-
-    val probToRCPosV_Broadcast = sc.broadcast(probToRCPosV_Private)
 
     var curEdges: Long = 0
     var edgeList = sc.emptyRDD[Edge[EdgeData]]
@@ -131,7 +116,7 @@ class KroSynth(partitions: Int, mtxFile: String, genIter: Int) extends GraphSynt
 
       val oldEdgeList = edgeList
 
-      val newRDD = getKroRDD(nVerts, nEdges - curEdges, n1, genIter, probToRCPosV_Broadcast)
+      val newRDD = getKroRDD(nVerts, nEdges - curEdges, mtxVerticesNum, genIter, cumulativeProbMtx)
       edgeList = oldEdgeList.union(newRDD).distinct()
         .coalesce(partitions).setName("edgeList#" + curEdges).persist(StorageLevel.MEMORY_AND_DISK)
       curEdges = edgeList.count()

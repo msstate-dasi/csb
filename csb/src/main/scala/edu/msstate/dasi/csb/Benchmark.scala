@@ -325,7 +325,7 @@ object Benchmark {
     var synthesizer: GraphSynth = null
     params.mode match {
       case "ba" => synthesizer = new ParallelBaSynth (params.partitions, params.baIter, params.fractionPerIter)
-      case "kro" => synthesizer = new ParallelKroSynth (params.partitions, params.seedMtx, params.kroIter)
+      case "kro" => synthesizer = new KroSynth (params.partitions, params.seedMtx, params.kroIter)
     }
 
     val synth = synthesizer.synthesize(seed, seedDists, !params.noProp)
