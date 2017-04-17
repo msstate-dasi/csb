@@ -232,11 +232,12 @@ object SparkWorkload extends Workload {
       val uniqueCandidates = candidates.filter{ case (_, candidatesArray) => candidatesArray.length == 1 }.values
 
       if ( ! uniqueCandidates.isEmpty() ) {
-        val purgedCandidates = candidates.cartesian(uniqueCandidates).coalesce(partitions).map { case ((vertex, candidatesArray), uniqueCandidate) => if (candidatesArray.length > 1) {
-          (vertex, candidatesArray.diff(uniqueCandidate))
-        } else {
-          (vertex, candidatesArray)
-        }
+        val purgedCandidates = candidates.cartesian(uniqueCandidates).coalesce(partitions)
+          .map { case ((vertex, candidatesArray), uniqueCandidate) => if (candidatesArray.length > 1) {
+            (vertex, candidatesArray.diff(uniqueCandidate))
+          } else {
+            (vertex, candidatesArray)
+          }
         }.reduceByKey((array1, array2) => array1.intersect(array2))
 
         purgedCandidates
