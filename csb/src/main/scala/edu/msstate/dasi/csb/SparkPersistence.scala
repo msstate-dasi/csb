@@ -17,8 +17,8 @@ class SparkPersistence extends GraphPersistence {
     val verticesPath = graphName + vertices_suffix
     val edgesPath = graphName + edges_suffix
 
-    val vertices = sc.objectFile[(VertexId, VertexData)](verticesPath, partitions)
-    val edges = sc.objectFile[Edge[EdgeData]](edgesPath, partitions)
+    val vertices = sc.objectFile[(VertexId, VertexData)](verticesPath, partitions).coalesce(partitions)
+    val edges = sc.objectFile[Edge[EdgeData]](edgesPath, partitions).coalesce(partitions)
 
     Graph(
       vertices,
@@ -52,8 +52,8 @@ class SparkPersistence extends GraphPersistence {
     val verticesPath = graphName + vertices_suffix
     val edgesPath = graphName + edges_suffix
 
-    val verticesText = sc.textFile(verticesPath, partitions)
-    val edgesText = sc.textFile(edgesPath, partitions)
+    val verticesText = sc.textFile(verticesPath, partitions).coalesce(partitions)
+    val edgesText = sc.textFile(edgesPath, partitions).coalesce(partitions)
 
     // Vertex example: (175551085347081,null)
     val verticesRegex = "[(,)]"
