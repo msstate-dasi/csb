@@ -315,7 +315,7 @@ object Benchmark {
     }
 
     val seed = Util.time( "Load seed graph", {
-      val seed = graphPs.loadGraph(params.seed)
+      val seed = graphPs.loadGraph(params.seed, params.partitions)
       println("Vertices #: " + seed.numVertices + ", Edges #: " + seed.numEdges)
       seed
     } )
@@ -358,9 +358,9 @@ object Benchmark {
       case "neo4j" => graphPs = new Neo4jPersistence()
     }
 
-    val seed = graphPs.loadGraph(params.seed)
+    val seed = graphPs.loadGraph(params.seed, params.partitions)
 
-    val synth = graphPs.loadGraph(params.synth)
+    val synth = graphPs.loadGraph(params.synth, params.partitions)
 
     params.metric match {
       case "degree" =>
@@ -400,7 +400,7 @@ object Benchmark {
       case "neo4j" => graphPs = new Neo4jPersistence()
     }
 
-    val graph = Util.time( "Load graph", graphPs.loadGraph(params.graph) )
+    val graph = Util.time( "Load graph", graphPs.loadGraph(params.graph, params.partitions) )
 
     Util.time( "Count vertices", SparkWorkload.countVertices(graph) )
     Util.time( "Count edges", SparkWorkload.countEdges(graph) )

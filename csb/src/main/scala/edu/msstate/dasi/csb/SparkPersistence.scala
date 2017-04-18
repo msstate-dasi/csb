@@ -13,12 +13,12 @@ class SparkPersistence extends GraphPersistence {
   /**
    * Load a graph.
    */
-  def loadGraph(graphName: String): Graph[VertexData, EdgeData] = {
+  def loadGraph(graphName: String, partitions: Int): Graph[VertexData, EdgeData] = {
     val verticesPath = graphName + vertices_suffix
     val edgesPath = graphName + edges_suffix
 
-    val vertices = sc.objectFile[(VertexId, VertexData)](verticesPath)
-    val edges = sc.objectFile[Edge[EdgeData]](edgesPath)
+    val vertices = sc.objectFile[(VertexId, VertexData)](verticesPath, partitions)
+    val edges = sc.objectFile[Edge[EdgeData]](edgesPath, partitions)
 
     Graph(
       vertices,
@@ -48,12 +48,12 @@ class SparkPersistence extends GraphPersistence {
   /**
    * Load a graph from a textual representation.
    */
-  def loadFromText(graphName: String): Graph[VertexData, EdgeData] = {
+  def loadFromText(graphName: String, partitions: Int): Graph[VertexData, EdgeData] = {
     val verticesPath = graphName + vertices_suffix
     val edgesPath = graphName + edges_suffix
 
-    val verticesText = sc.textFile(verticesPath)
-    val edgesText = sc.textFile(edgesPath)
+    val verticesText = sc.textFile(verticesPath, partitions)
+    val edgesText = sc.textFile(edgesPath, partitions)
 
     // Vertex example: (175551085347081,null)
     val verticesRegex = "[(,)]"

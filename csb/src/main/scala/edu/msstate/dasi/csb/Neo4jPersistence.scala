@@ -12,7 +12,7 @@ class Neo4jPersistence extends GraphPersistence {
   /**
    * Load a graph.
    */
-  def loadGraph(graphName: String): Graph[VertexData, EdgeData] = ???
+  def loadGraph(graphName: String, partitions: Int): Graph[VertexData, EdgeData] = ???
 
   /**
    * Save a graph.
@@ -22,7 +22,7 @@ class Neo4jPersistence extends GraphPersistence {
   /**
    * Load a graph from a textual representation.
    */
-  def loadFromText(graphName: String): Graph[VertexData, EdgeData] = ???
+  def loadFromText(graphName: String, partitions: Int): Graph[VertexData, EdgeData] = ???
 
   /**
    * Save a graph as a textual representation.
