@@ -208,6 +208,15 @@ object SparkWorkload extends Workload {
    * Finds one or more subgraphs of the graph which are isomorphic to the pattern.
    */
   def subgraphIsomorphism[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], pattern: Graph[VD, ED]): Unit = {
+
+    /**
+     * Refines the candidates' list, keeping only the candidates that satisfy the following statement:
+     *
+     * "y is a refined candidate of x iff every neighbor of x has at least one candidate among neighbors of y"
+     *
+     * r(x) = {y ∈ c(x): ∀w ∈ n(x).c(W) ∩ n(y) ≠ ∅}
+     *
+     */
     def refine(candidates: RDD[(VertexId, Array[VertexId])], graphNeighbors: VertexRDD[Array[VertexId]],
                patternNeighbors: RDD[(VertexId, VertexId)]): RDD[(VertexId, Array[VertexId])] = {
       val neighborsOfCandidates = candidates
@@ -228,7 +237,11 @@ object SparkWorkload extends Workload {
       refinedCandidates
     }
 
-    def purgeUniques(candidates: RDD[(VertexId, Array[VertexId])], partitions: Int): RDD[(VertexId, Array[VertexId])] = {
+    /**
+     * For each vertex with only one candidate, removes any other candidate's occurrences among the candidates of the
+     * other vertices.
+     */
+    def cleanup(candidates: RDD[(VertexId, Array[VertexId])], partitions: Int): RDD[(VertexId, Array[VertexId])] = {
       val uniqueCandidates = candidates.filter{ case (_, candidatesArray) => candidatesArray.length == 1 }.values
 
       if ( ! uniqueCandidates.isEmpty() ) {
@@ -246,6 +259,11 @@ object SparkWorkload extends Workload {
       }
     }
 
+    /**
+     * Given a vertex and one of its candidates:
+     *  * removes any other candidate's occurrences among the candidates of the other vertices
+     *  * removes all the other vertex's candidates
+     */
     def select(candidates: RDD[(VertexId, Array[VertexId])], selectedVertex: VertexId,
                selectedCandidate: VertexId): RDD[(VertexId, Array[VertexId])] = {
       candidates.map{ case (vertex, candidatesArray) =>
@@ -257,43 +275,68 @@ object SparkWorkload extends Workload {
       }
     }
 
+    /**
+     * Prints the candidates' list.
+     */
     def printCandidates(candidates: RDD[(VertexId, Array[VertexId])]): Unit = {
       for ( (vertex, candidatesArray) <- candidates.toLocalIterator ) {
         println(s"$vertex -> ${candidatesArray.mkString(",")}")
       }
     }
 
+    /**
+     * Goes through the candidates' list following these steps:
+     *  1. Cleanup unique candidates
+     *  2. Select the vertex with fewer candidates (at least two) and select one of its candidates
+     *  3. Refine
+     *  4. Backtrack
+     *
+     * Stop when:
+     *  * any vertex has no more candidates, OR
+     *  * every vertex has exactly one candidate.
+     *
+     */
     def backtracking(candidates: RDD[(VertexId, Array[VertexId])], patternVerticesCount: Long,
                      graphNeighbors: VertexRDD[Array[VertexId]], patternNeighbors: RDD[(VertexId, VertexId)],
                      partitions: Int): Boolean = {
-      val purgedCandidates = purgeUniques(candidates, partitions).cache()
+      // Cleanup unique candidates
+      val cleanedCandidates = cleanup(candidates, partitions).cache()
 
-      val actualCandidates = purgedCandidates.filter{ case (_, candidatesArray) => candidatesArray.length > 1 }
+      // Extract all candidates which have more than one candidate
+      val actualCandidates = cleanedCandidates.filter{ case (_, candidatesArray) => candidatesArray.length > 1 }
 
       if ( actualCandidates.isEmpty() ) {
-        printCandidates(purgedCandidates)
-        purgedCandidates.unpersist()
+        // Every vertex has exactly one candidate
+        println("** Subgraph found **")
+        printCandidates(cleanedCandidates)
+        println("********************")
+        cleanedCandidates.unpersist()
         return true
       }
 
+      // Pick the first vertex with the lowest number of candidates (at least two)
       val (currentVertex, currentArray) = actualCandidates.sortBy(_._2.length).first()
 
       var found = false
 
       for (candidate <- currentArray) {
-        val candidatesAttempt = select(purgedCandidates, currentVertex, candidate).cache()
+        val candidatesAttempt = select(cleanedCandidates, currentVertex, candidate).cache()
 
         val candidatesResult = refine(candidatesAttempt, graphNeighbors, patternNeighbors).cache()
         val candidatesResultCount = candidatesResult.count
 
         candidatesAttempt.unpersist()
-        purgedCandidates.unpersist()
+        cleanedCandidates.unpersist()
 
         if (candidatesResultCount == patternVerticesCount) {
           if ( candidatesResult.filter{ case (_, candidatesArray) => candidatesArray.length > 1 }.isEmpty() ) {
+            // Every vertex has exactly one candidate
+            println("** Subgraph found **")
             printCandidates(candidatesResult)
+            println("********************")
             found = true
           } else {
+            // Some vertex has more than one candidates, backtrack
             found = backtracking(candidatesResult, patternVerticesCount, graphNeighbors, patternNeighbors, partitions: Int)
           }
           candidatesResult.unpersist()
@@ -306,6 +349,14 @@ object SparkWorkload extends Workload {
 
     val partitions = graph.vertices.getNumPartitions
 
+    /**
+     * The definition of a candidate is the following statement:
+     *
+     * y is a candidate of x iff degree(y) ≥ degree(x)
+     *
+     * c(x) = {y ∈ vertices(graph): degree(y) ≥ degree(x)}
+     *
+     */
     val candidates = pattern.degrees.sortBy(_._2, ascending = false)
       .cartesian(graph.degrees).coalesce(partitions)
       .filter{ case ( (_, vertexDegree), (_, candidateDegree) ) => candidateDegree >= vertexDegree }
