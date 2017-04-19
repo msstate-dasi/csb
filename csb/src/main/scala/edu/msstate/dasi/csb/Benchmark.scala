@@ -450,7 +450,7 @@ object Benchmark {
       case "neo4j" => graphPs = new Neo4jPersistence()
     }
 
-    val graph = Util.time( "Load graph", graphPs.loadGraph(params.graph) )
+    val graph = Util.time( "Load graph", graphPs.loadGraph(params.graph, params.partitions) )
 
     Neo4jImporter(graph, "test.db")
 
