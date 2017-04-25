@@ -138,7 +138,7 @@ class Neo4jWorkload(url: String, username: String, password: String) extends Wor
    * @return RDD of Arrays which contain VertexId and VD for each neighbor
    */
   def inNeighbors[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = {
-    val query = "MATCH (n) RETURN n, [ (n)<--(m) | m ];"
+    val query = "MATCH (n)<--(m) RETURN n, collect(m);"
 
     run(query)
   }
@@ -154,7 +154,7 @@ class Neo4jWorkload(url: String, username: String, password: String) extends Wor
    * @return RDD of Arrays which contain VertexId and VD for each neighbor
    */
   def outNeighbors[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = {
-    val query = "MATCH (n) RETURN n, [ (n)-->(m) | m ];"
+    val query = "MATCH (n)-->(m) RETURN n, collect(m);"
 
     run(query)
   }
@@ -170,7 +170,7 @@ class Neo4jWorkload(url: String, username: String, password: String) extends Wor
    * @return RDD of Arrays which contain VertexId and VD for each neighbor
    */
   def neighbors[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = {
-    val query = "MATCH (n) RETURN n, [ (n)--(m) | m ];"
+    val query = "MATCH (n)--(m) RETURN n, collect(m);"
 
     run(query)
   }
@@ -185,7 +185,7 @@ class Neo4jWorkload(url: String, username: String, password: String) extends Wor
    * @return RDD containing pairs of (VertexID, Iterable of Edges) for every vertex in the graph
    */
   def inEdges[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = {
-    val query = "MATCH (n) RETURN n, [ (n)<-[r]-() | r ];"
+    val query = "MATCH (n)<-[r]-() RETURN n, collect(r);"
 
     run(query)
   }
@@ -200,7 +200,7 @@ class Neo4jWorkload(url: String, username: String, password: String) extends Wor
    * @return RDD containing pairs of (VertexID, Iterable of Edges) for every vertex in the graph
    */
   def outEdges[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = {
-    val query = "MATCH (n) RETURN n, [ (n)-[r]->() | r ];"
+    val query = "MATCH (n)-[r]->() RETURN n, collect(r);"
 
     run(query)
   }
