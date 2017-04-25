@@ -2,7 +2,7 @@ package edu.msstate.dasi.csb
 
 import org.apache.log4j.{Level, Logger}
 
-import scopt.OptionParser
+//import scopt.OptionParser
 
 object Benchmark {
 
@@ -104,156 +104,180 @@ object Benchmark {
   def main(args: Array[String]) {
 
 
-    val dP = Params()
-    val h = ParamsHelp()
+//    val dP = Params()
+//    val h = ParamsHelp()
+//
+//    val parser = new OptionParser[Params]("Benchmark") {
+//      head(s"Benchmark $versionString: a synthetic Graph Generator for the busy scientist.")
+//
+//      /**
+//        * All Arguments:
+//        */
+//      opt[String]("output")
+//        .text(s"${h.outputGraphPrefix_desc} Default ${dP.outputGraphPrefix}")
+//        .action((x, c) => c.copy(outputGraphPrefix = x))
+//      opt[Int]("partitions")
+//        .text(s"${h.partitions_desc} Default: ${dP.partitions}")
+//        .validate(x => if (x > 0) success else failure("Partition count must be greater than 0."))
+//        .action((x, c) => c.copy(partitions = x))
+//      opt[String]("backend")
+//        .text(s"${h.backend_desc} Default: ${dP.backend}")
+//        .validate(x => if (x == "fs" || x == "neo4j") success else failure("Backend must be fs or neo4j."))
+//        .action((x, c) => c.copy(backend = x))
+//      opt[String]("checkpointDir")
+//        .text(s"${h.checkpointDir_desc} Default: ${dP.checkpointDir}")
+//        .action((x, c) => c.copy(checkpointDir = Some(x)))
+//      opt[Int]("checkpointInterval")
+//        .text(s"${h.checkpointInterval_desc} Default: ${dP.checkpointInterval}")
+//        .action((x, c) => c.copy(checkpointInterval = x))
+//      opt[Unit]("debug")
+//        .hidden()
+//        .action((_, c) => c.copy(debug = true))
+//        .text(s"Debug mode, prints all log output to terminal. default: ${dP.debug}")
+//
+//      /**
+//        * GenDist Arguments:
+//        */
+//      note("\n")
+//      cmd("gen_dist").action((_, c) => c.copy(mode = "gen_dist"))
+//        .text(s"Generate distribution data for a given input dataset.")
+//        .children(
+//          arg[String]("bro_log")
+//            .text(s"${h.connLog_desc} Default: ${dP.connLog}")
+//            .required()
+//            .action((x, c) => c.copy(connLog = x)),
+//          arg[String]("alert_log")
+//            .text(s"${h.alertLog_desc} Default: ${dP.alertLog}")
+//            .required()
+//            .action((x, c) => c.copy(alertLog = x)),
+//          arg[String]("aug_log")
+//            .text(s"${h.augLog_desc} Default: ${dP.augLog}")
+//            .required()
+//            .action((x, c) => c.copy(augLog = x)),
+//          arg[String]("seed")
+//            .text(s"${h.seed_desc} Default: ${dP.seed}")
+//            .required()
+//            .action((x, c) => c.copy(seed = x))
+//        )
+//
+//      /**
+//        * BA Arguments:
+//        */
+//      note("\n")
+//      cmd("ba").action((_, c) => c.copy(mode = "ba"))
+//        .text(s"Generate synthetic graph using the Barabasi–Albert model.")
+//        .children(
+//          opt[Unit]("no-prop")
+//            .text(s"${h.noProp_desc} default: ${dP.noProp}")
+//            .action((_, c) => c.copy(noProp = true)),
+//          opt[Double]("fraction-per-iter")
+//            .text(s"${h.fractionPerIter_desc} default: ${dP.fractionPerIter}")
+//            .action((x, c) => c.copy(fractionPerIter = x)),
+//          arg[String]("seed")
+//            .text(s"${h.seed_desc} default: ${dP.seed}")
+//            .required()
+//            .action((x, c) => c.copy(seed = x)),
+//          arg[Int]("<# of Iterations>")
+//            .text(s"${h.baIter_desc} default: ${dP.baIter}")
+//            .validate(x => if (x > 0) success else failure("Iteration count must be greater than 0."))
+//            .action((x, c) => c.copy(baIter = x))
+//        )
+//
+//      /**
+//        * Kronecker Arguments
+//        */
+//      note("\n")
+//      cmd("kro").action((_, c) => c.copy(mode = "kro"))
+//        .text(s"Generate synthetic graph using the Probabilistic Kronecker model.")
+//        .children(
+//          opt[Unit]("no-prop")
+//            .text(s"${h.noProp_desc} default ${dP.noProp}")
+//            .action((_, c) => c.copy(noProp = true)),
+//          arg[String]("seed-mtx")
+//            .text(s"${h.seedMtx_desc} default: ${dP.seedMtx}")
+//            .required()
+//            .action((x, c) => c.copy(seedMtx = x)),
+//          arg[String]("seed")
+//            .text(s"${h.seed_desc} default: ${dP.seed}")
+//            .required()
+//            .action((x, c) => c.copy(seed = x)),
+//          arg[Int]("<# of Iterations>")
+//            .text(s"${h.kroIter_desc} default: ${dP.kroIter}")
+//            .validate(x => if (x > 0) success else failure("Iteration count must be greater than 0."))
+//            .action((x, c) => c.copy(kroIter = x))
+//        )
+//
+//      /**
+//       * Veracity Arguments
+//       */
+//      note("\n")
+//      cmd("ver").action((_, c) => c.copy(mode = "ver"))
+//        .text(s"Compute veracity metrics on a given vertices and edge seed files")
+//        .children(
+//          arg[String]("seed")
+//              .text(s"${h.seed_Metric} default: ${dP.seed}")
+//              .required()
+//              .action((x,c) => c.copy(seed = x)),
+//          arg[String]("synth")
+//              .text(s"${h.synth_Metric}")
+//              .required()
+//              .action((x,c) => c.copy(synth = x)),
+//          arg[String]("metric")
+//            .text(s"${h.veracity_Desc}")
+//            .required()
+//            .action((x,c) => c.copy(metric = x)),
+//          arg[String]("save_file")
+//            .text(s"${h.veracity_File}")
+//            .required()
+//            .action((x,c) => c.copy(metricSave = x))
+//        )
+//
+//      /**
+//       * Workload Arguments
+//       */
+//      note("\n")
+//      cmd("workload").action((_, c) => c.copy(mode = "workload"))
+//        .text(s"Execute the workloads on an existing graph")
+//        .children(
+//          arg[String]("graph")
+//              .text(s"${h.graph} default: ${dP.graph}")
+//              .required()
+//              .action((x,c) => c.copy(graph = x))
+//        )
+//
+//    }
+//
+//    parser.parse(args, dP) match {
+//      case Some(params) => if (params.mode != "") run(params)
+//      else {
+//        println("Error: Must specify command")
+//        parser.showUsageAsError()
+//      }
+//      case _ => sys.exit(1)
+//    }
 
-    val parser = new OptionParser[Params]("Benchmark") {
-      head(s"Benchmark $versionString: a synthetic Graph Generator for the busy scientist.")
+    Logger.getLogger("org").setLevel(Level.OFF)
+    Logger.getLogger("akka").setLevel(Level.OFF)
 
-      /**
-        * All Arguments:
-        */
-      opt[String]("output")
-        .text(s"${h.outputGraphPrefix_desc} Default ${dP.outputGraphPrefix}")
-        .action((x, c) => c.copy(outputGraphPrefix = x))
-      opt[Int]("partitions")
-        .text(s"${h.partitions_desc} Default: ${dP.partitions}")
-        .validate(x => if (x > 0) success else failure("Partition count must be greater than 0."))
-        .action((x, c) => c.copy(partitions = x))
-      opt[String]("backend")
-        .text(s"${h.backend_desc} Default: ${dP.backend}")
-        .validate(x => if (x == "fs" || x == "neo4j") success else failure("Backend must be fs or neo4j."))
-        .action((x, c) => c.copy(backend = x))
-      opt[String]("checkpointDir")
-        .text(s"${h.checkpointDir_desc} Default: ${dP.checkpointDir}")
-        .action((x, c) => c.copy(checkpointDir = Some(x)))
-      opt[Int]("checkpointInterval")
-        .text(s"${h.checkpointInterval_desc} Default: ${dP.checkpointInterval}")
-        .action((x, c) => c.copy(checkpointInterval = x))
-      opt[Unit]("debug")
-        .hidden()
-        .action((_, c) => c.copy(debug = true))
-        .text(s"Debug mode, prints all log output to terminal. default: ${dP.debug}")
+    val parser = new OptionParser("csb", versionString, Config())
 
-      /**
-        * GenDist Arguments:
-        */
-      note("\n")
-      cmd("gen_dist").action((_, c) => c.copy(mode = "gen_dist"))
-        .text(s"Generate distribution data for a given input dataset.")
-        .children(
-          arg[String]("bro_log")
-            .text(s"${h.connLog_desc} Default: ${dP.connLog}")
-            .required()
-            .action((x, c) => c.copy(connLog = x)),
-          arg[String]("alert_log")
-            .text(s"${h.alertLog_desc} Default: ${dP.alertLog}")
-            .required()
-            .action((x, c) => c.copy(alertLog = x)),
-          arg[String]("aug_log")
-            .text(s"${h.augLog_desc} Default: ${dP.augLog}")
-            .required()
-            .action((x, c) => c.copy(augLog = x)),
-          arg[String]("seed")
-            .text(s"${h.seed_desc} Default: ${dP.seed}")
-            .required()
-            .action((x, c) => c.copy(seed = x))
-        )
+    parser.parse(args) match {
+      case Some(config) =>
+//        if ( ! params.debug ) {
+          //turn off annoying log messages
 
-      /**
-        * BA Arguments:
-        */
-      note("\n")
-      cmd("ba").action((_, c) => c.copy(mode = "ba"))
-        .text(s"Generate synthetic graph using the Barabasi–Albert model.")
-        .children(
-          opt[Unit]("no-prop")
-            .text(s"${h.noProp_desc} default: ${dP.noProp}")
-            .action((_, c) => c.copy(noProp = true)),
-          opt[Double]("fraction-per-iter")
-            .text(s"${h.fractionPerIter_desc} default: ${dP.fractionPerIter}")
-            .action((x, c) => c.copy(fractionPerIter = x)),
-          arg[String]("seed")
-            .text(s"${h.seed_desc} default: ${dP.seed}")
-            .required()
-            .action((x, c) => c.copy(seed = x)),
-          arg[Int]("<# of Iterations>")
-            .text(s"${h.baIter_desc} default: ${dP.baIter}")
-            .validate(x => if (x > 0) success else failure("Iteration count must be greater than 0."))
-            .action((x, c) => c.copy(baIter = x))
-        )
+//        } else {
+//
+//        }
 
-      /**
-        * Kronecker Arguments
-        */
-      note("\n")
-      cmd("kro").action((_, c) => c.copy(mode = "kro"))
-        .text(s"Generate synthetic graph using the Probabilistic Kronecker model.")
-        .children(
-          opt[Unit]("no-prop")
-            .text(s"${h.noProp_desc} default ${dP.noProp}")
-            .action((_, c) => c.copy(noProp = true)),
-          arg[String]("seed-mtx")
-            .text(s"${h.seedMtx_desc} default: ${dP.seedMtx}")
-            .required()
-            .action((x, c) => c.copy(seedMtx = x)),
-          arg[String]("seed")
-            .text(s"${h.seed_desc} default: ${dP.seed}")
-            .required()
-            .action((x, c) => c.copy(seed = x)),
-          arg[Int]("<# of Iterations>")
-            .text(s"${h.kroIter_desc} default: ${dP.kroIter}")
-            .validate(x => if (x > 0) success else failure("Iteration count must be greater than 0."))
-            .action((x, c) => c.copy(kroIter = x))
-        )
-
-      /**
-       * Veracity Arguments
-       */
-      note("\n")
-      cmd("ver").action((_, c) => c.copy(mode = "ver"))
-        .text(s"Compute veracity metrics on a given vertices and edge seed files")
-        .children(
-          arg[String]("seed")
-              .text(s"${h.seed_Metric} default: ${dP.seed}")
-              .required()
-              .action((x,c) => c.copy(seed = x)),
-          arg[String]("synth")
-              .text(s"${h.synth_Metric}")
-              .required()
-              .action((x,c) => c.copy(synth = x)),
-          arg[String]("metric")
-            .text(s"${h.veracity_Desc}")
-            .required()
-            .action((x,c) => c.copy(metric = x)),
-          arg[String]("save_file")
-            .text(s"${h.veracity_File}")
-            .required()
-            .action((x,c) => c.copy(metricSave = x))
-        )
-
-      /**
-       * Workload Arguments
-       */
-      note("\n")
-      cmd("workload").action((_, c) => c.copy(mode = "workload"))
-        .text(s"Execute the workloads on an existing graph")
-        .children(
-          arg[String]("graph")
-              .text(s"${h.graph} default: ${dP.graph}")
-              .required()
-              .action((x,c) => c.copy(graph = x))
-        )
-
-    }
-
-    parser.parse(args, dP) match {
-      case Some(params) => if (params.mode != "") run(params)
-      else {
-        println("Error: Must specify command")
-        parser.showUsageAsError()
-      }
-      case _ => sys.exit(1)
+        config.mode match {
+          case "seed" => println("seed")
+          case "synth" => println("synth")
+          case "veracity" => println("veracity")
+          case "workload" => println("workload")
+        }
+        println("part " + config.partitions)
+      case None => sys.exit(1)
     }
   }
 
