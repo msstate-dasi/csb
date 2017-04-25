@@ -259,7 +259,7 @@ object Neo4jWorkload extends Workload {
   def betweennessCentrality[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], k: Int): Unit = {
     val query = s"MATCH (n), pthroughn = shortestPath((a)-[*..$k]->(b)) " +
       "WHERE n IN nodes(pthroughn) AND n <> a AND n <> b AND a <> b " +
-      "WITH n,a,b,count(pthroughn) AS sum " +
+      "WITH n,a,b,count(pthroughn) AS sumn " +
       s"MATCH p = shortestPath((a)-[*..$k]->(b)) " +
       "WITH n, a, b, tofloat(sumn)/ tofloat(count(p)) AS fraction " +
       "RETURN n, sum(fraction);"
