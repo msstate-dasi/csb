@@ -9,6 +9,5 @@ case class Config(
 
                  alertLog: String = "alert",
                  connLog: String = "conn.log",
-                 augLog: String = "aug.log",
-                 seedPrefix: String = "seed"
+                 outLog: String = "out.log"
                  )

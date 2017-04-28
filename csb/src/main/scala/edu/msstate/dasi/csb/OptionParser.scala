@@ -3,13 +3,25 @@ package edu.msstate.dasi.csb
 import java.io.File
 
 class OptionParser(override val programName: String, programVersion: String, config: Config) extends scopt.OptionParser[Config](programName) {
+  private val seedOutGraphPrefix = "seed"
+
+  /**
+   * Provides a wrapper method for the inheriting parse() method, avoiding the caller to specify again the default
+   * Config instance.
+   */
+  def parse(args: Seq[String]): Option[Config] = super.parse(args, config)
+
+  /*********************************************************************************************************************
+   * Begin of the ordered sequence of builder methods ******************************************************************
+   ********************************************************************************************************************/
+
   head(s"$programName version $programVersion")
 
   version("version").hidden()
 
   opt[Int]('p', "partitions")
-    .valueName("<n>")
-    .text(s"The number of RDD partitions, default: the level of parallelism provided by Spark for this system [${config.partitions}]")
+    .valueName("<num>")
+    .text(s"Number of RDD partitions [default (level of parallelism detected on this system): ${config.partitions}].")
     .validate(value => if (value > 0) success else failure("partitions must be greater than 0"))
     .action((x, c) => c.copy(partitions = x))
 
@@ -17,29 +29,28 @@ class OptionParser(override val programName: String, programVersion: String, con
 
   cmd("seed")
     .text("")
-    .action( (_, c) => c.copy(mode = "seed") )
+    .action( (_, c) => c.copy(mode = "seed", outGraphPrefix = seedOutGraphPrefix) )
     .children(
-      arg[String]("bro_log")
-        .optional()
-        .text(s"The path of the Bro's connection log, default: ${config.connLog}")
-        .validate(path => if ( new File(path).isFile ) success else failure(s"$path is not a regular file") )
-        .action((x, c) => c.copy(connLog = x)),
-
-        arg[String]("alert_log")
-        .optional()
-        .text(s"The path of the Snort's connection log, default: ${config.alertLog}")
+      opt[String]("alert-log").abbr("al")
+        .valueName("<path>")
+        .text(s"Path of the Snort connection log [default: ${config.alertLog}].")
         .validate(path => if ( new File(path).isFile ) success else failure(s"$path is not a regular file") )
         .action((x, c) => c.copy(alertLog = x)),
 
-        arg[String]("aug_log")
-        .optional()
-        .text(s"The path where to save the resulting augmented log, default: ${config.augLog}")
+      opt[String]("bro-log").abbr("bl")
+        .valueName("<path>")
+        .text(s"Path of the Bro connection log [default: ${config.connLog}].")
+        .validate(path => if ( new File(path).isFile ) success else failure(s"$path is not a regular file") )
         .action((x, c) => c.copy(connLog = x)),
 
-        arg[String]("seed_graph")
-        .optional()
-        .text(s"The prefix used to save the generated seed graph, default: ${config.seedPrefix}")
-        .action((x, c) => c.copy(connLog = x))
+      opt[String]("out-log").abbr("ol")
+        .valueName("<path>")
+        .text(s"Output path of the resulting augmented log [default: ${config.outLog}].")
+        .action((x, c) => c.copy(connLog = x)),
+
+      opt[String]("seed-graph").abbr("sg")
+        .text(s"Output path prefix to save the generated seed graph [default: $seedOutGraphPrefix].")
+        .action((x, c) => c.copy(outGraphPrefix = x))
     )
 
   note("")
@@ -62,5 +73,7 @@ class OptionParser(override val programName: String, programVersion: String, con
 
   checkConfig( c => if (c.mode == "") failure("command cannot be empty") else success )
 
-  def parse(args: Seq[String]): Option[Config] = super.parse(args, config)
+  /*********************************************************************************************************************
+   * End of the ordered sequence of builder methods ********************************************************************
+   ********************************************************************************************************************/
 }
