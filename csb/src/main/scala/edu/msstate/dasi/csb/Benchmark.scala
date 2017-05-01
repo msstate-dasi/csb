@@ -1,6 +1,7 @@
 package edu.msstate.dasi.csb
 
 import org.apache.log4j.{Level, Logger}
+import org.apache.spark.graphx.Graph
 
 //import scopt.OptionParser
 
@@ -8,50 +9,50 @@ object Benchmark {
 
   val versionString = "0.2-DEV"
 
-  case class ParamsHelp(
-                         /**
-                           * Any Arguments
-                           */
-                         outputGraphPrefix_desc: String = "Prefix to use when saving the output graph",
-                         partitions_desc: String = "Number of partitions to set RDDs to.",
-                         backend_desc: String = "Backend used to save generated data (fs or neo4j).",
-                         checkpointDir_desc: String = "Directory for checkpointing intermediate results. Checkpointing helps with recovery and eliminates temporary shuffle files on disk.",
-                         checkpointInterval_desc: String = "Iterations between each checkpoint. Only used if checkpointDir is set.",
-                         seed_desc: String = "Path of the seed.",
-
-                         /**
-                           * GenDist Arguments
-                           */
-                         connLog_desc: String = "Bro IDS conn.log file to augment with a SNORT alert.log.",
-                         alertLog_desc: String = "SNORT alert augment with a Bro IDS conn.log.",
-                         augLog_desc: String = "Augmented Bro IDS conn.log and SNORT alert.log.",
-
-                         /**
-                           * BA Arguments
-                           */
-                         noProp_desc: String = "Specify whether to generate random properties during generation or not.",
-                         fractionPerIter_desc: String = "The fraction of vertices to add to the graph per iteration.",
-                         baIter_desc: String = "Number of iterations for Barabasi–Albert model.",
-
-                         /**
-                           * Kronecker Arguments
-                           */
-                         seedMtx_desc: String = "Space-separated matrix file to use as a seed for Kronecker.",
-                         kroIter_desc: String = "Number of iterations for Kronecker model.",
-
-                         /**
-                           * veracity arguements
-                           */
-                         veracity_Desc: String = "The veracity metric you want to compute. Options include: degree, inDegree, outDegree, pageRank.",
-                         veracity_File: String = "The file to save the metric information.",
-                         seed_Metric: String = "Serialized file to use as a seed.",
-                         synth_Metric: String = "Serialized file to use as a synth.",
-
-                         /**
-                           * Workload Arguments
-                           */
-                         graph: String = "The input graph."
-                       )
+//  case class ParamsHelp(
+//                         /**
+//                           * Any Arguments
+//                           */
+//                         outputGraphPrefix_desc: String = "Prefix to use when saving the output graph",
+//                         partitions_desc: String = "Number of partitions to set RDDs to.",
+//                         backend_desc: String = "Backend used to save generated data (fs or neo4j).",
+//                         checkpointDir_desc: String = "Directory for checkpointing intermediate results. Checkpointing helps with recovery and eliminates temporary shuffle files on disk.",
+//                         checkpointInterval_desc: String = "Iterations between each checkpoint. Only used if checkpointDir is set.",
+//                         seed_desc: String = "Path of the seed.",
+//
+//                         /**
+//                           * GenDist Arguments
+//                           */
+//                         connLog_desc: String = "Bro IDS conn.log file to augment with a SNORT alert.log.",
+//                         alertLog_desc: String = "SNORT alert augment with a Bro IDS conn.log.",
+//                         augLog_desc: String = "Augmented Bro IDS conn.log and SNORT alert.log.",
+//
+//                         /**
+//                           * BA Arguments
+//                           */
+//                         noProp_desc: String = "Specify whether to generate random properties during generation or not.",
+//                         fractionPerIter_desc: String = "The fraction of vertices to add to the graph per iteration.",
+//                         baIter_desc: String = "Number of iterations for Barabasi–Albert model.",
+//
+//                         /**
+//                           * Kronecker Arguments
+//                           */
+//                         seedMtx_desc: String = "Space-separated matrix file to use as a seed for Kronecker.",
+//                         kroIter_desc: String = "Number of iterations for Kronecker model.",
+//
+//                         /**
+//                           * veracity arguements
+//                           */
+//                         veracity_Desc: String = "The veracity metric you want to compute. Options include: degree, inDegree, outDegree, pageRank.",
+//                         veracity_File: String = "The file to save the metric information.",
+//                         seed_Metric: String = "Serialized file to use as a seed.",
+//                         synth_Metric: String = "Serialized file to use as a synth.",
+//
+//                         /**
+//                           * Workload Arguments
+//                           */
+//                         graph: String = "The input graph."
+//                       )
 
   case class Params(
                      mode: String = "",
@@ -248,7 +249,7 @@ object Benchmark {
 //    }
 //
 //    parser.parse(args, dP) match {
-//      case Some(params) => if (params.mode != "") run(params)
+//      case Some(config) => if (config.mode != "") run(config)
 //      else {
 //        println("Error: Must specify command")
 //        parser.showUsageAsError()
@@ -263,7 +264,7 @@ object Benchmark {
 
     parser.parse(args) match {
       case Some(config) =>
-//        if ( ! params.debug ) {
+//        if ( ! config.debug ) {
           //turn off annoying log messages
 
 //        } else {
@@ -271,12 +272,11 @@ object Benchmark {
 //        }
 
         config.mode match {
-          case "seed" => println("seed")
-          case "synth" => println("synth")
-          case "veracity" => println("veracity")
+          case "seed" => run_gendist(config)
+          case "synth" => run_synth(config)
+          case "veracity" => run_veracity(config)
           case "workload" => println("workload")
         }
-        println("part " + config.partitions)
       case None => sys.exit(1)
     }
   }
@@ -295,10 +295,10 @@ object Benchmark {
     }
 
     params.mode match {
-      case "gen_dist" => run_gendist(params)
-      case "ba" => run_synth(params)
-      case "kro" => run_synth(params)
-      case "ver" => run_ver(params)
+//      case "gen_dist" => run_gendist(config)
+//      case "ba" => run_synth(params)
+//      case "kro" => run_synth(params)
+//      case "ver" => run_ver(params)
       case "workload" => run_workload(params)
       case _ => sys.exit(1)
     }
@@ -307,112 +307,102 @@ object Benchmark {
     true
   }
 
-  def run_gendist(params: Params): Boolean = {
+  def run_gendist(config: Config): Boolean = {
     //these two statements create the aug log (conn.log plus alert)
     val logAug = new log_Augment()
-    logAug.run(params.alertLog, params.connLog, params.augLog)
+    logAug.run(config.alertLog, config.connLog, config.outLog)
 
     val seed = Util.time( "Log to graph", {
-      val seed = DataParser.logToGraph(params.augLog, params.partitions)
+      val seed = DataParser.logToGraph(config.outLog, config.partitions)
       println("Vertices #: " + seed.numVertices + ", Edges #: " + seed.numEdges)
       seed
     } )
 
-    Util.time( "Seed distributions", new DataDistributions(params.augLog) )
+    Util.time( "Seed distributions", new DataDistributions(config.outLog) )
 
     var graphPs = null.asInstanceOf[GraphPersistence]
-    params.backend match {
+    config.backend match {
       case "fs" => graphPs = new SparkPersistence()
       case "neo4j" => graphPs = new Neo4jPersistence()
     }
 
-    Util.time( "Save seed graph", graphPs.saveGraph(seed, params.seed, overwrite = true) )
+    Util.time( "Save seed graph", graphPs.saveGraph(seed, config.seedGraphPrefix, overwrite = true) )
 
     true
   }
 
-  def run_synth(params: Params): Boolean = {
+  private def run_metrics(metrics: Seq[String], seed: Graph[VertexData, EdgeData], synth: Graph[VertexData, EdgeData]): Unit = {
+    if ( metrics.isEmpty || metrics.contains("none") ) return
+
+    val all = metrics.contains("all")
+
+    if ( all || metrics.contains("degree") ) {
+      val degVeracity = Util.time("Degree Veracity", DegreeVeracity(seed, synth))
+      println(s"Degree Veracity: $degVeracity")
+    }
+
+    if ( all || metrics.contains("in-degree") ) {
+      val inDegVeracity = Util.time("In-Degree Veracity", InDegreeVeracity(seed, synth))
+      println(s"In-Degree Veracity: $inDegVeracity")
+    }
+
+    if ( all || metrics.contains("out-degree") ) {
+      val outDegVeracity = Util.time("Out-Degree Veracity", OutDegreeVeracity(seed, synth))
+      println(s"Out-Degree Veracity: $outDegVeracity")
+    }
+
+    if ( all || metrics.contains("out-degree") ) {
+      val pageRankVeracity = Util.time("PageRank Veracity", PageRankVeracity(seed, synth))
+      println(s"Page Rank Veracity: $pageRankVeracity")
+    }
+  }
+
+  def run_synth(config: Config): Boolean = {
     var graphPs = null.asInstanceOf[GraphPersistence]
-    params.backend match {
+    config.backend match {
       case "fs" => graphPs = new SparkPersistence()
       case "neo4j" => graphPs = new Neo4jPersistence()
     }
 
     val seed = Util.time( "Load seed graph", {
-      val seed = graphPs.loadGraph(params.seed, params.partitions)
+      val seed = graphPs.loadGraph(config.seedGraphPrefix, config.partitions)
       println("Vertices #: " + seed.numVertices + ", Edges #: " + seed.numEdges)
       seed
     } )
 
-    val seedDists = new DataDistributions(params.augLog)
+    val seedDists = new DataDistributions(config.outLog)
 
     var synthesizer: GraphSynth = null
-    params.mode match {
-      case "ba" => synthesizer = new ParallelBaSynth (params.partitions, params.baIter, params.fractionPerIter)
-      case "kro" => synthesizer = new KroSynth (params.partitions, params.seedMtx, params.kroIter)
+    config.synthesizer match {
+      case "ba" => synthesizer = new ParallelBaSynth (config.partitions, config.iterations, config.sampleFraction)
+      case "kro" => synthesizer = new KroSynth (config.partitions, config.seedMatrix, config.iterations)
     }
 
-    val synth = synthesizer.synthesize(seed, seedDists, !params.noProp)
+    val synth = synthesizer.synthesize(seed, seedDists, !config.skipProperties)
 
-    Util.time( "Save synth graph Object", graphPs.saveGraph(synth, params.outputGraphPrefix, overwrite = true))
+    Util.time( "Save synth graph Object", graphPs.saveGraph(synth, config.synthGraphPrefix, overwrite = true))
 
-    if ( params.backend == "fs" ) {
-      Util.time("Save synth graph Text", graphPs.asInstanceOf[SparkPersistence].saveAsText(synth, params.outputGraphPrefix + "_text", overwrite = true))
+    if ( config.backend == "fs" ) {
+      Util.time("Save synth graph Text", graphPs.asInstanceOf[SparkPersistence].saveAsText(synth, config.synthGraphPrefix + "_text", overwrite = true))
     }
 
-    val degVeracity = Util.time( "Degree Veracity", DegreeVeracity(seed, synth) )
-    println(s"Degree Veracity: $degVeracity")
-
-    val inDegVeracity = Util.time( "In-Degree Veracity", InDegreeVeracity(seed, synth) )
-    println(s"In-Degree Veracity: $inDegVeracity")
-
-    val outDegVeracity = Util.time( "Out-Degree Veracity", OutDegreeVeracity(seed, synth) )
-    println(s"Out-Degree Veracity: $outDegVeracity")
-
-    val pageRankVeracity = Util.time( "PageRank Veracity", PageRankVeracity(seed, synth) )
-    println(s"Page Rank Veracity: $pageRankVeracity")
+    run_metrics(config.metrics, seed, synth)
 
     true
   }
 
-  def run_ver(params: Params): Boolean = {
+  def run_veracity(config: Config): Boolean = {
     var graphPs = null.asInstanceOf[GraphPersistence]
-    params.backend match {
+    config.backend match {
       case "fs" => graphPs = new SparkPersistence()
       case "neo4j" => graphPs = new Neo4jPersistence()
     }
 
-    val seed = graphPs.loadGraph(params.seed, params.partitions)
+    val seed = graphPs.loadGraph(config.seedGraphPrefix, config.partitions)
 
-    val synth = graphPs.loadGraph(params.synth, params.partitions)
+    val synth = graphPs.loadGraph(config.synthGraphPrefix, config.partitions)
 
-    params.metric match {
-      case "degree" =>
-        val startTime = System.nanoTime()
-        val degree = DegreeVeracity(seed, synth, saveDistAsCSV = true, overwrite = true)
-        val timeSpan = (System.nanoTime() - startTime) / 1e9
-        println(s"\tPage Rank Veracity: $degree [$timeSpan s]")
-
-      case "inDegree" =>
-        val startTime = System.nanoTime()
-        val inDegree = InDegreeVeracity(seed, synth, saveDistAsCSV = true, overwrite = true)
-        val timeSpan = (System.nanoTime() - startTime) / 1e9
-        println(s"\tPage Rank Veracity: $inDegree [$timeSpan s]")
-
-      case "outDegree" =>
-        val startTime = System.nanoTime()
-        val outDegree = OutDegreeVeracity(seed, synth, saveDistAsCSV = true, overwrite = true)
-        val timeSpan = (System.nanoTime() - startTime) / 1e9
-        println(s"\tPage Rank Veracity: $outDegree [$timeSpan s]")
-
-      case "pageRank" =>
-        val startTime = System.nanoTime()
-        val pageRank = PageRankVeracity(seed, synth, saveDistAsCSV = true, overwrite = true)
-        val timeSpan = (System.nanoTime() - startTime) / 1e9
-        println(s"\tPage Rank Veracity: $pageRank [$timeSpan s]")
-
-      case _ => println("Invalid metric:" + params.metric)
-    }
+    run_metrics(config.metrics, seed, synth)
 
     true
   }
