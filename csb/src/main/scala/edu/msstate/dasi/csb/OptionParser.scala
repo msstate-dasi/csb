@@ -19,14 +19,18 @@ class OptionParser(override val programName: String, programVersion: String, con
 
   opt[Int]('p', "partitions")
     .valueName("<num>")
-    .text(s"Number of RDD partitions [default level of parallelism detected on this system: ${config.partitions}].")
+    .text(s"Number of RDD partitions [default detected level of parallelism: ${config.partitions}].")
     .validate(value => if (value > 0) success else failure("partitions must be greater than 0"))
     .action((x, c) => c.copy(partitions = x))
+
+  opt[Unit]("debug")
+    .hidden()
+    .action((_, c) => c.copy(debug = true))
 
   note("")
 
   cmd("seed")
-    .text("")
+    .text("Generates a property graph and the probability distributions of its properties starting from two log files.")
     .action( (_, c) => c.copy(mode = "seed") )
     .children(
       opt[String]('a', "alert-log")
@@ -55,7 +59,7 @@ class OptionParser(override val programName: String, programVersion: String, con
   note("")
 
   cmd("synth")
-    .text("")
+    .text("Synthesizes a graph starting from a seed graph and the probability distributions of its properties.")
     .action( (_, c) => c.copy(mode = "synth", metrics = Seq()) )
     .children(
       opt[String]('s', "seed-graph")
@@ -73,18 +77,21 @@ class OptionParser(override val programName: String, programVersion: String, con
         .action((_, c) => c.copy(skipProperties = true)),
 
       opt[Seq[String]]('m', "metrics")
-        .valueName("<list>")
-        .text(s"Comma separated list of veracity metrics to execute. Available: degree|in-degree|out-degree|pageRank|all [default: none].")
+        .valueName("<metric1,metric2,...>")
+        .text(s"Comma separated list of veracity metrics to execute. Available: " +
+          s"degree|in-degree|out-degree|pagerank|all [default:].")
         .action( (x, c) => c.copy(metrics = x) ),
 
       note(""),
 
       cmd("ba")
-        .text("")
+        .text("Synthesizes the graph using the Barabási–Albert algorithm.")
         .action( (_, c) => c.copy(synthesizer = "ba") )
         .children(
           arg[Int]("iterations")
+            .valueName("<num>")
             .text(s"Number of algorithm's iterations.")
+            .validate(value => if (value > 0) success else failure("iterations must be greater than 0"))
             .action((x, c) => c.copy(iterations = x)),
 
           arg[Double]("fraction")
@@ -96,11 +103,13 @@ class OptionParser(override val programName: String, programVersion: String, con
       note(""),
 
       cmd("kro")
-        .text("")
+        .text("Synthesizes the graph using the Kronecker algorithm.")
         .action( (_, c) => c.copy(synthesizer = "kro") )
         .children(
           arg[Int]("iterations")
+            .valueName("<num>")
             .text(s"Number of algorithm's iterations.")
+            .validate(value => if (value > 0) success else failure("iterations must be greater than 0"))
             .action((x, c) => c.copy(iterations = x)),
 
           arg[String]("matrix")
@@ -114,31 +123,105 @@ class OptionParser(override val programName: String, programVersion: String, con
   note("")
 
   cmd("veracity")
-    .text("")
+    .text("Executes one or more veracity metrics. Available metrics: degree|in-degree|out-degree|pagerank|all")
     .action( (_, c) => c.copy(mode = "veracity") )
     .children(
-      arg[Seq[String]]("metrics")
-        .text(s"Comma separated list of veracity metrics to execute. Available: degree|in-degree|out-degree|pageRank|all [default: ${config.metrics.mkString(",")}].")
+      arg[Seq[String]]("<metric1,metric2,...>")
+        .text(s"Comma separated list of veracity metrics to execute [default: ${config.metrics.mkString(",")}].")
         .action( (x, c) => c.copy(metrics = x) ),
 
       arg[String]("seed")
         .optional()
+        .valueName("<path>")
         .text(s"Path prefix of the seed graph [default: ${config.seedGraphPrefix}].")
         .action((x, c) => c.copy(seedGraphPrefix = x)),
 
       arg[String]("synth")
         .optional()
-        .text(s"Path prefix of the seed graph [default: ${config.synthGraphPrefix}].")
+        .valueName("<path>")
+        .text(s"Path prefix of the synth graph [default: ${config.synthGraphPrefix}].")
         .action((x, c) => c.copy(synthGraphPrefix = x))
     )
 
   note("")
 
   cmd("workload")
-    .text("")
+    .text("Executes one or more workloads. Available workloads: count-vertices|count-edges|degree|in-degree|out-degree|" +
+      "pagerank|bfs|neighbors|in-neighbors|out-neighbors|in-edges|out-edges|connected-components|triangle-count|" +
+      "strongly-connected-components|betweenness-centrality|closeness-centrality|sssp|subgraph-isomorphism|all ")
     .action( (_, c) => c.copy(mode = "workload") )
+    .children(
+      opt[String]('b', "backend")
+        .text(s"Workload backend. Supported: spark|neo4j [default: ${config.workloadBackend}].")
+        .validate(value => if (value == "spark" || value == "neo4j") success else failure("workload backend not supported"))
+        .action( (x, c) => c.copy(workloadBackend = x) ),
+
+      opt[Int]('i', "iterations")
+        .valueName("<num>")
+        .text(s"Number of algorithm's iterations. " +
+          s"Required by: strongly-connected-components|betweenness-centrality [default:].")
+        .validate(value => if (value > 0) success else failure("iterations must be greater than 0"))
+        .action( (x, c) => c.copy(iterations = x) ),
+
+      opt[Long]('s', "source")
+        .valueName("<id>")
+        .text(s"The source vertex ID. " +
+          s"Required by: bfs|closeness-centrality|sssp [default:].")
+        .validate(value => if (value > 0) success else failure("source must be greater than 0"))
+        .action( (x, c) => c.copy(srcVertex= x) ),
+
+      opt[Long]('d', "destination")
+        .valueName("<id>")
+        .text(s"The destination vertex ID. " +
+          s"Required by: bfs [default:].")
+        .validate(value => if (value > 0) success else failure("destination must be greater than 0"))
+        .action( (x, c) => c.copy(dstVertex = x) ),
+
+      opt[String]('t', "pattern")
+        .valueName("<path>")
+        .text(s"Path prefix of the pattern graph. Required by: subgraph-isomorphism [default: ${config.patternPrefix}].")
+        .validate(value => if (value != "") success else failure("pattern cannot be empty"))
+        .action( (x, c) => c.copy(patternPrefix = x) ),
+
+      opt[String]('g', "graph")
+        .valueName("<path>")
+        .text(s"Path prefix of the graph [default: ${config.graphPrefix}].")
+        .action((x, c) => c.copy(graphPrefix = x)),
+
+      arg[Seq[String]]("<workload1,workload2,...>")
+        .optional()
+        .text(s"Comma separated list of workloads to execute [default: ${config.workloads.mkString(",")}].")
+        .action( (x, c) => c.copy(workloads = x) )
+    )
 
   checkConfig( c => if (c.mode == "") failure("command cannot be empty") else success )
+
+  checkConfig( c => {
+    val iterationWorkloads = Seq("strongly-connected-components", "betweenness-centrality")
+    if (c.workloads.intersect(iterationWorkloads).nonEmpty && c.iterations == 0) {
+      failure("workload iterations not specified")
+    } else {
+      success
+    }
+  })
+
+  checkConfig( c => {
+    val srcWorkloads = Seq("bfs", "closeness-centrality", "sssp")
+    if (c.workloads.intersect(srcWorkloads).nonEmpty && c.srcVertex == 0) {
+      failure("source not specified")
+    } else {
+      success
+    }
+  })
+
+  checkConfig( c => {
+    val dstWorkloads = Seq("bfs")
+    if (c.workloads.intersect(dstWorkloads).nonEmpty && c.dstVertex == 0) {
+      failure("destination not specified")
+    } else {
+      success
+    }
+  })
 
   /*********************************************************************************************************************
    * End of the ordered builder methods ********************************************************************************
