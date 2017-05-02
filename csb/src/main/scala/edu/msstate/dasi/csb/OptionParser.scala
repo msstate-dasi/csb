@@ -166,14 +166,14 @@ class OptionParser(override val programName: String, programVersion: String, con
       opt[Long]('s', "source")
         .valueName("<id>")
         .text(s"The source vertex ID. " +
-          s"Required by: bfs|closeness-centrality|sssp [default:].")
+          s"Required by: bfs|closeness-centrality|sssp [default: random].")
         .validate(value => if (value > 0) success else failure("source must be greater than 0"))
         .action( (x, c) => c.copy(srcVertex= x) ),
 
       opt[Long]('d', "destination")
         .valueName("<id>")
         .text(s"The destination vertex ID. " +
-          s"Required by: bfs [default:].")
+          s"Required by: bfs [default: random].")
         .validate(value => if (value > 0) success else failure("destination must be greater than 0"))
         .action( (x, c) => c.copy(dstVertex = x) ),
 
@@ -200,24 +200,6 @@ class OptionParser(override val programName: String, programVersion: String, con
     val iterationWorkloads = Seq("strongly-connected-components", "betweenness-centrality")
     if (c.workloads.intersect(iterationWorkloads).nonEmpty && c.iterations == 0) {
       failure("workload iterations not specified")
-    } else {
-      success
-    }
-  })
-
-  checkConfig( c => {
-    val srcWorkloads = Seq("bfs", "closeness-centrality", "sssp")
-    if (c.workloads.intersect(srcWorkloads).nonEmpty && c.srcVertex == 0) {
-      failure("source not specified")
-    } else {
-      success
-    }
-  })
-
-  checkConfig( c => {
-    val dstWorkloads = Seq("bfs")
-    if (c.workloads.intersect(dstWorkloads).nonEmpty && c.dstVertex == 0) {
-      failure("destination not specified")
     } else {
       success
     }

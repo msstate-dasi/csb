@@ -3,6 +3,8 @@ package edu.msstate.dasi.csb
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.graphx.Graph
 
+import scala.util.Random
+
 object Benchmark {
 
   val versionString = "0.2-DEV"
@@ -147,6 +149,8 @@ object Benchmark {
 
     val workloads = config.workloads
 
+    val srcWorkloads = Seq("bfs", "closeness-centrality", "sssp")
+
     val all = workloads.contains("all")
 
     if ( all || workloads.contains("count-vertices") ) Util.time("Count vertices", workload.countVertices(graph))
@@ -158,10 +162,6 @@ object Benchmark {
 
     if ( all || workloads.contains("pagerank") ) {
       Util.time("PageRank", workload.pageRank(graph))
-    }
-
-    if ( all || workloads.contains("bfs") ) {
-      Util.time("Breadth-first Search", workload.bfs(graph, config.srcVertex, config.dstVertex))
     }
 
     if ( all || workloads.contains("neighbors") ) Util.time("Neighbors", workload.neighbors(graph))
@@ -187,12 +187,44 @@ object Benchmark {
       Util.time("Betweenness Centrality", workload.betweennessCentrality(graph, config.iterations))
     }
 
-    if ( all || workloads.contains("closeness-centrality") ) {
-      Util.time("Closeness Centrality", workload.closenessCentrality(graph, config.srcVertex))
-    }
+    if ( all || workloads.intersect(srcWorkloads).nonEmpty ) {
+      var srcVertex = config.srcVertex
 
-    if ( all || workloads.contains("sssp") ) {
-      Util.time("Single Source Shortest Path", workload.sssp(graph, config.srcVertex))
+      if (srcVertex == 0L) {
+        println("Source not specified, extracting random ID from the input graph...")
+
+        srcVertex = graph.vertices.zipWithIndex()
+          .map{ case ((id, _), index) => (index, id) }
+          .lookup( (Random.nextDouble * graph.numVertices).toLong)
+          .head
+
+        println(s"Source vertex: $srcVertex")
+      }
+
+      if ( all || workloads.contains("bfs") ) {
+        var dstVertex = config.dstVertex
+
+        if (dstVertex == 0L) {
+          println("Destination not specified, extracting random ID from the input graph...")
+
+          dstVertex = graph.vertices.zipWithIndex()
+            .map{ case ((id, _), index) => (index, id) }
+            .lookup( (Random.nextDouble * graph.numVertices).toLong)
+            .head
+
+          println(s"Destination vertex: $dstVertex")
+        }
+
+        Util.time("Breadth-first Search", workload.bfs(graph, srcVertex, dstVertex))
+      }
+
+      if ( all || workloads.contains("closeness-centrality") ) {
+        Util.time("Closeness Centrality", workload.closenessCentrality(graph, srcVertex))
+      }
+
+      if ( all || workloads.contains("sssp") ) {
+        Util.time("Single Source Shortest Path", workload.sssp(graph, srcVertex))
+      }
     }
 
     if ( all || workloads.contains("subgraph-isomorphism") ) {
