@@ -35,15 +35,15 @@ object Benchmark {
 
   private def run_gendist(config: Config): Boolean = {
     val logAug = new log_Augment()
-    logAug.run(config.alertLog, config.connLog, config.outLog)
+    logAug.run(config.alertLog, config.connLog, config.augLog)
 
     val seed = Util.time( "Log to graph", {
-      val seed = DataParser.logToGraph(config.outLog, config.partitions)
+      val seed = DataParser.logToGraph(config.augLog, config.partitions)
       println("Vertices #: " + seed.numVertices + ", Edges #: " + seed.numEdges)
       seed
     } )
 
-    Util.time( "Seed distributions", new DataDistributions(config.outLog) )
+    Util.time( "Seed distributions", new DataDistributions(config.augLog) )
 
     var graphPs = null.asInstanceOf[GraphPersistence]
     config.backend match {
@@ -95,7 +95,7 @@ object Benchmark {
       seed
     } )
 
-    val seedDists = new DataDistributions(config.outLog)
+    val seedDists = new DataDistributions(config.augLog)
 
     var synthesizer: GraphSynth = null
     config.synthesizer match {

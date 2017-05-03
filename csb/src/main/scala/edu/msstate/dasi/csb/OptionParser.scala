@@ -47,7 +47,7 @@ class OptionParser(override val programName: String, programVersion: String, con
 
       opt[String]('l', "log")
         .valueName("<path>")
-        .text(s"Output path of the resulting augmented log [default: ${config.outLog}].")
+        .text(s"Output path of the resulting augmented log [default: ${config.augLog}].")
         .action((x, c) => c.copy(connLog = x)),
 
       opt[String]('o', "out-graph")

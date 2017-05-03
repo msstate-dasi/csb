@@ -14,7 +14,7 @@ case class Config(
 
                  alertLog: String = "alert",
                  connLog: String = "conn.log",
-                 outLog: String = "out.log",
+                 augLog: String = "out.log",
 
                  synthesizer: String = "",
                  skipProperties: Boolean = false,
