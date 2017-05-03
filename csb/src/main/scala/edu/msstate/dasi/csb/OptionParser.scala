@@ -48,7 +48,7 @@ class OptionParser(override val programName: String, programVersion: String, con
       opt[String]('l', "log")
         .valueName("<path>")
         .text(s"Output path of the resulting augmented log [default: ${config.augLog}].")
-        .action((x, c) => c.copy(connLog = x)),
+        .action((x, c) => c.copy(augLog = x)),
 
       opt[String]('o', "out-graph")
         .valueName("<path>")
@@ -66,6 +66,12 @@ class OptionParser(override val programName: String, programVersion: String, con
         .valueName("<path>")
         .text(s"Path prefix of the seed graph [default: ${config.seedGraphPrefix}].")
         .action((x, c) => c.copy(seedGraphPrefix = x)),
+
+      opt[String]('l', "log")
+        .valueName("<path>")
+        .text(s"Path of the augmented log [default: ${config.augLog}].")
+        .validate(path => if ( new File(path).isFile ) success else failure(s"$path is not a regular file") )
+        .action((x, c) => c.copy(augLog = x)),
 
       opt[String]('o', "out-graph")
         .valueName("<path>")
