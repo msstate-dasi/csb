@@ -24,7 +24,7 @@ object Benchmark {
         }
 
         config.mode match {
-          case "seed" => run_gendist(config)
+          case "seed" => run_seed(config)
           case "synth" => run_synth(config)
           case "veracity" => run_veracity(config)
           case "workload" => run_workload(config)
@@ -33,7 +33,7 @@ object Benchmark {
     }
   }
 
-  private def run_gendist(config: Config): Boolean = {
+  private def run_seed(config: Config): Boolean = {
     val logAug = new log_Augment()
     logAug.run(config.alertLog, config.connLog, config.augLog)
 
