@@ -9,6 +9,8 @@ class OptionParser(override val programName: String, programVersion: String, con
    */
   def parse(args: Seq[String]): Option[Config] = super.parse(args, config)
 
+  override def showUsageOnError = true
+
   /*********************************************************************************************************************
    * Begin of the ordered builder methods ******************************************************************************
    ********************************************************************************************************************/
@@ -16,6 +18,8 @@ class OptionParser(override val programName: String, programVersion: String, con
   head(s"$programName version $programVersion")
 
   version("version").hidden()
+
+  help("help").hidden()
 
   opt[Int]('p', "partitions")
     .valueName("<num>")
