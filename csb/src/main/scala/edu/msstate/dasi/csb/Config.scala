@@ -6,7 +6,7 @@ case class Config(
                  debug: Boolean = false,
                  mode: String = "",
                  partitions: Int = sc.defaultParallelism,
-                 backend: String = "fs",
+                 storageBackend: String = "fs",
 
                  seedGraphPrefix: String = "seed",
                  synthGraphPrefix: String = "synth",
@@ -27,6 +27,11 @@ case class Config(
 
                  workloads: Seq[String] = Seq("all"),
                  workloadBackend: String = "spark",
+
+                 neo4jUrl: String = "bolt://localhost",
+                 neo4jUsername: String = "neo4j",
+                 neo4jPassword: String = "neo4j",
+
                  graphPrefix: String = "graph",
                  srcVertex: VertexId = 0L,
                  dstVertex: VertexId = 0L,

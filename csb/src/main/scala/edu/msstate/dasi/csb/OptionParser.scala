@@ -166,6 +166,18 @@ class OptionParser(override val programName: String, programVersion: String, con
         .validate(value => if (value == "spark" || value == "neo4j") success else failure("workload backend not supported"))
         .action( (x, c) => c.copy(workloadBackend = x) ),
 
+      opt[String]("neo4j-url")
+        .text(s"Neo4j connection URL [default: ${config.neo4jUrl}].")
+        .action( (x, c) => c.copy(neo4jUrl = x) ),
+
+      opt[String]("neo4j-username")
+        .text(s"Neo4j username [default: ${config.neo4jUsername}].")
+        .action( (x, c) => c.copy(neo4jUsername = x) ),
+
+      opt[String]("neo4j-password")
+        .text(s"Neo4j password [default: ${config.neo4jPassword}].")
+        .action( (x, c) => c.copy(neo4jPassword = x) ),
+
       opt[Int]('i', "iterations")
         .valueName("<num>")
         .text(s"Number of algorithm's iterations. " +

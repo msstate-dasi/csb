@@ -46,7 +46,7 @@ object Benchmark {
     Util.time( "Seed distributions", new DataDistributions(config.augLog) )
 
     var graphPs = null.asInstanceOf[GraphPersistence]
-    config.backend match {
+    config.storageBackend match {
       case "fs" => graphPs = new SparkPersistence()
       case "neo4j" => graphPs = new Neo4jPersistence()
     }
@@ -84,7 +84,7 @@ object Benchmark {
 
   private def run_synth(config: Config): Boolean = {
     var graphPs = null.asInstanceOf[GraphPersistence]
-    config.backend match {
+    config.storageBackend match {
       case "fs" => graphPs = new SparkPersistence()
       case "neo4j" => graphPs = new Neo4jPersistence()
     }
@@ -107,7 +107,7 @@ object Benchmark {
 
     Util.time( "Save synth graph Object", graphPs.saveGraph(synth, config.synthGraphPrefix, overwrite = true))
 
-    if ( config.backend == "fs" ) {
+    if ( config.storageBackend == "fs" ) {
       Util.time("Save synth graph Text", graphPs.asInstanceOf[SparkPersistence].saveAsText(synth, config.synthGraphPrefix + "_text", overwrite = true))
     }
 
@@ -118,7 +118,7 @@ object Benchmark {
 
   private def run_veracity(config: Config): Boolean = {
     var graphPs = null.asInstanceOf[GraphPersistence]
-    config.backend match {
+    config.storageBackend match {
       case "fs" => graphPs = new SparkPersistence()
       case "neo4j" => graphPs = new Neo4jPersistence()
     }
@@ -134,7 +134,7 @@ object Benchmark {
 
   private def run_workload(config: Config): Boolean = {
     var graphPs = null.asInstanceOf[GraphPersistence]
-    config.backend match {
+    config.storageBackend match {
       case "fs" => graphPs = new SparkPersistence()
       case "neo4j" => graphPs = new Neo4jPersistence()
     }
@@ -144,7 +144,7 @@ object Benchmark {
     var workload = null.asInstanceOf[Workload]
     config.workloadBackend match {
       case "spark" => workload = SparkWorkload
-      case "neo4j" => workload = Neo4jWorkload
+      case "neo4j" => workload = new Neo4jWorkload(config.neo4jUrl, config.neo4jUsername, config.neo4jPassword)
     }
 
     val workloads = config.workloads
