@@ -10,7 +10,7 @@ import org.neo4j.graphdb.Node;
  * e.g., in the Cypher console, four columns will be created for the returned results: resultNode, queryNode, index and totalNumSubgraph
  *
  * resultNode: a node in the matching subgraph
- * queryNode: a node in the query graph by its id
+ * queryNode: a node in the query graph
  * subgraphIndex: which subgraph does the resultNode belong to
  * totalNumSubgraph: the total number of subgraphs
  */
