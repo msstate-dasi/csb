@@ -20,10 +20,8 @@ import static org.neo4j.helpers.collection.MapUtil.stringMap;
 public class Subgraph_Isomorphism
 {
     // Only static fields and @Context-annotated fields are allowed in
-    // Procedure classes. This static field is the configuration we use
-    // to create full-text indexes.
-    private static final Map<String,String> FULL_TEXT =
-            stringMap( IndexManager.PROVIDER, "lucene", "type", "fulltext" );
+    // Procedure classes.
+
 
     // This field declares that we need a GraphDatabaseService
     // as context when any procedure in this class is invoked
@@ -65,7 +63,6 @@ public class Subgraph_Isomorphism
                                     candidateListIndex.get(j),
                                     Integer.toString(i),
                                     Integer.toString(matchedSubgraphs.size())));
-
                         }
 
 
@@ -138,7 +135,6 @@ public class Subgraph_Isomorphism
         refineCandidate(candidateList,queryNeighborList,nodeNeighborList,candidateListIndex,nodeNeighborListIndex);//the first round refine
         if(!isCorrect(candidateList))
         {
-            System.out.println("No subgraphs found!");
             return matchedSubgraphs;
         }
         backtracking(0,candidateList,queryNeighborList,nodeNeighborList,candidateListIndex,nodeNeighborListIndex,matchedSubgraphs);
@@ -156,7 +152,6 @@ public class Subgraph_Isomorphism
 
         if(numLayer==queryNeighborList.size())
         {
-            System.out.println("Subgraph found!");
             ArrayList<Node> subgraph=new ArrayList<>();
 
             for(int i=0;i<candidateList.size();i++)
@@ -327,13 +322,11 @@ public class Subgraph_Isomorphism
             }
             candidateListIndex.add(queryNode);
             candidateList.add(candidateListPerVertex);
-            System.out.println("# of candidates for query vertex " + queryNode + ": " + candidateListPerVertex.size());
             targetNodes.close();
 
         }
         queryNodes.close();
 
-        System.out.println("# of query vertices in the candidate list: "+candidateList.size());
 
         return candidateList;
     }
