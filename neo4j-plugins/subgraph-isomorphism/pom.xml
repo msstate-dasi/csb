@@ -13,7 +13,7 @@
     <description>A subgraph isomorphism algorithm for the Neo4j graph database</description>
 
     <properties>
-        <neo4j.version>3.1.3</neo4j.version>
+        <neo4j.version>3.1.4</neo4j.version>
     </properties>
 
     <dependencies>
@@ -92,7 +92,7 @@
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
-                            <mainClass>subgraphIso.Subgraph_Isomorphism_main</mainClass>
+                            <mainClass>subgraphIso.Subgraph_Isomorphism</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
