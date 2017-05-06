@@ -6,61 +6,49 @@
     </artifacts-to-build>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="defc45cb-a21d-4bf1-8a51-a1d0c63dbbe7" name="Default" comment="First stable version of the subgraph isomorphism&#10;Both query (pattern) and target graphs are stored in Neo4j.&#10;Input: query (pattern) graph label and target graph label&#10;Output: All matching subgraphs. For each node in the subgraph, the matching node in the query graph is displayed. Nodes are indexed by the sequence of subgraphs. E.g., nodes in subgraph 0 are all indexed 0. The total number of subgraphs is returned, too.&#10;&#10;Note: &#10;1. To return something to the Cypher console, a result class must be created. Each instance variable in the class is a column in the output. If you directly use int, String, etc. the Neo4j database can not start with this plugin. (It is more like a bug in Neo4j)&#10; &#10;2. Neo4j Java plugin only accepts Node or String as the instance variable type in the result class. Again, if other types are used, the Neo4j server won't start at all.I doubt this is also a bug.&#10;&#10;3. Only @Context variables can be created for class-width usage. If other variables are declared in the same way, the Neo4j server can't start. Check the variables in the code: db and log.&#10;&#10;4. Neo4j Web browser doesn't support multiple displays of one same node. In other words, if there are two subgraphs: a-b-c and a-b-d, only four nodes a,b,c,d can be visualized by Neo4j browser.">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/.idea/artifacts/Subgraph_Isomorphism_jar.xml" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_3_1_4.xml" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/src/main/java/subgraphIso/result.java" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_3_1_3.xml" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/.idea/libraries/lib.xml" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/src/main/java/subgraphIso/Subgraph_Isomorphism_main.java" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/src/main/java/subgraphIso/subgraphNode.java" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/target/classes/subgraphIso/Subgraph_Isomorphism_main.class" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/target/classes/subgraphIso/subgraphNode.class" afterPath="" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_app_neo4j_server_3_1_3.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_app_neo4j_server_3_1_4.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_app_neo4j_server_test_jar_tests_3_1_3.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_app_neo4j_server_test_jar_tests_3_1_4.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_bolt_3_1_3.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_bolt_3_1_4.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_codegen_3_1_3.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_codegen_3_1_4.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_collections_3_1_3.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_collections_3_1_4.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_command_line_3_1_3.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_command_line_3_1_4.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_common_3_1_3.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_common_3_1_4.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_common_test_jar_tests_3_1_3.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_common_test_jar_tests_3_1_4.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_consistency_check_3_1_3.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_consistency_check_3_1_4.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_csv_3_1_3.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_csv_3_1_4.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_cypher_3_1_3.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_cypher_3_1_4.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_cypher_compiler_2_3_2_3_9.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_cypher_compiler_2_3_2_3_10.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_cypher_compiler_3_0_3_0_8.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_cypher_compiler_3_0_3_0_9.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_cypher_compiler_3_1_3_1_3.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_cypher_compiler_3_1_3_1_4.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_cypher_frontend_2_3_2_3_9.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_cypher_frontend_2_3_2_3_10.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_cypher_frontend_3_0_3_0_8.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_cypher_frontend_3_0_3_0_9.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_cypher_frontend_3_1_3_1_3.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_cypher_frontend_3_1_3_1_4.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_dbms_3_1_3.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_dbms_3_1_4.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_graph_algo_3_1_3.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_graph_algo_3_1_4.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_graph_matching_3_1_3.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_graph_matching_3_1_4.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_graphdb_api_3_1_3.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_graphdb_api_3_1_4.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_import_tool_3_1_3.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_import_tool_3_1_4.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_io_3_1_3.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_io_3_1_4.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_io_test_jar_tests_3_1_3.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_io_test_jar_tests_3_1_4.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_jmx_3_1_3.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_jmx_3_1_4.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_kernel_3_1_3.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_kernel_3_1_4.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_kernel_test_jar_tests_3_1_3.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_kernel_test_jar_tests_3_1_4.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_logging_3_1_3.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_logging_3_1_4.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_lucene_index_3_1_3.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_lucene_index_3_1_4.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_lucene_upgrade_3_1_3.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_lucene_upgrade_3_1_4.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_primitive_collections_3_1_3.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_primitive_collections_3_1_4.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_resource_3_1_3.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_resource_3_1_4.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_security_3_1_3.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_security_3_1_4.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_shell_3_1_3.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_shell_3_1_4.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_udc_3_1_3.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_udc_3_1_4.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_unsafe_3_1_3.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_unsafe_3_1_4.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_server_api_3_1_3.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_server_api_3_1_4.xml" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_test_neo4j_harness_3_1_3.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_test_neo4j_harness_3_1_4.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/vcs.xml" afterPath="$PROJECT_DIR$/.idea/vcs.xml" />
+    <list default="true" id="defc45cb-a21d-4bf1-8a51-a1d0c63dbbe7" name="Default" comment="">
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/artifacts/Subgraph_Isomorphism_jar.xml" afterPath="$PROJECT_DIR$/.idea/artifacts/Subgraph_Isomorphism_jar.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_app_neo4j_server_3_1_4.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_app_neo4j_server_3_1_4.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_app_neo4j_server_test_jar_tests_3_1_4.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_app_neo4j_server_test_jar_tests_3_1_4.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_3_1_4.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_3_1_4.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_bolt_3_1_4.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_bolt_3_1_4.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_codegen_3_1_4.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_codegen_3_1_4.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_collections_3_1_4.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_collections_3_1_4.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_command_line_3_1_4.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_command_line_3_1_4.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_common_3_1_4.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_common_3_1_4.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_common_test_jar_tests_3_1_4.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_common_test_jar_tests_3_1_4.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_consistency_check_3_1_4.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_consistency_check_3_1_4.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_csv_3_1_4.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_csv_3_1_4.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_cypher_3_1_4.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_cypher_3_1_4.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_cypher_compiler_2_3_2_3_10.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_cypher_compiler_2_3_2_3_10.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_cypher_compiler_3_0_3_0_9.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_cypher_compiler_3_0_3_0_9.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_cypher_compiler_3_1_3_1_4.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_cypher_compiler_3_1_3_1_4.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_cypher_frontend_2_3_2_3_10.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_cypher_frontend_2_3_2_3_10.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_cypher_frontend_3_0_3_0_9.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_cypher_frontend_3_0_3_0_9.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_cypher_frontend_3_1_3_1_4.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_cypher_frontend_3_1_3_1_4.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_dbms_3_1_4.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_dbms_3_1_4.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_graph_algo_3_1_4.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_graph_algo_3_1_4.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_graph_matching_3_1_4.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_graph_matching_3_1_4.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_graphdb_api_3_1_4.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_graphdb_api_3_1_4.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_import_tool_3_1_4.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_import_tool_3_1_4.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_io_3_1_4.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_io_3_1_4.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_io_test_jar_tests_3_1_4.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_io_test_jar_tests_3_1_4.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_jmx_3_1_4.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_jmx_3_1_4.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_kernel_3_1_4.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_kernel_3_1_4.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_kernel_test_jar_tests_3_1_4.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_kernel_test_jar_tests_3_1_4.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_logging_3_1_4.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_logging_3_1_4.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_lucene_index_3_1_4.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_lucene_index_3_1_4.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_lucene_upgrade_3_1_4.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_lucene_upgrade_3_1_4.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_primitive_collections_3_1_4.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_primitive_collections_3_1_4.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_resource_3_1_4.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_resource_3_1_4.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_security_3_1_4.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_security_3_1_4.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_shell_3_1_4.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_shell_3_1_4.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_udc_3_1_4.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_udc_3_1_4.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_unsafe_3_1_4.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_neo4j_unsafe_3_1_4.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_server_api_3_1_4.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_server_api_3_1_4.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_test_neo4j_harness_3_1_4.xml" afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_neo4j_test_neo4j_harness_3_1_4.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/Subgraph_Isomorphism.iml" afterPath="$PROJECT_DIR$/Subgraph_Isomorphism.iml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/pom.xml" afterPath="$PROJECT_DIR$/pom.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/target/maven-archiver/pom.properties" afterPath="$PROJECT_DIR$/target/maven-archiver/pom.properties" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" afterPath="$PROJECT_DIR$/target/maven-status/maven-compiler-plugin/compile/default-compile/createdFiles.lst" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst" afterPath="$PROJECT_DIR$/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/java/subgraphIso/result.java" afterPath="$PROJECT_DIR$/src/main/java/subgraphIso/result.java" />
     </list>
     <ignored path="$PROJECT_DIR$/out/" />
     <ignored path="$PROJECT_DIR$/target/" />
@@ -77,8 +65,8 @@
       <file leaf-file-name="Subgraph_Isomorphism.java" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/main/java/subgraphIso/Subgraph_Isomorphism.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="494">
-              <caret line="94" column="78" lean-forward="false" selection-start-line="94" selection-start-column="78" selection-end-line="94" selection-end-column="78" />
+            <state relative-caret-position="1406">
+              <caret line="106" column="27" lean-forward="false" selection-start-line="106" selection-start-column="27" selection-end-line="106" selection-end-column="27" />
               <folding>
                 <element signature="e#3812#3813#0" expanded="true" />
                 <element signature="e#3870#3871#0" expanded="true" />
@@ -613,6 +601,14 @@
       <option name="presentableId" value="Default" />
       <updated>1492482187040</updated>
     </task>
+    <task id="LOCAL-00001" summary="First stable version of the subgraph isomorphism&#10;Both query (pattern) and target graphs are stored in Neo4j.&#10;Input: query (pattern) graph label and target graph label&#10;Output: All matching subgraphs. For each node in the subgraph, the matching node in the query graph is displayed. Nodes are indexed by the sequence of subgraphs. E.g., nodes in subgraph 0 are all indexed 0. The total number of subgraphs is returned, too.&#10;&#10;Note: &#10;1. To return something to the Cypher console, a result class must be created. Each instance variable in the class is a column in the output. If you directly use int, String, etc. the Neo4j database can not start with this plugin. (It is more like a bug in Neo4j)&#10; &#10;2. Neo4j Java plugin only accepts Node or String as the instance variable type in the result class. Again, if other types are used, the Neo4j server won't start at all.I doubt this is also a bug.&#10;&#10;3. Only @Context variables can be created for class-width usage. If other variables are declared in the same way, the Neo4j server can't start. Check the variables in the code: db and log.&#10;&#10;4. Neo4j Web browser doesn't support multiple displays of one same node. In other words, if there are two subgraphs: a-b-c and a-b-d, only four nodes a,b,c,d can be visualized by Neo4j browser.">
+      <created>1494076804995</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1494076804995</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="ToolWindowManager">
@@ -990,8 +986,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/java/subgraphIso/Subgraph_Isomorphism.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="494">
-          <caret line="94" column="78" lean-forward="false" selection-start-line="94" selection-start-column="78" selection-end-line="94" selection-end-column="78" />
+        <state relative-caret-position="1406">
+          <caret line="106" column="27" lean-forward="false" selection-start-line="106" selection-start-column="27" selection-end-line="106" selection-end-column="27" />
           <folding>
             <element signature="e#3812#3813#0" expanded="true" />
             <element signature="e#3870#3871#0" expanded="true" />
