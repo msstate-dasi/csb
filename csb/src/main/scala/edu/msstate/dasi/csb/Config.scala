@@ -6,10 +6,12 @@ case class Config(
                  debug: Boolean = false,
                  mode: String = "",
                  partitions: Int = sc.defaultParallelism,
-                 storageBackend: String = "fs",
 
                  seedGraphPrefix: String = "seed",
                  synthGraphPrefix: String = "synth",
+                 graphLoader: String = "spark",
+                 graphSaver: String = "spark",
+                 textSaver: String = "none",
                  iterations: Int = 0,
 
                  alertLog: String = "alert",

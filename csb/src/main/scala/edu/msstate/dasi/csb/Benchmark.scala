@@ -23,17 +23,19 @@ object Benchmark {
           Logger.getLogger("akka").setLevel(Level.DEBUG)
         }
 
+        val factory = new ComponentFactory(config)
+
         config.mode match {
-          case "seed" => run_seed(config)
-          case "synth" => run_synth(config)
-          case "veracity" => run_veracity(config)
-          case "workload" => run_workload(config)
+          case "seed" => run_seed(config, factory)
+          case "synth" => run_synth(config, factory)
+          case "veracity" => run_veracity(config, factory)
+          case "workload" => run_workload(config, factory)
         }
       case None => sys.exit(1)
     }
   }
 
-  private def run_seed(config: Config): Boolean = {
+  private def run_seed(config: Config, factory: ComponentFactory): Boolean = {
     val logAug = new log_Augment()
     logAug.run(config.alertLog, config.connLog, config.augLog)
 
@@ -45,13 +47,13 @@ object Benchmark {
 
     Util.time( "Seed distributions", new DataDistributions(config.augLog) )
 
-    var graphPs = null.asInstanceOf[GraphPersistence]
-    config.storageBackend match {
-      case "fs" => graphPs = new SparkPersistence()
-      case "neo4j" => graphPs = new Neo4jPersistence()
-    }
+    Util.time("Save seed graph", factory.getSaver.saveGraph(seed, config.seedGraphPrefix, overwrite = true))
 
-    Util.time( "Save seed graph", graphPs.saveGraph(seed, config.seedGraphPrefix, overwrite = true) )
+    factory.getTextSaver match {
+      case Some(textSaver) =>
+        Util.time( "Save seed graph as text", textSaver.saveAsText(seed, config.seedGraphPrefix, overwrite = true) )
+      case None =>
+    }
 
     true
   }
@@ -82,33 +84,24 @@ object Benchmark {
     }
   }
 
-  private def run_synth(config: Config): Boolean = {
-    var graphPs = null.asInstanceOf[GraphPersistence]
-    config.storageBackend match {
-      case "fs" => graphPs = new SparkPersistence()
-      case "neo4j" => graphPs = new Neo4jPersistence()
-    }
+  private def run_synth(config: Config, factory: ComponentFactory): Boolean = {
 
     val seed = Util.time( "Load seed graph", {
-      val seed = graphPs.loadGraph(config.seedGraphPrefix, config.partitions)
+      val seed = factory.getLoader.loadGraph(config.seedGraphPrefix, config.partitions)
       println("Vertices #: " + seed.numVertices + ", Edges #: " + seed.numEdges)
       seed
     } )
 
     val seedDists = new DataDistributions(config.augLog)
 
-    var synthesizer: GraphSynth = null
-    config.synthesizer match {
-      case "ba" => synthesizer = new ParallelBaSynth (config.partitions, config.iterations, config.sampleFraction)
-      case "kro" => synthesizer = new KroSynth (config.partitions, config.seedMatrix, config.iterations)
-    }
+    val synth = factory.getSynthesizer.synthesize(seed, seedDists, !config.skipProperties)
 
-    val synth = synthesizer.synthesize(seed, seedDists, !config.skipProperties)
+    Util.time( "Save synth graph", factory.getSaver.saveGraph(synth, config.synthGraphPrefix, overwrite = true))
 
-    Util.time( "Save synth graph Object", graphPs.saveGraph(synth, config.synthGraphPrefix, overwrite = true))
-
-    if ( config.storageBackend == "fs" ) {
-      Util.time("Save synth graph Text", graphPs.asInstanceOf[SparkPersistence].saveAsText(synth, config.synthGraphPrefix + "_text", overwrite = true))
+    factory.getTextSaver match {
+      case Some(textSaver) =>
+        Util.time( "Save synth graph as text", textSaver.saveAsText(seed, config.synthGraphPrefix, overwrite = true) )
+      case None =>
     }
 
     run_metrics(config.metrics, seed, synth)
@@ -116,37 +109,24 @@ object Benchmark {
     true
   }
 
-  private def run_veracity(config: Config): Boolean = {
-    var graphPs = null.asInstanceOf[GraphPersistence]
-    config.storageBackend match {
-      case "fs" => graphPs = new SparkPersistence()
-      case "neo4j" => graphPs = new Neo4jPersistence()
-    }
+  private def run_veracity(config: Config, factory: ComponentFactory): Boolean = {
+    val loader = factory.getLoader
 
-    val seed = Util.time( "Load seed graph", graphPs.loadGraph(config.seedGraphPrefix, config.partitions) )
+    val seed = Util.time( "Load seed graph", loader.loadGraph(config.seedGraphPrefix, config.partitions) )
 
-    val synth = Util.time( "Load synth graph", graphPs.loadGraph(config.synthGraphPrefix, config.partitions) )
+    val synth = Util.time( "Load synth graph", loader.loadGraph(config.synthGraphPrefix, config.partitions) )
 
     run_metrics(config.metrics, seed, synth)
 
     true
   }
 
-  private def run_workload(config: Config): Boolean = {
-    var graphPs = null.asInstanceOf[GraphPersistence]
-    config.storageBackend match {
-      case "fs" => graphPs = new SparkPersistence()
-      case "neo4j" => graphPs = new Neo4jPersistence()
-    }
+  private def run_workload(config: Config, factory: ComponentFactory): Boolean = {
+    val loader = factory.getLoader
 
-    val graph = Util.time( "Load graph", graphPs.loadGraph(config.graphPrefix, config.partitions) )
+    val graph = Util.time( "Load graph", loader.loadGraph(config.graphPrefix, config.partitions) )
 
-    var workload = null.asInstanceOf[Workload]
-    config.workloadBackend match {
-      case "spark" => workload = SparkWorkload
-      case "neo4j" => workload = new Neo4jWorkload(config.neo4jUrl, config.neo4jUsername, config.neo4jPassword)
-    }
-
+    val workload = factory.getWorkload
     val workloads = config.workloads
 
     val srcWorkloads = Seq("bfs", "closeness-centrality", "sssp")
@@ -228,7 +208,7 @@ object Benchmark {
     }
 
     if ( all || workloads.contains("subgraph-isomorphism") ) {
-      val pattern = Util.time("Load pattern", graphPs.loadGraph(config.patternPrefix, config.partitions))
+      val pattern = Util.time("Load pattern", loader.loadGraph(config.patternPrefix, config.partitions))
       Util.time("Subgraph Isomorphism", workload.subgraphIsomorphism(graph, pattern))
     }
 

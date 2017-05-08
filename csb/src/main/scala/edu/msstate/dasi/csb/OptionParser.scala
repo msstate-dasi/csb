@@ -57,7 +57,12 @@ class OptionParser(override val programName: String, programVersion: String, con
       opt[String]('o', "out-graph")
         .valueName("<path>")
         .text(s"Output path prefix of the generated seed graph [default: ${config.seedGraphPrefix}].")
-        .action((x, c) => c.copy(seedGraphPrefix = x))
+        .action((x, c) => c.copy(seedGraphPrefix = x)),
+
+        opt[String]('t', "as-text")
+        .valueName("<format>")
+        .text(s"Save the generated seed graph in a text format. Supported: spark|neo4j [default: ${config.textSaver}].")
+        .action((x, c) => c.copy(textSaver = x))
     )
 
   note("")
@@ -81,6 +86,11 @@ class OptionParser(override val programName: String, programVersion: String, con
         .valueName("<path>")
         .text(s"Output path prefix of the generated synthetic graph [default: ${config.synthGraphPrefix}].")
         .action((x, c) => c.copy(synthGraphPrefix = x)),
+
+      opt[String]('t', "as-text")
+        .valueName("<format>")
+        .text(s"Save the generated synthetic graph in a text format. Supported: spark|neo4j [default: ${config.textSaver}].")
+        .action((x, c) => c.copy(textSaver = x)),
 
       opt[Unit]('x', "exclude-prop")
         .text(s"Skip the properties generation [default: ${config.skipProperties}].")
