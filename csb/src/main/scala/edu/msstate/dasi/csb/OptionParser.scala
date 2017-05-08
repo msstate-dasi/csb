@@ -54,6 +54,11 @@ class OptionParser(override val programName: String, programVersion: String, con
         .text(s"Output path of the resulting augmented log [default: ${config.augLog}].")
         .action((x, c) => c.copy(augLog = x)),
 
+      opt[String]('w', "saver")
+        .valueName("<value>")
+        .text(s"Graph saver. Supported: spark|neo4j [default: ${config.graphSaver}].")
+        .action((x, c) => c.copy(graphSaver = x)),
+
       opt[String]('o', "out-graph")
         .valueName("<path>")
         .text(s"Output path prefix of the generated seed graph [default: ${config.seedGraphPrefix}].")
@@ -71,6 +76,11 @@ class OptionParser(override val programName: String, programVersion: String, con
     .text("Synthesizes a graph starting from a seed graph and the probability distributions of its properties.")
     .action( (_, c) => c.copy(mode = "synth", metrics = Seq()) )
     .children(
+      opt[String]('r', "loader")
+        .valueName("<value>")
+        .text(s"Graph loader. Supported: spark|neo4j [default: ${config.graphLoader}].")
+        .action((x, c) => c.copy(graphLoader = x)),
+
       opt[String]('s', "seed-graph")
         .valueName("<path>")
         .text(s"Path prefix of the seed graph [default: ${config.seedGraphPrefix}].")
@@ -82,6 +92,11 @@ class OptionParser(override val programName: String, programVersion: String, con
         .validate(path => if ( new File(path).isFile ) success else failure(s"$path is not a regular file") )
         .action((x, c) => c.copy(augLog = x)),
 
+      opt[String]('w', "saver")
+        .valueName("<value>")
+        .text(s"Graph saver. Supported: spark|neo4j [default: ${config.graphSaver}].")
+        .action((x, c) => c.copy(graphSaver = x)),
+
       opt[String]('o', "out-graph")
         .valueName("<path>")
         .text(s"Output path prefix of the generated synthetic graph [default: ${config.synthGraphPrefix}].")
@@ -92,7 +107,7 @@ class OptionParser(override val programName: String, programVersion: String, con
         .text(s"Save the generated synthetic graph in a text format. Supported: spark|neo4j [default: ${config.textSaver}].")
         .action((x, c) => c.copy(textSaver = x)),
 
-      opt[Unit]('x', "exclude-prop")
+      opt[Unit]('x', "exclude-properties")
         .text(s"Skip the properties generation [default: ${config.skipProperties}].")
         .action((_, c) => c.copy(skipProperties = true)),
 
@@ -146,6 +161,11 @@ class OptionParser(override val programName: String, programVersion: String, con
     .text("Executes one or more veracity metrics. Available metrics: degree|in-degree|out-degree|pagerank|all")
     .action( (_, c) => c.copy(mode = "veracity") )
     .children(
+      opt[String]('r', "loader")
+        .valueName("<value>")
+        .text(s"Graph loader. Supported: spark|neo4j [default: ${config.graphLoader}].")
+        .action((x, c) => c.copy(graphLoader = x)),
+
       arg[Seq[String]]("<metric1,metric2,...>")
         .text(s"Comma separated list of veracity metrics to execute [default: ${config.metrics.mkString(",")}].")
         .action( (x, c) => c.copy(metrics = x) ),
@@ -208,6 +228,11 @@ class OptionParser(override val programName: String, programVersion: String, con
           s"Required by: bfs [default: random].")
         .validate(value => if (value > 0) success else failure("destination must be greater than 0"))
         .action( (x, c) => c.copy(dstVertex = x) ),
+
+      opt[String]('r', "loader")
+        .valueName("<value>")
+        .text(s"Graph loader. Supported: spark|neo4j [default: ${config.graphLoader}].")
+        .action((x, c) => c.copy(graphLoader = x)),
 
       opt[String]('t', "pattern")
         .valueName("<path>")
