@@ -58,29 +58,11 @@ object Benchmark {
     true
   }
 
-  private def run_metrics(metrics: Seq[String], seed: Graph[VertexData, EdgeData], synth: Graph[VertexData, EdgeData]): Unit = {
-    if ( metrics.isEmpty ) return
-
-    val all = metrics.contains("all")
-
-    if ( all || metrics.contains("degree") ) {
-      val degVeracity = Util.time("Degree Veracity", DegreeVeracity(seed, synth))
-      println(s"Degree Veracity: $degVeracity")
-    }
-
-    if ( all || metrics.contains("in-degree") ) {
-      val inDegVeracity = Util.time("In-Degree Veracity", InDegreeVeracity(seed, synth))
-      println(s"In-Degree Veracity: $inDegVeracity")
-    }
-
-    if ( all || metrics.contains("out-degree") ) {
-      val outDegVeracity = Util.time("Out-Degree Veracity", OutDegreeVeracity(seed, synth))
-      println(s"Out-Degree Veracity: $outDegVeracity")
-    }
-
-    if ( all || metrics.contains("pagerank") ) {
-      val pageRankVeracity = Util.time("PageRank Veracity", PageRankVeracity(seed, synth))
-      println(s"Page Rank Veracity: $pageRankVeracity")
+  private def run_metrics(metrics: Array[Veracity], seed: Graph[VertexData, EdgeData], synth: Graph[VertexData, EdgeData]): Unit = {
+    for (metric <- metrics) {
+      val metricName = metric.getClass.getSimpleName.split("\\$").last
+      val veracity = Util.time(s"$metricName", metric(seed, synth))
+      println(s"$metricName: $veracity")
     }
   }
 
@@ -104,7 +86,7 @@ object Benchmark {
       case None =>
     }
 
-    run_metrics(config.metrics, seed, synth)
+    run_metrics(factory.getMetrics, seed, synth)
 
     true
   }
@@ -116,7 +98,7 @@ object Benchmark {
 
     val synth = Util.time( "Load synth graph", loader.loadGraph(config.synthGraphPrefix, config.partitions) )
 
-    run_metrics(config.metrics, seed, synth)
+    run_metrics(factory.getMetrics, seed, synth)
 
     true
   }
@@ -126,45 +108,45 @@ object Benchmark {
 
     val graph = Util.time( "Load graph", loader.loadGraph(config.graphPrefix, config.partitions) )
 
-    val workload = factory.getWorkload
+    val workloadEngine = factory.getWorkloadEngine
     val workloads = config.workloads
 
     val srcWorkloads = Seq("bfs", "closeness-centrality", "sssp")
 
     val all = workloads.contains("all")
 
-    if ( all || workloads.contains("count-vertices") ) Util.time("Count vertices", workload.countVertices(graph))
-    if ( all || workloads.contains("count-edges") ) Util.time("Count edges", workload.countEdges(graph))
+    if ( all || workloads.contains("count-vertices") ) Util.time("Count vertices", workloadEngine.countVertices(graph))
+    if ( all || workloads.contains("count-edges") ) Util.time("Count edges", workloadEngine.countEdges(graph))
 
-    if ( all || workloads.contains("degree") ) Util.time("Degree", workload.degree(graph))
-    if ( all || workloads.contains("in-degree") ) Util.time("In-degree", workload.inDegree(graph))
-    if ( all || workloads.contains("out-degree") ) Util.time("Out-degree", workload.outDegree(graph))
+    if ( all || workloads.contains("degree") ) Util.time("Degree", workloadEngine.degree(graph))
+    if ( all || workloads.contains("in-degree") ) Util.time("In-degree", workloadEngine.inDegree(graph))
+    if ( all || workloads.contains("out-degree") ) Util.time("Out-degree", workloadEngine.outDegree(graph))
 
     if ( all || workloads.contains("pagerank") ) {
-      Util.time("PageRank", workload.pageRank(graph))
+      Util.time("PageRank", workloadEngine.pageRank(graph))
     }
 
-    if ( all || workloads.contains("neighbors") ) Util.time("Neighbors", workload.neighbors(graph))
-    if ( all || workloads.contains("in-neighbors") ) Util.time("In-neighbors", workload.inNeighbors(graph))
-    if ( all || workloads.contains("out-neighbors") ) Util.time("Out-neighbors", workload.outNeighbors(graph))
+    if ( all || workloads.contains("neighbors") ) Util.time("Neighbors", workloadEngine.neighbors(graph))
+    if ( all || workloads.contains("in-neighbors") ) Util.time("In-neighbors", workloadEngine.inNeighbors(graph))
+    if ( all || workloads.contains("out-neighbors") ) Util.time("Out-neighbors", workloadEngine.outNeighbors(graph))
 
-    if ( all || workloads.contains("in-edges") ) Util.time("Degree", workload.inEdges(graph))
-    if ( all || workloads.contains("out-edges") ) Util.time("In-degree", workload.outEdges(graph))
+    if ( all || workloads.contains("in-edges") ) Util.time("Degree", workloadEngine.inEdges(graph))
+    if ( all || workloads.contains("out-edges") ) Util.time("In-degree", workloadEngine.outEdges(graph))
 
     if ( all || workloads.contains("connected-components") ) {
-      Util.time("Connected Components", workload.connectedComponents(graph))
+      Util.time("Connected Components", workloadEngine.connectedComponents(graph))
     }
 
     if ( all || workloads.contains("triangle-count") ) {
-      Util.time("Triangle Counting", workload.triangleCount(graph))
+      Util.time("Triangle Counting", workloadEngine.triangleCount(graph))
     }
 
     if ( all || workloads.contains("strongly-connected-components") ) {
-      Util.time("Strongly Connected Components", workload.stronglyConnectedComponents(graph, config.iterations))
+      Util.time("Strongly Connected Components", workloadEngine.stronglyConnectedComponents(graph, config.iterations))
     }
 
     if ( all || workloads.contains("betweenness-centrality") ) {
-      Util.time("Betweenness Centrality", workload.betweennessCentrality(graph, config.iterations))
+      Util.time("Betweenness Centrality", workloadEngine.betweennessCentrality(graph, config.iterations))
     }
 
     if ( all || workloads.intersect(srcWorkloads).nonEmpty ) {
@@ -195,21 +177,21 @@ object Benchmark {
           println(s"Destination vertex: $dstVertex")
         }
 
-        Util.time("Breadth-first Search", workload.bfs(graph, srcVertex, dstVertex))
+        Util.time("Breadth-first Search", workloadEngine.bfs(graph, srcVertex, dstVertex))
       }
 
       if ( all || workloads.contains("closeness-centrality") ) {
-        Util.time("Closeness Centrality", workload.closenessCentrality(graph, srcVertex))
+        Util.time("Closeness Centrality", workloadEngine.closenessCentrality(graph, srcVertex))
       }
 
       if ( all || workloads.contains("sssp") ) {
-        Util.time("Single Source Shortest Path", workload.sssp(graph, srcVertex))
+        Util.time("Single Source Shortest Path", workloadEngine.sssp(graph, srcVertex))
       }
     }
 
     if ( all || workloads.contains("subgraph-isomorphism") ) {
       val pattern = Util.time("Load pattern", loader.loadGraph(config.patternPrefix, config.partitions))
-      Util.time("Subgraph Isomorphism", workload.subgraphIsomorphism(graph, pattern))
+      Util.time("Subgraph Isomorphism", workloadEngine.subgraphIsomorphism(graph, pattern))
     }
 
     true

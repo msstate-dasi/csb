@@ -46,10 +46,26 @@ class ComponentFactory(config: Config) {
     }
   }
 
+
+  def getMetrics: Array[Veracity] = {
+    var metrics = Array.empty[Veracity]
+
+    if (config.metrics.isEmpty) return metrics
+
+    val all = config.metrics.contains("all")
+
+    if (all || config.metrics.contains("degree")) metrics :+= DegreeVeracity
+    if (all || config.metrics.contains("in-degree")) metrics :+= InDegreeVeracity
+    if (all || config.metrics.contains("out-degree")) metrics :+= OutDegreeVeracity
+    if (all || config.metrics.contains("pagerank")) metrics :+= PageRankVeracity
+
+    metrics
+  }
+
   /**
    * Returns the workload engine.
    */
-  def getWorkload: Workload = {
+  def getWorkloadEngine: Workload = {
     config.workloadBackend match {
       case "spark" => SparkWorkload
       case "neo4j" => new Neo4jWorkload(config.neo4jUrl, config.neo4jUsername, config.neo4jPassword)
