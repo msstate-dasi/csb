@@ -1,9 +1,12 @@
 package edu.msstate.dasi.csb
 
+/**
+ * Provides factory methods for each benchmark component, defining their behavior from an input configuration.
+ */
 class ComponentFactory(config: Config) {
 
   /**
-   *
+   * Returns the graph loader.
    */
   def getLoader: GraphPersistence = {
     config.graphLoader match {
@@ -13,7 +16,7 @@ class ComponentFactory(config: Config) {
   }
 
   /**
-   *
+   * Returns the graph saver.
    */
   def getSaver: GraphPersistence = {
     config.graphSaver match {
@@ -23,7 +26,7 @@ class ComponentFactory(config: Config) {
   }
 
   /**
-   *
+   * Returns the graph saver used for the text format.
    */
   def getTextSaver: Option[GraphPersistence] = {
     config.textSaver match {
@@ -34,7 +37,7 @@ class ComponentFactory(config: Config) {
   }
 
   /**
-   *
+   * Returns the synthesizer.
    */
   def getSynthesizer: GraphSynth = {
     config.synthesizer match {
@@ -44,7 +47,7 @@ class ComponentFactory(config: Config) {
   }
 
   /**
-   *
+   * Returns the workload engine.
    */
   def getWorkload: Workload = {
     config.workloadBackend match {
