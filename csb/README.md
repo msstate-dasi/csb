@@ -22,7 +22,7 @@ The execution of the application is split in two different phases:
 ### Running phase 1
 
 ```
-$SPARK_HOME/bin/spark-submit csb-dep.jar gen_dist $DATA/dataset_01/conn.log $DATA/dataset_01/alert aug.log seed
+$SPARK_HOME/bin/spark-submit csb.jar seed -a $DATA/dataset_01/alert -b $DATA/dataset_01/conn.log
 ```
 
 The output will be:
@@ -34,7 +34,7 @@ The output will be:
 
 The phase 2 is composed of three separate steps:
 1. Synthetic graph generation, which is done using either one the algorithms listed below
-2. Properties generation, which can be skipped with the *--no-prop* parameter
+2. Properties generation, which can be skipped with the *-x* or the *--exclude-prop* options
 3. Graph saving using Spark serialization methods (Neo4j serialization is under development)
 4. Veracity computation of degree, in-degree, out-degree and PageRank metrics
 
@@ -43,7 +43,7 @@ The phase 2 is composed of three separate steps:
 The following will run the Barabási–Albert algorithm with 10 iterations:
 
 ```
-$SPARK_HOME/bin/spark-submit csb-dep.jar ba seed 10
+$SPARK_HOME/bin/spark-submit csb.jar synth ba -m all 10 0.2
 ```
 
 #### Kronecker
@@ -52,5 +52,5 @@ $SPARK_HOME/bin/spark-submit csb-dep.jar ba seed 10
 The following will run the stochastic Kronecker algorithm with 15 iterations using the *seed.mtx* matrix:
 
 ```
-$SPARK_HOME/bin/spark-submit csb-dep.jar kro $DATA/dataset_01/seed.mtx seed 15
+$SPARK_HOME/bin/spark-submit csb.jar synth kro -m all 15 $DATA/dataset_01/seed.mtx
 ```

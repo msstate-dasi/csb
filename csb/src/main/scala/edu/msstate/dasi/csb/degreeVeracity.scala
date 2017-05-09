@@ -36,6 +36,8 @@ sealed trait DegreeVeracity extends Veracity {
 }
 
 object DegreeVeracity extends DegreeVeracity {
+  val name: String = "Degree"
+
   /**
    * Computes the degree veracity factor between two graphs.
    */
@@ -45,6 +47,7 @@ object DegreeVeracity extends DegreeVeracity {
   }
 }
 object InDegreeVeracity extends DegreeVeracity {
+  val name: String = "In-degree"
   /**
    * Computes the in-degree veracity factor between two graphs.
    */
@@ -54,6 +57,8 @@ object InDegreeVeracity extends DegreeVeracity {
   }
 }
 object OutDegreeVeracity extends DegreeVeracity {
+  val name: String = "Out-degree"
+
   /**
    * Computes the out-degree veracity factor between two graphs.
    */

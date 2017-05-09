@@ -6,7 +6,7 @@ import org.apache.hadoop.fs.FileUtil
 import org.apache.spark.graphx.{Edge, Graph, VertexId}
 import org.apache.spark.storage.StorageLevel
 
-class SparkPersistence extends GraphPersistence {
+object SparkPersistence extends GraphPersistence {
   private val vertices_suffix = "_vertices"
   private val edges_suffix = "_edges"
 

@@ -3,17 +3,16 @@ package edu.msstate.dasi.csb
 import java.util.concurrent.TimeUnit
 
 import org.apache.spark.graphx.{Edge, Graph, VertexId}
-import org.apache.spark.rdd.RDD
 import org.neo4j.driver.v1.summary.ResultSummary
 import org.neo4j.driver.v1.{AccessMode, AuthTokens, GraphDatabase}
 
 import scala.reflect.ClassTag
 
-object Neo4jWorkload extends Workload {
+class Neo4jWorkload(url: String, username: String, password: String) extends Workload {
   /**
    * The Neo4j driver instance responsible for obtaining new sessions.
    */
-  private val driver = GraphDatabase.driver("bolt://localhost", AuthTokens.basic("neo4j", "password"))
+  private val driver = GraphDatabase.driver(url, AuthTokens.basic(username, password))
 
   /**
    *

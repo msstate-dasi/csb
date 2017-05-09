@@ -5,7 +5,7 @@ import java.io.{File, PrintWriter}
 import org.apache.hadoop.fs.FileUtil
 import org.apache.spark.graphx.Graph
 
-class Neo4jPersistence extends GraphPersistence {
+object Neo4jPersistence extends GraphPersistence {
   private val vertices_suffix = "_nodes"
   private val edges_suffix = "_relationships"
 

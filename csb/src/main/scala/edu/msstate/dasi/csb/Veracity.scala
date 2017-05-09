@@ -6,6 +6,8 @@ import org.apache.spark.rdd.RDD
 import scala.reflect.ClassTag
 
 trait Veracity {
+  val name: String
+
   // TODO: we should find a more elegant solution for passing the bucket size to the inheriting class
   protected var globalBucketSize = 0.0
 
