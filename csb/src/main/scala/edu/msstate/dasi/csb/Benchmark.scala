@@ -60,9 +60,8 @@ object Benchmark {
 
   private def run_metrics(metrics: Array[Veracity], seed: Graph[VertexData, EdgeData], synth: Graph[VertexData, EdgeData]): Unit = {
     for (metric <- metrics) {
-      val metricName = metric.getClass.getSimpleName.split("\\$").last
-      val veracity = Util.time(s"$metricName", metric(seed, synth))
-      println(s"$metricName: $veracity")
+      val veracity = Util.time(s"${metric.name} veracity", metric(seed, synth))
+      println(s"${metric.name} veracity: $veracity")
     }
   }
 
