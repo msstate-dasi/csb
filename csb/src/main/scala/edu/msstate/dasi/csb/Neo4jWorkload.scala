@@ -275,8 +275,9 @@ class Neo4jWorkload(url: String, username: String, password: String) extends Wor
    * Computes the shortest path from a source vertex to all other vertices.
    */
   def sssp[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], src: VertexId): Unit = {
-    val query ="MATCH (src {name:\"" + src + "\"}), (dst)," +
-      "path = shortestPath((src)-[*]->(dst))" +
+    val query ="MATCH (src {name:\"" + src + "\"}), (dst), " +
+      "path = shortestPath((src)-[*]->(dst)) " +
+      "WHERE dst.name <> src.name " +
       "RETURN src, dst, path;"
 
     run(query)
