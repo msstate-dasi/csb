@@ -276,9 +276,9 @@ class Neo4jWorkload(url: String, username: String, password: String) extends Wor
    */
   def sssp[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], src: VertexId): Unit = {
     val query ="MATCH (src {name:\"" + src + "\"}), (dst), " +
-      "path = shortestPath((src)-[*]->(dst)) "
-    "WHERE dst.name <> src.name "
-    "RETURN src, dst, path;"
+      "path = shortestPath((src)-[*]->(dst)) " +
+      "WHERE dst.name <> src.name " +
+      "RETURN src, dst, path;"
 
     run(query)
   }
