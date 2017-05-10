@@ -301,7 +301,9 @@ object SparkWorkload extends Workload {
      */
     def backtracking(candidates: RDD[(VertexId, Array[VertexId])], patternVerticesCount: Long,
                      graphNeighbors: RDD[(VertexId, Array[VertexId])], patternNeighbors: RDD[(VertexId, VertexId)],
-                     partitions: Int): Boolean = {
+                     partitions: Int): Int = {
+      var count = 0
+
       // Cleanup unique candidates
       val cleanedCandidates = cleanup(candidates, partitions).cache()
 
@@ -311,17 +313,18 @@ object SparkWorkload extends Workload {
 
       if ( actualCandidates.isEmpty() ) {
         // Every vertex has exactly one candidate
+        count += 1
+
         println("** Subgraph found **")
         printCandidates(cleanedCandidates)
         println("********************")
         cleanedCandidates.unpersist()
-        return true
+
+        return count
       }
 
       // Pick the first vertex with the lowest number of candidates (at least two)
       val (currentVertex, currentArray) = actualCandidates.sortBy(_._2.length).first()
-
-      var found = false
 
       for (candidate <- currentArray) {
         val candidatesAttempt = select(cleanedCandidates, currentVertex, candidate).cache()
@@ -335,18 +338,19 @@ object SparkWorkload extends Workload {
         if (candidatesResultCount == patternVerticesCount) {
           if ( candidatesResult.filter{ case (_, candidatesArray) => candidatesArray.length > 1 }.isEmpty() ) {
             // Every vertex has exactly one candidate
+            count += 1
+
             println("** Subgraph found **")
             printCandidates(candidatesResult)
             println("********************")
-            found = true
           } else {
             // Some vertex has more than one candidates, backtrack
-            found = backtracking(candidatesResult, patternVerticesCount, graphNeighbors, patternNeighbors, partitions: Int)
+            count += backtracking(candidatesResult, patternVerticesCount, graphNeighbors, patternNeighbors, partitions)
           }
           candidatesResult.unpersist()
         }
       }
-      found
+      count
     }
 
     val patternVerticesCount = pattern.vertices.count
@@ -399,9 +403,9 @@ object SparkWorkload extends Workload {
       return
     }
 
-    val found = backtracking(refinedCandidates, patternVerticesCount, graphNeighbors, patternNeighbors, partitions)
+    val count = backtracking(refinedCandidates, patternVerticesCount, graphNeighbors, patternNeighbors, partitions)
 
-    if (found) println("One or more subgraphs found.") else println("Subgraph not found.")
+    println(s"$count subgraphs found.")
 
     refinedCandidates.unpersist()
     graphNeighbors.unpersist()
