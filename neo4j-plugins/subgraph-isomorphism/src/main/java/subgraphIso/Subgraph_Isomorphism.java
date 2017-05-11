@@ -118,20 +118,27 @@ public class Subgraph_Isomorphism
         candidateListIndex.stream().forEach(node->queryNeighborList.add(findNodeNeighbors(node,queryLabel)));
 
 
-        refineCandidate(candidateList,queryNeighborList,nodeNeighborList,candidateListIndex,nodeNeighborListIndex);//the first round refine
+        refineCandidate(candidateList,queryNeighborList,nodeNeighborList,candidateListIndex,nodeNeighborListIndex,matchedSubgraphs);//the first round refine
         if(!isCorrect(candidateList))
         {
             return matchedSubgraphs;
         }
-        backtracking(0,candidateList,queryNeighborList,nodeNeighborList,candidateListIndex,nodeNeighborListIndex,matchedSubgraphs);
+        int[] candidateListSize=new int[candidateList.size()];
+
+        for(int i=0;i<candidateList.size();i++)
+        {
+            candidateListSize[i]=candidateList.get(i).size();
+        }
+        backtracking(0,candidateList,candidateListIndex,candidateListSize,queryNeighborList,nodeNeighborList,nodeNeighborListIndex,matchedSubgraphs);
 
         return matchedSubgraphs;
 
     }
 
-    private boolean backtracking(int numLayer, List<List<Node>> candidateList,List<List<Node>> queryNeighborList,
-                                 List<List<Node>> nodeNeighborList, ArrayList<Node> candidateListIndex,
-                                 ArrayList<Node> nodeNeighborListIndex,List<List<Node>> matchedSubgraphs)
+    private boolean backtracking(int numLayer, List<List<Node>> candidateList,ArrayList<Node> candidateListIndex,int[] candidateListSize,
+                                 List<List<Node>> queryNeighborList,
+                                 List<List<Node>> nodeNeighborList, ArrayList<Node> nodeNeighborListIndex,
+                                 List<List<Node>> matchedSubgraphs)
     {
 
         if(numLayer==queryNeighborList.size())
@@ -160,12 +167,12 @@ public class Subgraph_Isomorphism
 
             candidateList.get(numLayer).retainAll(singleNode);//select the single node in that row
 
-            removeUniqueNodes(singleNode.get(0),candidateList,numLayer,false);//remove unique nodes in other rows
-            refineCandidate(candidateList,queryNeighborList,nodeNeighborList,candidateListIndex,nodeNeighborListIndex);//refine the candidate list
+            removeUniqueNodes(singleNode.get(0),candidateList,candidateListSize,numLayer,false);//remove unique nodes in other rows
+            refineCandidate(candidateList,queryNeighborList,nodeNeighborList,candidateListIndex,nodeNeighborListIndex,matchedSubgraphs);//refine the candidate list
             if(isCorrect(candidateList))
-                backtracking(numLayer+1,candidateList,queryNeighborList,nodeNeighborList,candidateListIndex,nodeNeighborListIndex,matchedSubgraphs);
+                backtracking(numLayer+1,candidateList,candidateListIndex,candidateListSize,queryNeighborList,nodeNeighborList,nodeNeighborListIndex,matchedSubgraphs);
 
-            removeUniqueNodes(originalCandidateList.get(numLayer).get(i), originalCandidateList, numLayer + 1,true);//trim the branches
+            removeUniqueNodes(originalCandidateList.get(numLayer).get(i), originalCandidateList, candidateListSize,numLayer+1,true);//trim the branches
 
             candidateList=copyNodeList(originalCandidateList);//resume the candidate list and continue searching
 
@@ -174,7 +181,7 @@ public class Subgraph_Isomorphism
         return false;
     }
 
-    private void removeUniqueNodes(Node unique, List<List<Node>> candidateList,int layer,boolean TrimBranch)
+    private void removeUniqueNodes(Node unique, List<List<Node>> candidateList,int[] candidateListSize, int layer,boolean TrimBranch)
     {
 
         if(!TrimBranch) {
@@ -185,12 +192,18 @@ public class Subgraph_Isomorphism
             }
         }
         else{
-
-            for(int i=layer;i<candidateList.size();i++)
-            {
-                if(candidateList.get(i).contains(unique) && candidateList.get(i).size()>1)
-                    candidateList.get(i).remove(unique);
+            //for trimming, pick nodes that have the same candidate list size as the node in the current layer
+            int currentLayer=layer-1;
+            for(int i=layer;i<candidateList.size();i++) {
+                if (candidateListSize[i] == candidateListSize[currentLayer])
+                {
+                    if(candidateList.get(i).contains(unique) )
+                        candidateList.get(i).remove(unique);
+                }
+                else
+                    break;// the main candidate list is sorted, so we break here when different size is found
             }
+
         }
     }
 
@@ -223,8 +236,44 @@ public class Subgraph_Isomorphism
     }
 
 
-    private void refineCandidate(List<List<Node>> candidateList,List<List<Node>> queryNeighborList,List<List<Node>> nodeNeighborList, ArrayList<Node> candidateListIndex, ArrayList<Node> nodeNeighborListIndex)
+    private void refineCandidate(List<List<Node>> candidateList,List<List<Node>> queryNeighborList,List<List<Node>> nodeNeighborList,
+                                 ArrayList<Node> candidateListIndex, ArrayList<Node> nodeNeighborListIndex,
+                                 List<List<Node>> matchedSubgraphs)
     {//given the three lists, refine the candidate list
+
+        //check if all query nodes have exactly one candidate
+        boolean isListSizeAllOne=true;
+        for(List<Node> list: candidateList)
+        {
+            if(list.size()==0)return;
+            else if(list.size()>1){
+                isListSizeAllOne=false;
+                break;
+            }
+        }
+
+        //check redundant subgraphs
+        if(isListSizeAllOne && !matchedSubgraphs.isEmpty())
+        {
+
+            boolean isRedundant;
+            for(int i=0;i<matchedSubgraphs.size();i++)
+            {
+                isRedundant=true;
+                for(int j=0;j<candidateList.size();j++)
+                {
+                    isRedundant=isRedundant && matchedSubgraphs.get(i).contains(candidateList.get(j).get(0));
+                    if(!isRedundant)break;
+                }
+                if(isRedundant)
+                {
+                    candidateList.get(0).remove(0);
+                    return;
+                }
+            }
+
+        }
+
         for(int i=0;i<queryNeighborList.size();i++)
         {
             for(int j=0;j<candidateList.get(i).size();j++)
