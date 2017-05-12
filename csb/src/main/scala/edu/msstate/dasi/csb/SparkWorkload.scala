@@ -347,8 +347,8 @@ object SparkWorkload extends Workload {
             // Some vertex has more than one candidates, backtrack
             count += backtracking(candidatesResult, patternVerticesCount, graphNeighbors, patternNeighbors, partitions)
           }
-          candidatesResult.unpersist()
         }
+        candidatesResult.unpersist()
       }
       count
     }
