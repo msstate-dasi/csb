@@ -18,10 +18,11 @@ class ComponentFactory(config: Config) {
   /**
    * Returns the graph saver.
    */
-  def getSaver: GraphPersistence = {
+  def getSaver: Option[GraphPersistence] = {
     config.graphSaver match {
-      case "spark" => SparkPersistence
-      case "neo4j" => Neo4jPersistence
+      case "spark" => Some(SparkPersistence)
+      case "neo4j" => Some(Neo4jPersistence)
+      case "none" => None
     }
   }
 

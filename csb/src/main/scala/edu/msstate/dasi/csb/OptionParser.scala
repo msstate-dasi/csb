@@ -56,7 +56,7 @@ class OptionParser(override val programName: String, programVersion: String, con
 
       opt[String]('w', "saver")
         .valueName("<value>")
-        .text(s"Graph saver. Supported: spark|neo4j [default: ${config.graphSaver}].")
+        .text(s"Graph saver. Supported: spark|neo4j|none [default: ${config.graphSaver}].")
         .action((x, c) => c.copy(graphSaver = x)),
 
       opt[String]('o', "out-graph")
@@ -66,7 +66,7 @@ class OptionParser(override val programName: String, programVersion: String, con
 
         opt[String]('t', "as-text")
         .valueName("<format>")
-        .text(s"Save the generated seed graph in a text format. Supported: spark|neo4j [default: ${config.textSaver}].")
+        .text(s"Graph saver for text format. Supported: spark|neo4j|none [default: ${config.textSaver}].")
         .action((x, c) => c.copy(textSaver = x))
     )
 
@@ -94,7 +94,7 @@ class OptionParser(override val programName: String, programVersion: String, con
 
       opt[String]('w', "saver")
         .valueName("<value>")
-        .text(s"Graph saver. Supported: spark|neo4j [default: ${config.graphSaver}].")
+        .text(s"Graph saver. Supported: spark|neo4j|none [default: ${config.graphSaver}].")
         .action((x, c) => c.copy(graphSaver = x)),
 
       opt[String]('o', "out-graph")
@@ -104,7 +104,7 @@ class OptionParser(override val programName: String, programVersion: String, con
 
       opt[String]('t', "as-text")
         .valueName("<format>")
-        .text(s"Save the generated synthetic graph in a text format. Supported: spark|neo4j [default: ${config.textSaver}].")
+        .text(s"Graph saver for text format. Supported: spark|neo4j|none [default: ${config.textSaver}].")
         .action((x, c) => c.copy(textSaver = x)),
 
       opt[Unit]('x', "exclude-properties")
