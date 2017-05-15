@@ -47,7 +47,11 @@ object Benchmark {
 
     Util.time( "Seed distributions", new DataDistributions(config.augLog) )
 
-    Util.time("Save seed graph", factory.getSaver.saveGraph(seed, config.seedGraphPrefix, overwrite = true))
+    factory.getSaver match {
+      case Some(saver) =>
+        Util.time("Save seed graph", saver.saveGraph(seed, config.seedGraphPrefix, overwrite = true))
+      case None =>
+    }
 
     factory.getTextSaver match {
       case Some(textSaver) =>
@@ -77,7 +81,11 @@ object Benchmark {
 
     val synth = factory.getSynthesizer.synthesize(seed, seedDists, !config.skipProperties)
 
-    Util.time( "Save synth graph", factory.getSaver.saveGraph(synth, config.synthGraphPrefix, overwrite = true))
+    factory.getSaver match {
+      case Some(saver) =>
+        Util.time( "Save synth graph", saver.saveGraph(synth, config.synthGraphPrefix, overwrite = true))
+      case None =>
+    }
 
     factory.getTextSaver match {
       case Some(textSaver) =>
