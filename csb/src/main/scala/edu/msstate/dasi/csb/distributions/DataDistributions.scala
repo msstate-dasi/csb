@@ -3,25 +3,42 @@ package edu.msstate.dasi.csb.distributions
 import edu.msstate.dasi.csb.{EdgeData, VertexData}
 import org.apache.spark.graphx.Graph
 
+/**
+ * Contains all the probability distributions of the domain. The conditional
+ * distributions are conditioned by the origin bytes values.
+ *
+ * @param graph the graph used to compute the distributions
+ */
 class DataDistributions(graph: Graph[VertexData, EdgeData]) {
 
-  private val inDegreeDistribution = new Distribution(graph.inDegrees.values)
-  private val outDegreeDistribution = new Distribution(graph.outDegrees.values)
-
-  private val origBytesDistribution = new Distribution(graph.edges.map(_.attr.origBytes))
+  /**
+   * The in-degree distribution.
+   */
+  val inDegree: Distribution[Int] = new Distribution(graph.inDegrees.values)
 
   /**
-   * Returns an in-degree sample.
+   * The out-degree distribution.
    */
-  def inDegreeSample: Int = inDegreeDistribution.sample
+  val outDegree: Distribution[Int] = new Distribution(graph.outDegrees.values)
 
   /**
-   * Returns an out-degree sample.
+   * The origin bytes distribution.
    */
-  def outDegreeSample: Int = outDegreeDistribution.sample
+  val origBytes: Distribution[Long] = new Distribution(graph.edges.map(_.attr.origBytes))
 
   /**
-   * Returns an origin bytes sample.
+   * The response bytes conditional distribution.
    */
-  def origBytesSample: Long = origBytesDistribution.sample
+  val respBytes: ConditionalDistribution[Long, Long] = {
+    val data = graph.edges.map(e => (e.attr.respBytes, e.attr.origBytes))
+    new ConditionalDistribution(data)
+  }
+
+  /**
+   * The protocol conditional distribution.
+   */
+  val proto: ConditionalDistribution[String, Long] = {
+    val data = graph.edges.map(e => (e.attr.proto, e.attr.origBytes))
+    new ConditionalDistribution(data)
+  }
 }

@@ -14,6 +14,7 @@ import scala.util.Random
  * @tparam T the input data type
  */
 class Distribution[T: ClassTag](data: RDD[T]) {
+
   /**
    * The internal representation, an array of `(value, probability)` pairs.
    */
