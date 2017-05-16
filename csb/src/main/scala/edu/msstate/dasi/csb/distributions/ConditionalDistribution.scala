@@ -11,17 +11,17 @@ import scala.reflect.ClassTag
  * @note the resulting distribution is expected to be small, as it is loaded into the driver's memory.
  *
  * @param data the input data on which the distribution will be computed
- * @tparam T the input data type
- * @tparam Conditioner the data type of the conditioning value
+ * @tparam Type the input data type
+ * @tparam Cond the data type of the conditioning value
  */
-class ConditionalDistribution[T: ClassTag, Conditioner: ClassTag](data: RDD[(T, Conditioner)]) {
+class ConditionalDistribution[Type: ClassTag, Cond: ClassTag](data: RDD[(Type, Cond)]) {
 
   /**
    * The internal representation, a Map of `Conditioner` values to [[Distribution]] objects.
    */
-  private val distributions: mutable.Map[Conditioner, Distribution[T]] = {
+  private val distributions: mutable.Map[Cond, Distribution[Type]] = {
 
-    var distributions = mutable.Map.empty[Conditioner, Distribution[T]]
+    var distributions = mutable.Map.empty[Cond, Distribution[Type]]
 
     val inputData = data.cache()
 
@@ -39,7 +39,7 @@ class ConditionalDistribution[T: ClassTag, Conditioner: ClassTag](data: RDD[(T, 
   /**
    * Returns a sample of the distribution given the conditioning value.
    */
-  def sample(conditioner: Conditioner): T = {
+  def sample(conditioner: Cond): Type = {
     distributions(conditioner).sample
   }
 }
