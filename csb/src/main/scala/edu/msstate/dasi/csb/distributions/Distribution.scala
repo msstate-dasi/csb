@@ -23,7 +23,8 @@ class Distribution[T: ClassTag](data: RDD[T]) {
 
     val occurrencesSum = occurrences.values.reduce(_+_) // Compute the total amount of elements
     val distribution = occurrences.mapValues(_ / occurrencesSum.toDouble) // Normalize to obtain probabilities
-    val result = distribution.sortBy(_._2).collect() // TODO: do we really need to sort?
+      .sortBy(_._2, ascending = false) // Descending sorting to improve the average sampling speed
+    val result = distribution.collect()
 
     occurrences.unpersist()
 
@@ -37,7 +38,7 @@ class Distribution[T: ClassTag](data: RDD[T]) {
    */
   def sample: T = {
     var accumulator = 0.0
-    var sample = None: Option[T]
+    var sample = Option.empty[T]
 
     val r = Random.nextDouble()
     val it = distribution.iterator
