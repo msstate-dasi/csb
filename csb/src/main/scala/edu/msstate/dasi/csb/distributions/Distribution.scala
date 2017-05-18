@@ -13,7 +13,7 @@ import scala.util.Random
  * @param data the input data on which the distribution will be computed
  * @tparam T the input data type
  */
-class Distribution[T: ClassTag](data: RDD[T]) {
+class Distribution[T: ClassTag](data: RDD[T]) extends Serializable {
 
   /**
    * The internal representation, an array of `(value, probability)` pairs.

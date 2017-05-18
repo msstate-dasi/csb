@@ -9,7 +9,7 @@ import org.apache.spark.graphx.Graph
  *
  * @param graph the graph used to compute the distributions
  */
-class DataDistributions(graph: Graph[VertexData, EdgeData], bucketSize: Option[Int] = None) {
+class DataDistributions(graph: Graph[VertexData, EdgeData], bucketSize: Option[Int] = None) extends Serializable {
 
   /**
    * The in-degree distribution.
