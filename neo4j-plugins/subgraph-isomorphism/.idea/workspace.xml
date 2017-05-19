@@ -6,15 +6,13 @@
     </artifacts-to-build>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="defc45cb-a21d-4bf1-8a51-a1d0c63dbbe7" name="Default" comment="Fix a bug: when the candidate list is sorted by the size, the result of subgraphs may be incomplete.">
+    <list default="true" id="defc45cb-a21d-4bf1-8a51-a1d0c63dbbe7" name="Default" comment="">
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/target/classes/subgraphIso/Subgraph_Isomorphism$1.class" afterPath="$PROJECT_DIR$/target/classes/subgraphIso/Subgraph_Isomorphism$1.class" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/target/classes/subgraphIso/Subgraph_Isomorphism.class" afterPath="$PROJECT_DIR$/target/classes/subgraphIso/Subgraph_Isomorphism.class" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/target/classes/subgraphIso/result.class" afterPath="$PROJECT_DIR$/target/classes/subgraphIso/result.class" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/target/original-subgraph-isomorphism-0.1-SNAPSHOT.jar" afterPath="$PROJECT_DIR$/target/original-subgraph-isomorphism-0.1-SNAPSHOT.jar" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/target/subgraph-isomorphism-0.1-SNAPSHOT.jar" afterPath="$PROJECT_DIR$/target/subgraph-isomorphism-0.1-SNAPSHOT.jar" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/java/subgraphIso/Subgraph_Isomorphism.java" afterPath="$PROJECT_DIR$/src/main/java/subgraphIso/Subgraph_Isomorphism.java" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/java/subgraphIso/result.java" afterPath="$PROJECT_DIR$/src/main/java/subgraphIso/result.java" />
     </list>
     <ignored path="$PROJECT_DIR$/out/" />
     <ignored path="$PROJECT_DIR$/target/" />
@@ -618,7 +616,14 @@
       <option name="project" value="LOCAL" />
       <updated>1494540779490</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="Fix a bug: when the candidate list is sorted by the size, the result of subgraphs may be incomplete.">
+      <created>1495225123915</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1495225123915</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="ToolWindowManager">
