@@ -8,29 +8,12 @@ import scala.util.Random
 /**
  * Represents a probability distribution.
  *
- * @note the resulting distribution is expected to be small, as it is loaded into the driver's memory.
+ * @note the input probabilities should be in descending order to maximize sampling performance.
  *
- * @param data the input data on which the distribution will be computed
- * @tparam T the input data type
+ * @param distribution the array containing the distribution
+ * @tparam T the distribution data type
  */
-class Distribution[T: ClassTag](data: RDD[T]) extends Serializable {
-
-  /**
-   * The internal representation, an array of `(value, probability)` pairs.
-   */
-  private val distribution: Array[(T, Double)] = {
-    val occurrences = data.map((_, 1L)).reduceByKey(_+_).cache() // Count how many occurrences for each value
-
-    val occurrencesSum = occurrences.values.reduce(_+_) // Compute the total amount of elements
-    val distribution = occurrences.mapValues(_ / occurrencesSum.toDouble) // Normalize to obtain probabilities
-      .sortBy(_._2, ascending = false) // Descending sorting to improve the average sampling speed
-    val result = distribution.collect()
-
-    occurrences.unpersist()
-
-    result
-  }
-
+class Distribution[T](distribution: Array[(T, Double)]) extends Serializable {
   /**
    * Returns a sample of the distribution.
    *
@@ -51,5 +34,49 @@ class Distribution[T: ClassTag](data: RDD[T]) extends Serializable {
     }
 
     sample.get
+  }
+}
+
+/**
+ *
+ */
+object Distribution {
+  /**
+   * Builds a distribution object from an [[RDD]] of values.
+   *
+   * @note the resulting distribution is expected to be small, as it will be loaded into the driver's memory.
+   *
+   * @param data the input [[RDD]] data
+   * @tparam T the input data type
+   * @return the resulting [[Distribution]] object
+   */
+  def apply[T: ClassTag](data: RDD[T]): Distribution[T] = {
+    val occurrences = data.map((_, 1L)).reduceByKey(_+_) // Count how many occurrences for each value
+      .sortBy(_._2, ascending = false) // Descending order to maximize sampling performance
+      .cache()
+
+    val occurrencesSum = occurrences.values.reduce(_+_) // Compute the total amount of elements
+
+    Distribution(occurrences, occurrencesSum)
+  }
+
+  /**
+   * Builds a distribution object from an [[RDD]] of (value, occurrences) tuples and the total amount of occurrencies.
+   *
+   * @note the input probabilities should be in descending order to maximize sampling performance.
+   *
+   * @param occurrences the input [[RDD[(value, occurrences)]] data
+   * @param occurrencesSum the total amount of occurrences
+   * @tparam T the input data type
+   * @return the resulting [[Distribution]] object
+   */
+  def apply[T: ClassTag](occurrences: RDD[(T, Long)], occurrencesSum: Long): Distribution[T] = {
+    val distribution = occurrences.mapValues(_ / occurrencesSum.toDouble) // Normalize to obtain probabilities
+
+    val result = distribution.collect()
+
+    occurrences.unpersist()
+
+    new Distribution(result)
   }
 }

@@ -11,27 +11,32 @@ import scala.reflect.ClassTag
  * @note the resulting distribution is expected to be small, as it is loaded into the driver's memory.
  *
  * @param data the input data on which the distribution will be computed
- * @tparam Type the input data type
+ * @tparam Value the input data type
  * @tparam Cond the data type of the conditioning value
  */
-class ConditionalDistribution[Type: ClassTag, Cond: ClassTag](data: RDD[(Type, Cond)]) extends Serializable {
+class ConditionalDistribution[Value: ClassTag, Cond: ClassTag](data: RDD[(Value, Cond)]) extends Serializable {
 
   /**
    * The internal representation, a Map of `Conditioner` values to [[Distribution]] objects.
    */
-  private val distributions: mutable.Map[Cond, Distribution[Type]] = {
+  private val distributions: mutable.Map[Cond, Distribution[Value]] = {
 
-    var distributions = mutable.Map.empty[Cond, Distribution[Type]]
+    var distributions = mutable.Map.empty[Cond, Distribution[Value]]
 
-    val inputData = data.cache()
+    val occurrences = data.map((_, 1L)).reduceByKey(_+_) // Count how many occurrences for each value
+      .sortBy(_._2, ascending = false) // Descending order to maximize sampling performance
+      .cache()
 
-    for (conditionalValue <- inputData.values.distinct.toLocalIterator) {
+    val occurrencesSums = occurrences.map{ case ((_, cond), count) => (cond, count) }.reduceByKey(_+_).collect()
+
+    for ( (conditioningValue, occurrencesSum) <- occurrencesSums ) {
       // For each conditioning value, create a Distribution object
-      val conditionedData = inputData.filter{ case (_, conditioner) => conditioner == conditionalValue }.keys
-      distributions += (conditionalValue -> new Distribution(conditionedData))
+      val conditionedData = occurrences.filter{ case ((_, conditioner), _) => conditioner == conditioningValue }
+        .map{ case ((value, _), count) => (value, count) }
+      distributions += (conditioningValue -> Distribution(conditionedData, occurrencesSum))
     }
 
-    inputData.unpersist()
+    occurrences.unpersist()
 
     distributions
   }
@@ -39,7 +44,7 @@ class ConditionalDistribution[Type: ClassTag, Cond: ClassTag](data: RDD[(Type, C
   /**
    * Returns a sample of the distribution given the conditioning value.
    */
-  def sample(conditioner: Cond): Type = {
+  def sample(conditioner: Cond): Value = {
     distributions(conditioner).sample
   }
 }
