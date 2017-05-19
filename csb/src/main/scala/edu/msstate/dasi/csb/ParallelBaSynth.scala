@@ -1,7 +1,7 @@
 package edu.msstate.dasi.csb
 
+import edu.msstate.dasi.csb.distributions.DataDistributions
 import org.apache.spark.graphx.{Edge, Graph, VertexId}
-import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 
 import scala.util.Random
@@ -72,11 +72,11 @@ class ParallelBaSynth(partitions: Int, baIter: Long, fractionPerIter: Double) ex
       val newEdges = newRawEdges.flatMap { case (newId, dstId) =>
         var multiEdges = Array.empty[Edge[EdgeData]]
 
-        val outEdgesNum = seedDistsBroadcast.value.getOutEdgeSample
-        val inEdgesNum = seedDistsBroadcast.value.getInEdgeSample
+        val outEdgesNum = seedDistsBroadcast.value.outDegree.sample
+        val inEdgesNum = seedDistsBroadcast.value.inDegree.sample
 
-        for ( _ <- 1L until outEdgesNum ) multiEdges :+= Edge[EdgeData](newId, dstId)
-        for ( _ <- 1L until inEdgesNum ) multiEdges :+= Edge[EdgeData](dstId, newId)
+        for ( _ <- 1 until outEdgesNum ) multiEdges :+= Edge[EdgeData](newId, dstId)
+        for ( _ <- 1 until inEdgesNum ) multiEdges :+= Edge[EdgeData](dstId, newId)
 
         multiEdges
       }

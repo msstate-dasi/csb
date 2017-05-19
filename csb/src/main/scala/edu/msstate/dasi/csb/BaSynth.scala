@@ -1,5 +1,6 @@
 package edu.msstate.dasi.csb
 
+import edu.msstate.dasi.csb.distributions.DataDistributions
 import org.apache.spark.graphx.{Graph, Edge, VertexId}
 import org.apache.spark.rdd.RDD
 
@@ -55,9 +56,9 @@ class BaSynth(partitions: Int, baIter: Long, nodesPerIter: Long) extends GraphSy
         vertToAdd = vertToAdd :+ (srcId, tempNodeProp)
         degList = degList :+ (srcId, 0) //initial degree of 0
 
-        val numEdgesToAdd = seedDists.getOutEdgeSample
+        val numEdgesToAdd = seedDists.outDegree.sample
 
-        for (_ <- 1L to numEdgesToAdd.toLong) {
+        for (_ <- 1 to numEdgesToAdd) {
           val attachTo: Long = (Math.abs(r.nextLong()) % (degSum - 1)) + 1
 
           var dstIndex = 0
