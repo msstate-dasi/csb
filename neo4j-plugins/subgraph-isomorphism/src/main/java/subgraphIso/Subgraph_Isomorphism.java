@@ -1,12 +1,14 @@
 package subgraphIso;
 
 import java.util.*;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import org.neo4j.graphdb.*;
 import org.neo4j.logging.Log;
 import org.neo4j.procedure.*;
-
+import org.neo4j.kernel.internal.GraphDatabaseAPI;
+import org.neo4j.register.Register;
 
 
 /**
@@ -24,7 +26,7 @@ public class Subgraph_Isomorphism
     // This field declares that we need a GraphDatabaseService
     // as context when any procedure in this class is invoked
     @Context
-    public GraphDatabaseService db;
+    public GraphDatabaseAPI db;
 
     // This gives us a log instance that outputs messages to the
     // standard log, normally found under `data/log/console.log`
@@ -34,38 +36,53 @@ public class Subgraph_Isomorphism
 
     @Procedure("subgraphIso")
     @Description("Execute lucene query in the given index, return found nodes")
-    public Stream<result> subgraphIso( @Name("query") String query, @Name("target") String target )
+    public Stream<result> subgraphIso( @Name("query") String query, @Name("target") String target, @Name("parallelFactor") String parallelFactor,@Name("suppressResult") String suppressResult)
     {
 
-        Label queryLabel=Label.label(query);
-        Label targetLabel=Label.label(target);
-        ArrayList<Node> candidateListIndex=new ArrayList<>();
-        List<List<Node>> matchedSubgraphs = UllmannAlg(queryLabel, targetLabel,candidateListIndex);
+        Label queryLabel=Label.label(query);//query label
+        Label targetLabel=Label.label(target);//target label
+        int pFactor=Integer.parseInt(parallelFactor);//parallel factor
+        boolean isSuppressed;
+        if(suppressResult.equals("False")||suppressResult.equals("false")||suppressResult.equals("f")||suppressResult.equals("F"))
+            isSuppressed=false;
+        else
+            isSuppressed=true;//by default, the results are suppressed. only execution time and total number of subgraphs are returned
+        ArrayList<Node> queryNodeList=new ArrayList<>();
+        long start=System.currentTimeMillis();
+        List<List<Node>> matchedSubgraphs = UllmannAlg(queryLabel, targetLabel,queryNodeList);
+        long end=System.currentTimeMillis();
         ArrayList<result> resultList=new ArrayList<>();
 
         try {
-            //execute the algorithm, update the candidateListIndex and return the result
-            //each row of the matchedSubgraphs contains nodes in a matched subgraph ordered by the query nodes in the candidateListIndex
-            //i.e., candidateListIndex.size()==matchedSubgraphs.get(i).size();
+            //execute the algorithm, update the queryNodeList and return the result
+            //each row of the matchedSubgraphs contains nodes in a matched subgraph ordered by the query nodes in the queryNodeList
+            //i.e., queryNodeList.size()==matchedSubgraphs.get(i).size();
 
             if (matchedSubgraphs.isEmpty())
                 return null;
             else {
-                    for(int i=0;i<matchedSubgraphs.size();i++)
-                    {
-                        for(int j=0;j<matchedSubgraphs.get(i).size();j++)
-                        {
-                            resultList.add(new result(matchedSubgraphs.get(i).get(j),
-                                    candidateListIndex.get(j),
-                                    Integer.toString(i),
-                                    Integer.toString(matchedSubgraphs.size())));
+                    if(!isSuppressed) {
+                        for (int i = 0; i < matchedSubgraphs.size(); i++) {
+                            for (int j = 0; j < matchedSubgraphs.get(i).size(); j++) {
+                                resultList.add(new result(matchedSubgraphs.get(i).get(j),
+                                        queryNodeList.get(j),
+                                        Integer.toString(i),
+                                        Integer.toString(matchedSubgraphs.size()),
+                                        new String(Long.toString(end - start) + "ms")
+                                ));
+                            }
+
+
                         }
 
-
+                        //Note: the result objects can only have String or Node type instance variables.
+                        return resultList.stream();
                     }
-
-                    //Note: the result objects can only have String or Node type instance variables.
-                    return resultList.stream();
+                    else
+                    {
+                        resultList.add(new result(null,null,null, Integer.toString(matchedSubgraphs.size()),new String(Long.toString(end - start) + "ms")));
+                        return resultList.stream();
+                    }
                 }
             } catch (Exception e) {
                 String errMsg = "Error encountered while calculating subgraph isomorphism";
@@ -77,79 +94,108 @@ public class Subgraph_Isomorphism
 
 
 
-    private List<List<Node>> UllmannAlg(Label queryLabel, Label targetLabel,ArrayList<Node> candidateListIndex){
+    private List<List<Node>> UllmannAlg(Label queryLabel, Label targetLabel,ArrayList<Node> queryNodeList){
 
 
         List<List<Node>> queryNeighborList=new ArrayList<>();// the neighbor list for query vertices
         List<List<Node>> nodeNeighborList=new ArrayList<>();// the neighbor list for the Neo4j database with the target label
         List<List<Node>> matchedSubgraphs=new ArrayList<>();//store the final results
 
+        try(Transaction tx=db.beginTx()) {
 
-        /**
-         * Note: the sequence of the following three steps is strict.
-         **/
-        //Step 1: create the neighbor list for the Neo4j database with the target label
-        ResourceIterator<Node> targetNodes;
-        ArrayList<Node> nodeNeighborListIndex=new ArrayList<>();
-        if(targetLabel.name().equals("All"))
-            targetNodes=db.getAllNodes().iterator();
-        else
-            targetNodes=db.findNodes(targetLabel);
+            /**
+             * Note: the sequence of the following three steps is strict.
+             **/
 
-        while(targetNodes.hasNext())
-        {
-            Node targetNode=targetNodes.next();
+            //Step 1: create the neighbor list for the Neo4j database with the target label
+            ResourceIterator<Node> targetNodes;
+            ArrayList<Node> nodeNeighborListIndex = new ArrayList<>();
+            Map<Node,Integer> nodeNeighborListMap=new HashMap<>();//given an node, get the index in the node neighbor list
+            if (targetLabel.name().equals("All"))
+                targetNodes = db.getAllNodes().iterator();
+            else
+                targetNodes = db.findNodes(targetLabel);
 
-            //pass the query graph nodes if all neo4j database is selected
-            if (targetLabel.name().equals("All") && targetNode.hasLabel(queryLabel))
-                continue;
+            int index=0;
+            while (targetNodes.hasNext()) {
+                Node targetNode = targetNodes.next();
 
-            nodeNeighborList.add(findNodeNeighbors(targetNode,targetLabel));
-            nodeNeighborListIndex.add(targetNode);
+                //pass the query graph nodes if all neo4j database is selected
+                if (targetLabel.name().equals("All") && targetNode.hasLabel(queryLabel))
+                    continue;
+
+                nodeNeighborList.add(findNodeNeighbors(targetNode, targetLabel));
+                nodeNeighborListIndex.add(targetNode);
+                nodeNeighborListMap.put(targetNode,index);
+                index++;
+            }
+
+            targetNodes.close();
+
+            //Step 2: create the candidate list and its index
+            Map<Node,Integer> candidateListMap=new HashMap<>();
+            List<List<Node>> candidateList = findCandidates(queryLabel, candidateListMap, nodeNeighborList, nodeNeighborListIndex,queryNodeList);
+
+            //Step 3: create the query graph's neighbor list
+            queryNodeList.stream().forEach(node -> queryNeighborList.add(new ArrayList<>()));//insert empty lists
+            queryNodeList.parallelStream().forEach(node ->
+                    {
+                        try(Transaction tx1= db.beginTx()) {
+                            queryNeighborList.set(candidateListMap.get(node), findNodeNeighbors(node, queryLabel));
+                            tx1.success();
+                        }
+                    });
+
+
+            refineCandidate(candidateList, queryNeighborList, nodeNeighborList, candidateListMap, nodeNeighborListMap);//the first round refine
+            if (!isCorrect(candidateList)) {
+                return matchedSubgraphs;
+            }
+            int[] candidateListSize = new int[candidateList.size()];
+
+            for (int i = 0; i < candidateList.size(); i++) {
+                candidateListSize[i] = candidateList.get(i).size();
+            }
+            backtracking(0, candidateList, candidateListMap, candidateListSize, queryNeighborList, nodeNeighborList, nodeNeighborListMap, matchedSubgraphs);
+
+            tx.success();
         }
-
-        targetNodes.close();
-
-        //Step 2: create the candidate list and its index
-
-        List<List<Node>> candidateList=findCandidates(queryLabel,candidateListIndex,nodeNeighborList,nodeNeighborListIndex);
-
-        //Step 3: create the query graph's neighbor list
-        candidateListIndex.stream().forEach(node->queryNeighborList.add(findNodeNeighbors(node,queryLabel)));
-
-
-        refineCandidate(candidateList,queryNeighborList,nodeNeighborList,candidateListIndex,nodeNeighborListIndex,matchedSubgraphs);//the first round refine
-        if(!isCorrect(candidateList))
-        {
-            return matchedSubgraphs;
-        }
-        int[] candidateListSize=new int[candidateList.size()];
-
-        for(int i=0;i<candidateList.size();i++)
-        {
-            candidateListSize[i]=candidateList.get(i).size();
-        }
-        backtracking(0,candidateList,candidateListIndex,candidateListSize,queryNeighborList,nodeNeighborList,nodeNeighborListIndex,matchedSubgraphs);
-
         return matchedSubgraphs;
 
     }
 
-    private boolean backtracking(int numLayer, List<List<Node>> candidateList,ArrayList<Node> candidateListIndex,int[] candidateListSize,
+    private boolean backtracking(int numLayer, List<List<Node>> candidateList, Map<Node,Integer> candidateListMap, int[] candidateListSize,
                                  List<List<Node>> queryNeighborList,
-                                 List<List<Node>> nodeNeighborList, ArrayList<Node> nodeNeighborListIndex,
+                                 List<List<Node>> nodeNeighborList, Map<Node,Integer> nodeNeighborListMap,
                                  List<List<Node>> matchedSubgraphs)
     {
 
         if(numLayer==queryNeighborList.size())
         {
+            //check redundant subgraphs
+            if(!matchedSubgraphs.isEmpty())
+            {
+
+                boolean isRedundant;
+                for(int i=0;i<matchedSubgraphs.size();i++)
+                {
+                    isRedundant=true;
+                    for(int j=0;j<candidateList.size();j++)
+                    {
+                        isRedundant=isRedundant && matchedSubgraphs.get(i).contains(candidateList.get(j).get(0));
+                        if(!isRedundant)break;
+                    }
+                    if(isRedundant)return false;
+                }
+
+            }
+
             ArrayList<Node> subgraph=new ArrayList<>();//each subgraph contains a matching isomorphic subgraph
 
             for(int i=0;i<candidateList.size();i++)
             {
                 //at this recursion layer, each query node has exactly one candidate node.
                 subgraph.add(candidateList.get(i).get(0));
-
             }
             matchedSubgraphs.add(subgraph);
             return true;
@@ -168,9 +214,9 @@ public class Subgraph_Isomorphism
             candidateList.get(numLayer).retainAll(singleNode);//select the single node in that row
 
             removeUniqueNodes(singleNode.get(0),candidateList,candidateListSize,numLayer,false);//remove unique nodes in other rows
-            refineCandidate(candidateList,queryNeighborList,nodeNeighborList,candidateListIndex,nodeNeighborListIndex,matchedSubgraphs);//refine the candidate list
+            refineCandidate(candidateList,queryNeighborList,nodeNeighborList,candidateListMap,nodeNeighborListMap);//refine the candidate list
             if(isCorrect(candidateList))
-                backtracking(numLayer+1,candidateList,candidateListIndex,candidateListSize,queryNeighborList,nodeNeighborList,nodeNeighborListIndex,matchedSubgraphs);
+                backtracking(numLayer+1,candidateList,candidateListMap,candidateListSize,queryNeighborList,nodeNeighborList,nodeNeighborListMap,matchedSubgraphs);
 
             removeUniqueNodes(originalCandidateList.get(numLayer).get(i), originalCandidateList, candidateListSize,numLayer+1,true);//trim the branches
 
@@ -237,129 +283,83 @@ public class Subgraph_Isomorphism
 
 
     private void refineCandidate(List<List<Node>> candidateList,List<List<Node>> queryNeighborList,List<List<Node>> nodeNeighborList,
-                                 ArrayList<Node> candidateListIndex, ArrayList<Node> nodeNeighborListIndex,
-                                 List<List<Node>> matchedSubgraphs)
+                                 Map<Node,Integer> candidateListMap, Map<Node,Integer> nodeNeighborListMap)
     {//given the three lists, refine the candidate list
 
-        //check if all query nodes have exactly one candidate
-        boolean isListSizeAllOne=true;
+
+        //check if there are empty entries in the candidate list
+
         for(List<Node> list: candidateList)
         {
             if(list.size()==0)return;
-            else if(list.size()>1){
-                isListSizeAllOne=false;
-                break;
-            }
-        }
-
-        //check redundant subgraphs
-        if(isListSizeAllOne && !matchedSubgraphs.isEmpty())
-        {
-
-            boolean isRedundant;
-            for(int i=0;i<matchedSubgraphs.size();i++)
-            {
-                isRedundant=true;
-                for(int j=0;j<candidateList.size();j++)
-                {
-                    isRedundant=isRedundant && matchedSubgraphs.get(i).contains(candidateList.get(j).get(0));
-                    if(!isRedundant)break;
-                }
-                if(isRedundant)
-                {
-                    candidateList.get(0).remove(0);
-                    return;
-                }
-            }
 
         }
 
-        for(int i=0;i<queryNeighborList.size();i++)
-        {
-            for(int j=0;j<candidateList.get(i).size();j++)
-            {
-                boolean refinable=true;
-                List<Node> subCandidateList;//candidates of a neighbor of the current vertex i c(n(x))
+        List<List<Node>> nodesToRemove=new ArrayList<>();
+        candidateList.stream().forEach(list->nodesToRemove.add(new ArrayList<>()));//create the list of node that should be removed
 
-                //find the neighbors of a candidate n(c(x))
-                List<Node> subNodeNeighborList;
-                int nodeNeighborIndex=nodeNeighborListIndex.indexOf(candidateList.get(i).get(j));
+        IntStream.range(0,candidateList.size()).parallel().forEach(ii->candidateList.get(ii).stream().forEach(node-> {
+            boolean refinable = queryNeighborList.get(ii).parallelStream().allMatch(qnode ->
+                    candidateList.get(candidateListMap.get(qnode)).parallelStream().anyMatch(subnode ->
+                            nodeNeighborList.get(nodeNeighborListMap.get(node)).contains(subnode)));
 
-                subNodeNeighborList=nodeNeighborList.get(nodeNeighborIndex);
+            if (!refinable) {
 
-                for (int k=0;k<queryNeighborList.get(i).size();k++)
-                {
-                    boolean partialRefinable=false;
-
-                    //find the candidates of a neighbor of the current vertex i c(n(x))
-                    int candidateIndex=candidateListIndex.indexOf(queryNeighborList.get(i).get(k));
-
-                    subCandidateList=candidateList.get(candidateIndex);
-                    for(int l=0;l<subCandidateList.size();l++)
-                    {
-                        if(subNodeNeighborList.contains(subCandidateList.get(l)))
-                        // check if n(c(x)) contains at least an element from c(n(x))
-                        {
-                            partialRefinable=true;
-                            break;
-                        }
-                    }
-                    if(!partialRefinable)
-                    {
-                        refinable=false;
-                        break;
-                    }
-                }
-                if(!refinable)
-                {
-
-                    candidateList.get(i).remove(j);
-                }
+                nodesToRemove.get(ii).add(node);
 
             }
+        }));
+        //Now remove the nodes from the candidate list
+
+        for (int i=0;i<candidateList.size();i++)
+        {
+            candidateList.get(i).removeAll(nodesToRemove.get(i));
         }
 
     }
 
 
-    private List<List<Node>> findCandidates(Label queryLabel, ArrayList<Node> candidateListIndex,List<List<Node>> nodeNeighborList, ArrayList<Node> nodeNeighborListIndex)
+    private List<List<Node>> findCandidates(Label queryLabel, Map<Node,Integer> candidateListMap,List<List<Node>> nodeNeighborList, ArrayList<Node> nodeNeighborListIndex,ArrayList<Node> queryNodeList)
     {//find all query vertex candidates in the Neo4j database under the label "targetLabel"
         //input an empty candidate-list index list for modification
-        List<List<Node>> candidateList=new ArrayList<>();
+        List<List<Node>> candidateList = new ArrayList<>();
+        try(Transaction tx= db.beginTx()) {
+            ResourceIterator<Node> queryNodes = db.findNodes(queryLabel);
 
-
-        ResourceIterator<Node> queryNodes=db.findNodes(queryLabel);
-
-            while(queryNodes.hasNext())
-            {
+            while (queryNodes.hasNext()) {
                 ArrayList<Node> candidateListPerVertex = new ArrayList<>();
-                Node queryNode=queryNodes.next();
-                int queryNodeDegree=findNodeNeighbors(queryNode,queryLabel).size();
+                Node queryNode = queryNodes.next();
+                int queryNodeDegree = findNodeNeighbors(queryNode, queryLabel).size();
 
-               for(int i=0;i<nodeNeighborList.size();i++)
-               {
-                   int targetNodeDegree=nodeNeighborList.get(i).size();
-                   if(targetNodeDegree>=queryNodeDegree)
-                       candidateListPerVertex.add(nodeNeighborListIndex.get(i));
-               }
-                candidateListPerVertex.add(0,queryNode);// temporarily append the query node to the first position of the list
+                for (int i = 0; i < nodeNeighborList.size(); i++) {
+                    int targetNodeDegree = nodeNeighborList.get(i).size();
+                    if (targetNodeDegree >= queryNodeDegree)
+                        candidateListPerVertex.add(nodeNeighborListIndex.get(i));
+                }
+                candidateListPerVertex.add(0, queryNode);// temporarily append the query node to the first position of the list
                 candidateList.add(candidateListPerVertex);
             }
 
             //sort the candidate list by the number of candidates (ascending)
-            Comparator<List<Node>> candidateListSizeComparator =new Comparator<List<Node>>() {
+            Comparator<List<Node>> candidateListSizeComparator = new Comparator<List<Node>>() {
                 @Override
                 public int compare(List<Node> o1, List<Node> o2) {
 
-                    return o1.size()-o2.size();
+                    return o1.size() - o2.size();
                 }
             };
             candidateList.sort(candidateListSizeComparator);
 
-        candidateList.stream().forEach(nodes -> candidateListIndex.add(nodes.get(0)));
-        candidateList.stream().forEach(nodes -> nodes.remove(0));//remove the temorary query node at position 0
+            for (int i=0;i<candidateList.size();i++)
+            {
+                queryNodeList.add(candidateList.get(i).get(0));
+                candidateListMap.put(candidateList.get(i).get(0),i);
+            }
 
-        queryNodes.close();
+            candidateList.stream().forEach(nodes -> nodes.remove(0));//remove the temporary query node at position 0
+            queryNodes.close();
+            tx.success();
+        }
         return candidateList;
     }
 

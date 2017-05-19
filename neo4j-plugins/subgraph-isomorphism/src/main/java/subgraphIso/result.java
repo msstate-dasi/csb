@@ -21,13 +21,15 @@ public class result {
     public Node queryNode;
     public String subgraphIndex;
     public String totalNumSubgraph;
+    public String executionTime;
 
 
-    public result(Node resultNode,Node queryNode, String subgraphIndex,String totalNumSubgraph) {
+    public result(Node resultNode,Node queryNode, String subgraphIndex,String totalNumSubgraph,String executionTime) {
         this.resultNode = resultNode;
         this.queryNode = queryNode;
         this.subgraphIndex = subgraphIndex;
         this.totalNumSubgraph=totalNumSubgraph;
+        this.executionTime=executionTime;
     }
 }
 
