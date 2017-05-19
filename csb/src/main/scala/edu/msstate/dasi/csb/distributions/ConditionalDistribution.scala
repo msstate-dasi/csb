@@ -2,7 +2,6 @@ package edu.msstate.dasi.csb.distributions
 
 import org.apache.spark.rdd.RDD
 
-import scala.collection.mutable
 import scala.reflect.ClassTag
 
 /**
@@ -17,28 +16,28 @@ import scala.reflect.ClassTag
 class ConditionalDistribution[Value: ClassTag, Cond: ClassTag](data: RDD[(Value, Cond)]) extends Serializable {
 
   /**
-   * The internal representation, a Map of `Conditioner` values to [[Distribution]] objects.
+   * The internal representation, a Map of conditioning values to [[Distribution]] objects.
    */
-  private val distributions: mutable.Map[Cond, Distribution[Value]] = {
+  private val distributions = {
 
-    var distributions = mutable.Map.empty[Cond, Distribution[Value]]
+    val occurrences = data.map((_, 1L)).reduceByKey(_+_).cache() // Count how many occurrences for each value
 
-    val occurrences = data.map((_, 1L)).reduceByKey(_+_) // Count how many occurrences for each value
-      .sortBy(_._2, ascending = false) // Descending order to maximize sampling performance
-      .cache()
+    // Compute the total amount of elements for each conditioning value
+    val occurrencesSums = occurrences.map{ case ((_, cond), count) => (cond, count) }.reduceByKey(_+_)
 
-    val occurrencesSums = occurrences.map{ case ((_, cond), count) => (cond, count) }.reduceByKey(_+_).collect()
+    val distributions = occurrences.map{ case ((value, cond), count) => (cond, (value, count)) }
+      .join(occurrencesSums)
+      .map{ case (cond, ((value, count), sum)) => (cond, Array((value, count / sum.toDouble))) } // Normalize to obtain probabilities
+      .reduceByKey(_++_)
+      .map{ case (cond, array) =>
+        (cond, new Distribution(array.sortBy(_._2)(Ordering[Double].reverse))) // Descending order to maximize sampling performance
+      }
 
-    for ( (conditioningValue, occurrencesSum) <- occurrencesSums ) {
-      // For each conditioning value, create a Distribution object
-      val conditionedData = occurrences.filter{ case ((_, conditioner), _) => conditioner == conditioningValue }
-        .map{ case ((value, _), count) => (value, count) }
-      distributions += (conditioningValue -> Distribution(conditionedData, occurrencesSum))
-    }
+    val result = distributions.collectAsMap()
 
     occurrences.unpersist()
 
-    distributions
+    result
   }
 
   /**

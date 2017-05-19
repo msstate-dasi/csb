@@ -57,20 +57,6 @@ object Distribution {
 
     val occurrencesSum = occurrences.values.reduce(_+_) // Compute the total amount of elements
 
-    Distribution(occurrences, occurrencesSum)
-  }
-
-  /**
-   * Builds a distribution object from an [[RDD]] of (value, occurrences) tuples and the total amount of occurrencies.
-   *
-   * @note the input probabilities should be in descending order to maximize sampling performance.
-   *
-   * @param occurrences the input [[RDD[(value, occurrences)]] data
-   * @param occurrencesSum the total amount of occurrences
-   * @tparam T the input data type
-   * @return the resulting [[Distribution]] object
-   */
-  def apply[T: ClassTag](occurrences: RDD[(T, Long)], occurrencesSum: Long): Distribution[T] = {
     val distribution = occurrences.mapValues(_ / occurrencesSum.toDouble) // Normalize to obtain probabilities
 
     val result = distribution.collect()
