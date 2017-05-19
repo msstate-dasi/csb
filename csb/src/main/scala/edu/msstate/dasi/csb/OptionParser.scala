@@ -91,6 +91,11 @@ class OptionParser(override val programName: String, programVersion: String, con
         .text(s"Path prefix of the seed graph [default: ${config.seedGraphPrefix}].")
         .action((x, c) => c.copy(seedGraphPrefix = x)),
 
+      opt[String]('d', "distributions")
+        .valueName("<path>")
+        .text(s"Path of the seed property distributions [default: ${config.seedDistributions}].")
+        .action((x, c) => c.copy(seedGraphPrefix = x)),
+
       opt[String]('l', "log")
         .valueName("<path>")
         .text(s"Path of the augmented log [default: ${config.augLog}].")
@@ -111,11 +116,6 @@ class OptionParser(override val programName: String, programVersion: String, con
         .valueName("<format>")
         .text(s"Graph saver for text format. Supported: spark|neo4j|none [default: ${config.textSaver}].")
         .action((x, c) => c.copy(textSaver = x)),
-
-      opt[String]('d', "distributions")
-        .valueName("<path>")
-        .text(s"Path of the seed property distributions [default: ${config.seedDistributions}].")
-        .action((x, c) => c.copy(seedGraphPrefix = x)),
 
       opt[Unit]('x', "exclude-properties")
         .text(s"Skip the properties generation [default: ${config.skipProperties}].")
