@@ -1,6 +1,8 @@
 package subgraphIso;
 
 import java.util.*;
+import java.util.concurrent.ForkJoinPool;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -40,21 +42,37 @@ public class Subgraph_Isomorphism
     {
 
         Label queryLabel=Label.label(query);//query label
+
         Label targetLabel=Label.label(target);//target label
+
         int pFactor=Integer.parseInt(parallelFactor);//parallel factor
+
+        int numCores = Runtime.getRuntime().availableProcessors();// the available number of CPU cores
+
+        ForkJoinPool threadPool=new ForkJoinPool(numCores*pFactor);
+
         boolean isSuppressed;
+
         if(suppressResult.equals("False")||suppressResult.equals("false")||suppressResult.equals("f")||suppressResult.equals("F"))
+
             isSuppressed=false;
+
         else
+
             isSuppressed=true;//by default, the results are suppressed. only execution time and total number of subgraphs are returned
-        ArrayList<Node> queryNodeList=new ArrayList<>();
+
+        ArrayList<Node> queryNodeList=new ArrayList<>();//the list that store all query nodes
+
         long start=System.currentTimeMillis();
-        List<List<Node>> matchedSubgraphs = UllmannAlg(queryLabel, targetLabel,queryNodeList);
+
+        List<List<Node>> matchedSubgraphs = UllmannAlg(queryLabel, targetLabel,queryNodeList,threadPool);
+
         long end=System.currentTimeMillis();
+
         ArrayList<result> resultList=new ArrayList<>();
 
         try {
-            //execute the algorithm, update the queryNodeList and return the result
+            //return the results
             //each row of the matchedSubgraphs contains nodes in a matched subgraph ordered by the query nodes in the queryNodeList
             //i.e., queryNodeList.size()==matchedSubgraphs.get(i).size();
 
@@ -71,8 +89,6 @@ public class Subgraph_Isomorphism
                                         new String(Long.toString(end - start) + "ms")
                                 ));
                             }
-
-
                         }
 
                         //Note: the result objects can only have String or Node type instance variables.
@@ -94,7 +110,7 @@ public class Subgraph_Isomorphism
 
 
 
-    private List<List<Node>> UllmannAlg(Label queryLabel, Label targetLabel,ArrayList<Node> queryNodeList){
+    private List<List<Node>> UllmannAlg(Label queryLabel, Label targetLabel,ArrayList<Node> queryNodeList, ForkJoinPool threadPool){
 
 
         List<List<Node>> queryNeighborList=new ArrayList<>();// the neighbor list for query vertices
@@ -132,10 +148,14 @@ public class Subgraph_Isomorphism
 
             targetNodes.close();
 
+
+           ///////////////////////////////////////////////////////////////
             //Step 2: create the candidate list and its index
             Map<Node,Integer> candidateListMap=new HashMap<>();
             List<List<Node>> candidateList = findCandidates(queryLabel, candidateListMap, nodeNeighborList, nodeNeighborListIndex,queryNodeList);
 
+
+            //////////////////////////////////////////////////////////////////
             //Step 3: create the query graph's neighbor list
             queryNodeList.stream().forEach(node -> queryNeighborList.add(new ArrayList<>()));//insert empty lists
             queryNodeList.parallelStream().forEach(node ->
@@ -147,128 +167,69 @@ public class Subgraph_Isomorphism
                     });
 
 
-            refineCandidate(candidateList, queryNeighborList, nodeNeighborList, candidateListMap, nodeNeighborListMap);//the first round refine
+            ////////////////////////////////////////////////////////
+            //refine the candidate list preliminarily, check if it is valid
+            refineCandidate(candidateList, queryNeighborList, nodeNeighborList, candidateListMap, nodeNeighborListMap);
             if (!isCorrect(candidateList)) {
                 return matchedSubgraphs;
             }
+
+            ////////////////////////////////////////////////////////////////
+            //store the size of each element in the candidate list in an array
             int[] candidateListSize = new int[candidateList.size()];
 
             for (int i = 0; i < candidateList.size(); i++) {
                 candidateListSize[i] = candidateList.get(i).size();
             }
-            backtracking(0, candidateList, candidateListMap, candidateListSize, queryNeighborList, nodeNeighborList, nodeNeighborListMap, matchedSubgraphs);
+
+            //////////////////////////////////////////////////////////////
+            //begin multithreading execution of the algorithm
+
+            SubgraphProcessor mainProcessor=new SubgraphProcessor(candidateList,candidateListMap,candidateListSize,
+                    queryNeighborList,
+                    nodeNeighborList,nodeNeighborListMap,
+                    threadPool);
+
+            threadPool.execute(mainProcessor);
+
+            while ((!mainProcessor.isDone()));
+
+            threadPool.shutdown();
+
+            matchedSubgraphs=mainProcessor.join();
 
             tx.success();
+
+            //check redundant subgraphs
+            if(!matchedSubgraphs.isEmpty())
+            {
+
+                for(int i=0;i<matchedSubgraphs.size();i++)
+                {
+
+                    for(int j=0;j<matchedSubgraphs.size();j++)
+                    {
+                        List<Node> subgraph =matchedSubgraphs.get(i);
+
+                        if(i!=j)
+                        {
+
+                            Set<Node> subgraphSet=subgraph.stream().collect(Collectors.toSet());
+
+                            Set<Node> verifySet=matchedSubgraphs.get(j).stream().collect(Collectors.toSet());
+
+                            if(subgraphSet.equals(verifySet))matchedSubgraphs.remove(j);
+
+                        }
+                    }
+                }
+
+            }
         }
         return matchedSubgraphs;
 
     }
 
-    private boolean backtracking(int numLayer, List<List<Node>> candidateList, Map<Node,Integer> candidateListMap, int[] candidateListSize,
-                                 List<List<Node>> queryNeighborList,
-                                 List<List<Node>> nodeNeighborList, Map<Node,Integer> nodeNeighborListMap,
-                                 List<List<Node>> matchedSubgraphs)
-    {
-
-        if(numLayer==queryNeighborList.size())
-        {
-            //check redundant subgraphs
-            if(!matchedSubgraphs.isEmpty())
-            {
-
-                boolean isRedundant;
-                for(int i=0;i<matchedSubgraphs.size();i++)
-                {
-                    isRedundant=true;
-                    for(int j=0;j<candidateList.size();j++)
-                    {
-                        isRedundant=isRedundant && matchedSubgraphs.get(i).contains(candidateList.get(j).get(0));
-                        if(!isRedundant)break;
-                    }
-                    if(isRedundant)return false;
-                }
-
-            }
-
-            ArrayList<Node> subgraph=new ArrayList<>();//each subgraph contains a matching isomorphic subgraph
-
-            for(int i=0;i<candidateList.size();i++)
-            {
-                //at this recursion layer, each query node has exactly one candidate node.
-                subgraph.add(candidateList.get(i).get(0));
-            }
-            matchedSubgraphs.add(subgraph);
-            return true;
-        }
-
-        List<List<Node>> originalCandidateList= copyNodeList(candidateList);
-        //retain the original copy of the candidateList for rolling back
-        for(int i=0;i<candidateList.get(numLayer).size();i++)
-        {
-
-            if(numLayer==0&&i==10)return true;
-
-            ArrayList<Node> singleNode=new ArrayList<>();
-            singleNode.add(candidateList.get(numLayer).get(i));
-
-            candidateList.get(numLayer).retainAll(singleNode);//select the single node in that row
-
-            removeUniqueNodes(singleNode.get(0),candidateList,candidateListSize,numLayer,false);//remove unique nodes in other rows
-            refineCandidate(candidateList,queryNeighborList,nodeNeighborList,candidateListMap,nodeNeighborListMap);//refine the candidate list
-            if(isCorrect(candidateList))
-                backtracking(numLayer+1,candidateList,candidateListMap,candidateListSize,queryNeighborList,nodeNeighborList,nodeNeighborListMap,matchedSubgraphs);
-
-            removeUniqueNodes(originalCandidateList.get(numLayer).get(i), originalCandidateList, candidateListSize,numLayer+1,true);//trim the branches
-
-            candidateList=copyNodeList(originalCandidateList);//resume the candidate list and continue searching
-
-        }
-
-        return false;
-    }
-
-    private void removeUniqueNodes(Node unique, List<List<Node>> candidateList,int[] candidateListSize, int layer,boolean TrimBranch)
-    {
-
-        if(!TrimBranch) {
-            for (int i = layer+1; i < candidateList.size(); i++) {
-                if (candidateList.get(i).contains(unique) ) {
-                    candidateList.get(i).remove(unique);
-                }
-            }
-        }
-        else{
-            //for trimming, pick nodes that have the same candidate list size as the node in the current layer
-            int currentLayer=layer-1;
-            for(int i=layer;i<candidateList.size();i++) {
-                if (candidateListSize[i] == candidateListSize[currentLayer])
-                {
-                    if(candidateList.get(i).contains(unique) )
-                        candidateList.get(i).remove(unique);
-                }
-                else
-                    break;// the main candidate list is sorted, so we break here when different size is found
-            }
-
-        }
-    }
-
-    private List<List<Node>> copyNodeList(List<List<Node>> originalList)
-    {
-        List<List<Node>> copyList=new ArrayList<>();
-        for(int i=0;i<originalList.size();i++)
-        {
-            ArrayList<Node> temp=new ArrayList<>();
-            copyList.add(temp);
-            for(int j=0;j<originalList.get(i).size();j++)
-            {
-                copyList.get(i).add(originalList.get(i).get(j));
-
-            }
-        }
-        return copyList;
-
-    }
 
     private boolean isCorrect(List<List<Node>> candidateList)
     {//check if the current candidate list is correct. (i.e., is there any empty candidate list?)
