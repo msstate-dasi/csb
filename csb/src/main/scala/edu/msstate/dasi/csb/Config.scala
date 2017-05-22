@@ -11,6 +11,7 @@ case class Config(
                  synthGraphPrefix: String = "synth",
 
                  seedDistributions: String = "seed.distributions",
+                 bucketSize: Int = 10,
 
                  graphLoader: String = "spark",
                  graphSaver: String = "spark",

@@ -58,7 +58,7 @@ object Benchmark {
       case None =>
     }
 
-    val distributions = Util.time("Gen seed distributions", DataDistributions(seed, 10))
+    val distributions = Util.time("Gen seed distributions", DataDistributions(seed, config.bucketSize))
 
     Util.time("Save seed distributions", FileSerializer.save(distributions, config.seedDistributions))
 

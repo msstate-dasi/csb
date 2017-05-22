@@ -54,6 +54,11 @@ class OptionParser(override val programName: String, programVersion: String, con
         .text(s"Output path of the resulting augmented log [default: ${config.augLog}].")
         .action((x, c) => c.copy(augLog = x)),
 
+      opt[String]('s', "bucket-size")
+        .valueName("<path>")
+        .text(s"Size of the buckets used in the seed property distributions [default: ${config.bucketSize}].")
+        .action((x, c) => c.copy(seedGraphPrefix = x)),
+
       opt[String]('w', "saver")
         .valueName("<value>")
         .text(s"Graph saver. Supported: spark|neo4j|none [default: ${config.graphSaver}].")
