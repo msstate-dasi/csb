@@ -80,7 +80,8 @@ object Benchmark {
       seed
     } )
 
-    val seedDistributions = Util.time("Load seed distributions", FileSerializer.load(config.seedDistributions))
+    val seedDistributions = Util.time("Load seed distributions",
+      FileSerializer.load[DataDistributions](config.seedDistributions))
 
     val synth = factory.getSynthesizer.synthesize(seed, seedDistributions, !config.skipProperties)
 
