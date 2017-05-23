@@ -10,7 +10,6 @@ import org.neo4j.graphdb.*;
 import org.neo4j.logging.Log;
 import org.neo4j.procedure.*;
 import org.neo4j.kernel.internal.GraphDatabaseAPI;
-import org.neo4j.register.Register;
 
 
 /**
@@ -19,7 +18,7 @@ import org.neo4j.register.Register;
  *
  *
  */
-public class Subgraph_Isomorphism
+public class SubgraphIsomorphism
 {
     // Only static fields and @Context-annotated fields are allowed in
     // Procedure classes.
@@ -36,9 +35,9 @@ public class Subgraph_Isomorphism
     public Log log;
 
 
-    @Procedure("subgraphIso")
+    @Procedure("SubgraphIso")
     @Description("Execute lucene query in the given index, return found nodes")
-    public Stream<result> subgraphIso( @Name("query") String query, @Name("target") String target, @Name("parallelFactor") String parallelFactor,@Name("suppressResult") String suppressResult)
+    public Stream<Result> SubgraphIso(@Name("query") String query, @Name("target") String target, @Name("parallelFactor") String parallelFactor, @Name("suppressResult") String suppressResult)
     {
 
         Label queryLabel=Label.label(query);//query label
@@ -69,7 +68,7 @@ public class Subgraph_Isomorphism
 
         long end=System.currentTimeMillis();
 
-        ArrayList<result> resultList=new ArrayList<>();
+        ArrayList<Result> resultList=new ArrayList<>();
 
         try {
             //return the results
@@ -82,7 +81,7 @@ public class Subgraph_Isomorphism
                     if(!isSuppressed) {
                         for (int i = 0; i < matchedSubgraphs.size(); i++) {
                             for (int j = 0; j < matchedSubgraphs.get(i).size(); j++) {
-                                resultList.add(new result(matchedSubgraphs.get(i).get(j),
+                                resultList.add(new Result(matchedSubgraphs.get(i).get(j),
                                         queryNodeList.get(j),
                                         Integer.toString(i),
                                         Integer.toString(matchedSubgraphs.size()),
@@ -91,12 +90,12 @@ public class Subgraph_Isomorphism
                             }
                         }
 
-                        //Note: the result objects can only have String or Node type instance variables.
+                        //Note: the Result objects can only have String or Node type instance variables.
                         return resultList.stream();
                     }
                     else
                     {
-                        resultList.add(new result(null,null,null, Integer.toString(matchedSubgraphs.size()),new String(Long.toString(end - start) + "ms")));
+                        resultList.add(new Result(null,null,null, Integer.toString(matchedSubgraphs.size()),new String(Long.toString(end - start) + "ms")));
                         return resultList.stream();
                     }
                 }
@@ -203,27 +202,25 @@ public class Subgraph_Isomorphism
             //check redundant subgraphs
             if(!matchedSubgraphs.isEmpty())
             {
+                List<List<Node>> refinedMatchedSubgraphs=new ArrayList<>();
 
                 for(int i=0;i<matchedSubgraphs.size();i++)
                 {
+                    Set<Node> subgraphSet=matchedSubgraphs.get(i).stream().collect(Collectors.toSet());
+                    List<Set<Node>> verifySetList=new ArrayList<>();
 
-                    for(int j=0;j<matchedSubgraphs.size();j++)
+                    for(int j=i+1;j<matchedSubgraphs.size();j++)
                     {
-                        List<Node> subgraph =matchedSubgraphs.get(i);
-
-                        if(i!=j)
-                        {
-
-                            Set<Node> subgraphSet=subgraph.stream().collect(Collectors.toSet());
-
-                            Set<Node> verifySet=matchedSubgraphs.get(j).stream().collect(Collectors.toSet());
-
-                            if(subgraphSet.equals(verifySet))matchedSubgraphs.remove(j);
-
-                        }
+                        Set<Node> verifySet=matchedSubgraphs.get(j).stream().collect(Collectors.toSet());
+                        verifySetList.add(verifySet);
                     }
+                    if(verifySetList.stream().anyMatch(set->set.equals(subgraphSet)))
+                        continue;
+                    else
+                        refinedMatchedSubgraphs.add(matchedSubgraphs.get(i));
                 }
 
+                matchedSubgraphs=refinedMatchedSubgraphs;
             }
         }
         return matchedSubgraphs;

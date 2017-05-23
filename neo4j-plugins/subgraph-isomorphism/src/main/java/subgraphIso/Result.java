@@ -2,7 +2,7 @@ package subgraphIso;
 
 import org.neo4j.graphdb.Node;
 /**
- * The result class defines the output to the Cypher console
+ * The Result class defines the output to the Cypher console
  * Use ONLY String and Node for instance variable!!
  * Other object types may cause Neo4j server start failure
  *
@@ -15,7 +15,7 @@ import org.neo4j.graphdb.Node;
  * totalNumSubgraph: the total number of subgraphs
  */
 
-public class result {
+public class Result {
 
     public Node resultNode;
     public Node queryNode;
@@ -24,7 +24,7 @@ public class result {
     public String executionTime;
 
 
-    public result(Node resultNode,Node queryNode, String subgraphIndex,String totalNumSubgraph,String executionTime) {
+    public Result(Node resultNode, Node queryNode, String subgraphIndex, String totalNumSubgraph, String executionTime) {
         this.resultNode = resultNode;
         this.queryNode = queryNode;
         this.subgraphIndex = subgraphIndex;
