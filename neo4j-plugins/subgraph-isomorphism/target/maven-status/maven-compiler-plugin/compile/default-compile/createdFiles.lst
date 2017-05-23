@@ -1,4 +1,4 @@
 subgraphIso\SubgraphProcessor.class
-subgraphIso\Subgraph_Isomorphism.class
-subgraphIso\result.class
-subgraphIso\Subgraph_Isomorphism$1.class
+subgraphIso\Result.class
+subgraphIso\SubgraphIsomorphism.class
+subgraphIso\SubgraphIsomorphism$1.class
