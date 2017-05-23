@@ -1,8 +1,0 @@
-<component name="ArtifactManager">
-  <artifact type="jar" name="Subgraph_Isomorphism:jar">
-    <output-path>$PROJECT_DIR$/out/artifacts/Subgraph_Isomorphism_jar</output-path>
-    <root id="archive" name="Subgraph_Isomorphism.jar">
-      <element id="module-output" name="Subgraph_Isomorphism" />
-    </root>
-  </artifact>
-</component>
