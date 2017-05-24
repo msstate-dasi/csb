@@ -16,13 +16,21 @@ Copy the JAR file `subgraph-isomorphism-0.x-SNAPSHOT.jar` under `target\` to you
 
 This plugin is supposed to be used in the Cypher console, either in the Web browser or in the commandline console.
 
-`call SubgraphIso("QueryLabel","TargetLabel")`
+`call SubgraphIso("QueryLabel","TargetLabel","2","100","False")`
 
 ### Arguments:
 
 QueryLabel: the Neo4j database label of the query graph
 
 TargetLabel: the Neo4j database label of the target graph. if use "All", all nodes in the dataset will be calculated
+
+The parallelism factor (pFactor): the size of the thread pool. The number of threads in the pool is pFactor*NumberofCores
+
+The Split Size (SplitSize): the number of iterations assigned to a single thread. A bigger SplitSize value requires less threads.
+
+Suppressed result:
+	-True only display the total number of matching subgraphs and execution time
+	-False display full information
 
 ### Return:
 All matching subgraphs and related info. Four columns:
@@ -34,3 +42,5 @@ All matching subgraphs and related info. Four columns:
 3. Subgraph index: which subgraph does the resultNode belong to
 
 4. Total number of subgraphs
+
+5. Execution Time
