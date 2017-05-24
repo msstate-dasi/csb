@@ -2,6 +2,7 @@ package subgraphIso;
 
 import java.util.*;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -37,7 +38,7 @@ public class SubgraphIsomorphism
 
     @Procedure("SubgraphIso")
     @Description("Execute lucene query in the given index, return found nodes")
-    public Stream<Result> SubgraphIso(@Name("query") String query, @Name("target") String target, @Name("parallelFactor") String parallelFactor, @Name("suppressResult") String suppressResult)
+    public Stream<Result> SubgraphIso(@Name("query") String query, @Name("target") String target, @Name("parallelFactor") String parallelFactor, @Name("SplitSize") String SplitSize, @Name("suppressResult") String suppressResult)
     {
 
         Label queryLabel=Label.label(query);//query label
@@ -45,6 +46,8 @@ public class SubgraphIsomorphism
         Label targetLabel=Label.label(target);//target label
 
         int pFactor=Integer.parseInt(parallelFactor);//parallel factor
+
+        final int THRESHOLD=Integer.parseInt(SplitSize);// the split size (threshold) assigned to each thread
 
         int numCores = Runtime.getRuntime().availableProcessors();// the available number of CPU cores
 
@@ -64,7 +67,7 @@ public class SubgraphIsomorphism
 
         long start=System.currentTimeMillis();
 
-        List<List<Node>> matchedSubgraphs = UllmannAlg(queryLabel, targetLabel,queryNodeList,threadPool);
+        List<List<Node>> matchedSubgraphs = UllmannAlg(queryLabel, targetLabel,queryNodeList,THRESHOLD,threadPool);
 
         long end=System.currentTimeMillis();
 
@@ -109,7 +112,7 @@ public class SubgraphIsomorphism
 
 
 
-    private List<List<Node>> UllmannAlg(Label queryLabel, Label targetLabel,ArrayList<Node> queryNodeList, ForkJoinPool threadPool){
+    private List<List<Node>> UllmannAlg(Label queryLabel, Label targetLabel,ArrayList<Node> queryNodeList,final int THRESHOLD, ForkJoinPool threadPool){
 
 
         List<List<Node>> queryNeighborList=new ArrayList<>();// the neighbor list for query vertices
@@ -184,18 +187,22 @@ public class SubgraphIsomorphism
             //////////////////////////////////////////////////////////////
             //begin multithreading execution of the algorithm
 
+
             SubgraphProcessor mainProcessor=new SubgraphProcessor(candidateList,candidateListMap,candidateListSize,
                     queryNeighborList,
-                    nodeNeighborList,nodeNeighborListMap,
+                    nodeNeighborList,nodeNeighborListMap,THRESHOLD,
                     threadPool);
 
-            threadPool.execute(mainProcessor);
+            Future<List<List<Node>>> futureMatchedSubgraphs=threadPool.submit(mainProcessor);
 
-            while ((!mainProcessor.isDone()));
+            try{ matchedSubgraphs.addAll(futureMatchedSubgraphs.get());}
+
+            catch (Exception e)
+            {
+                e.printStackTrace();
+            }
 
             threadPool.shutdown();
-
-            matchedSubgraphs=mainProcessor.join();
 
             tx.success();
 

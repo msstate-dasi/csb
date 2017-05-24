@@ -22,11 +22,12 @@ public class SubgraphProcessor extends RecursiveTask<List<List<Node>>>{
     final private int lo;
     final private int hi;
     final private ForkJoinPool pool;
-    static final int THRESHOLD=1000;
+    private List<List<Node>> matchedSubgraphs;
+    final int THRESHOLD;
 
     public SubgraphProcessor(List<List<Node>> candidateList, Map<Node,Integer> candidateNode2Index, int[] candidateListSize,
                              List<List<Node>> queryNeighborList,
-                             List<List<Node>> nodeNeighborList, Map<Node,Integer> nodeNeighborListMap, ForkJoinPool pool)
+                             List<List<Node>> nodeNeighborList, Map<Node,Integer> nodeNeighborListMap, int THRESHOLD, ForkJoinPool pool)
     {
         this.lo=0;
         this.hi=candidateList.get(0).size();
@@ -37,46 +38,40 @@ public class SubgraphProcessor extends RecursiveTask<List<List<Node>>>{
         this.nodeNeighborList=nodeNeighborList;
         this.nodeNeighborListMap=nodeNeighborListMap;
         this.pool=pool;
+        this.matchedSubgraphs=new ArrayList<>();
+        this.THRESHOLD=THRESHOLD;
 
     }
 
     @Override
     protected List<List<Node>> compute()
     {
-        List<List<Node>> resultSubgraphs=new ArrayList<>();
+        //assign tasks to different threads
         List<SubgraphProcessor> tasks=new ArrayList<>();
 
-        //create a buff CandidateList for thread-safe modification
-        List<List<Node>> buffCandidateList=new ArrayList<>(candidateList);
-        for(int i=0;i<buffCandidateList.size();i++)
-        {
-            if(i==0)
-                buffCandidateList.set(i,new ArrayList<>(candidateList.get(0).subList(lo,hi)));
-            else
-                buffCandidateList.set(i,new ArrayList<>(candidateList.get(i)));
-        }
+        if(hi-lo<=THRESHOLD) {
 
-        if(hi-lo<THRESHOLD)
-            resultSubgraphs.addAll(backtracking(0,buffCandidateList,candidateNode2Index,candidateListSize,queryNeighborList,nodeNeighborList,nodeNeighborListMap));
-        else
+            //a task is small enough for a single thread
+            matchedSubgraphs.addAll(backtracking(0, candidateList, candidateNode2Index, candidateListSize, queryNeighborList, nodeNeighborList, nodeNeighborListMap));
+
+        }else
         {
+            //a task is going to be splitted in half
             int mid=(lo+hi)>>>1;
-            buffCandidateList.set(0,new ArrayList<>(candidateList.get(0).subList(lo,mid)));
-            SubgraphProcessor forkedTask1=new SubgraphProcessor(buffCandidateList,candidateNode2Index,candidateListSize,queryNeighborList,nodeNeighborList,nodeNeighborListMap,pool);
-            buffCandidateList.set(0,new ArrayList<>(candidateList.get(0).subList(mid,hi)));
-            SubgraphProcessor forkedTask2=new SubgraphProcessor(buffCandidateList,candidateNode2Index,candidateListSize,queryNeighborList,nodeNeighborList,nodeNeighborListMap,pool);
-//            pool.execute(forkedTask1);
-//            pool.execute(forkedTask2);
-            forkedTask1.fork();
-            forkedTask2.fork();
+            List<List<Node>> leftCandidateList=copyNodeList(candidateList,lo,mid);
+            List<List<Node>> rightCandidateList=copyNodeList(candidateList,mid,hi);
+
+            SubgraphProcessor forkedTask1=new SubgraphProcessor(leftCandidateList,candidateNode2Index,candidateListSize,queryNeighborList,nodeNeighborList,nodeNeighborListMap,THRESHOLD,pool);
+            SubgraphProcessor forkedTask2=new SubgraphProcessor(rightCandidateList,candidateNode2Index,candidateListSize,queryNeighborList,nodeNeighborList,nodeNeighborListMap,THRESHOLD,pool);
+
+            invokeAll(forkedTask1,forkedTask2);//don't use two fork() here, as that will make the current thread idle waiting for the forked threads until they finish the task
             tasks.add(forkedTask1);
             tasks.add(forkedTask2);
+            collectResultsFromTasks(matchedSubgraphs,tasks);
         }
 
-        addResultsFromTasks(resultSubgraphs,tasks);
-        return resultSubgraphs;
 
-
+        return matchedSubgraphs;
 
     }
 
@@ -84,37 +79,39 @@ public class SubgraphProcessor extends RecursiveTask<List<List<Node>>>{
                                           List<List<Node>> queryNeighborList,
                                           List<List<Node>> nodeNeighborList, Map<Node,Integer> nodeNeighborListMap)
     {
+        //backtracking the candidate list to find matching subgraphs
 
         List<List<Node>> matchedSubgraphs=new ArrayList<>();
 
         if(numLayer==queryNeighborList.size())
         {
-
-
+            //a matching subgraph is found
             ArrayList<Node> subgraph=new ArrayList<>();
 
             for(int i=0;i<candidateList.size();i++)
             {
-                // System.out.println(candidateList.get(i));
                 subgraph.add(candidateList.get(i).get(0));
             }
             matchedSubgraphs.add(subgraph);
             return matchedSubgraphs;
         }
 
-        List<List<Node>> originalCandidateList= copyNodeList(candidateList);
+        List<List<Node>> originalCandidateList= copyNodeList(candidateList,0,candidateList.get(0).size());
         //retain the original copy of the candidateList for rolling back
         for(int i=0;i<candidateList.get(numLayer).size();i++)
         {
-            if(numLayer==0) System.out.println("Working on Iteration "+i);
             ArrayList<Node> singleNode=new ArrayList<>();
+
             singleNode.add(candidateList.get(numLayer).get(i));
 
             candidateList.get(numLayer).retainAll(singleNode);//select the single node in that row
 
             removeUniqueNodes(singleNode.get(0),candidateList,candidateListSize,numLayer,false);//remove unique nodes in other rows
+
             refineCandidate(candidateList,queryNeighborList,nodeNeighborList,candidateNode2Index,nodeNeighborListMap);//refine the candidate list
+
             if(isCorrect(candidateList)) {
+                //if the candidate list is valid, go to the next round recursively
                 List<List<Node>> pendingResult=backtracking(numLayer + 1, candidateList, candidateNode2Index, candidateListSize, queryNeighborList, nodeNeighborList, nodeNeighborListMap);
                 if(!pendingResult.isEmpty())
                     matchedSubgraphs.addAll(pendingResult);
@@ -123,32 +120,41 @@ public class SubgraphProcessor extends RecursiveTask<List<List<Node>>>{
             removeUniqueNodes(originalCandidateList.get(numLayer).get(i), originalCandidateList, candidateListSize,numLayer+1,true);//trim the branches
 
 
-            candidateList=copyNodeList(originalCandidateList);//resume the candidate list and continue searching
+            candidateList=copyNodeList(originalCandidateList,0,originalCandidateList.get(0).size());//resume the candidate list and continue searching
 
-//            if(numLayer==0) System.out.println("Found "+subgraphCount+" subgraphs at Iteration "+i);
         }
         return matchedSubgraphs;
     }
 
-    private void addResultsFromTasks(List<List<Node>> list, List<SubgraphProcessor> tasks)
+    private void collectResultsFromTasks(List<List<Node>> list, List<SubgraphProcessor> tasks)
 
     {
+        //collect matching subgraphs from forked tasks
         for (SubgraphProcessor item:tasks)
             list.addAll(item.join());
     }
 
-    private List<List<Node>> copyNodeList(List<List<Node>> originalList)
+    private List<List<Node>> copyNodeList(List<List<Node>> originalList,int start, int end)
     {
         List<List<Node>> copyList=new ArrayList<>();
-        for(int i=0;i<originalList.size();i++)
+        ArrayList<Node> firstRow=new ArrayList<>();
+        for(int k=start;k<end;k++)
+        {
+            firstRow.add(originalList.get(0).get(k));
+
+        }
+        copyList.add(firstRow);
+
+        for(int i=1;i<originalList.size();i++)
         {
             ArrayList<Node> temp=new ArrayList<>();
-            copyList.add(temp);
+
             for(int j=0;j<originalList.get(i).size();j++)
             {
-                copyList.get(i).add(originalList.get(i).get(j));
+                temp.add(originalList.get(i).get(j));
 
             }
+            copyList.add(temp);
         }
         return copyList;
 
@@ -159,9 +165,6 @@ public class SubgraphProcessor extends RecursiveTask<List<List<Node>>>{
 
 
         long start = System.currentTimeMillis();
-
-        //   if(candidateList.stream().filter(list->list.size()>0).collect(toList()).isEmpty())return;
-
 
         List<List<Node>> nodesToRemove = new ArrayList<>();
 
