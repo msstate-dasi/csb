@@ -86,10 +86,7 @@ public class SubgraphIsomorphism
                             for (int j = 0; j < matchedSubgraphs.get(i).size(); j++) {
                                 resultList.add(new Result(matchedSubgraphs.get(i).get(j),
                                         queryNodeList.get(j),
-                                        Integer.toString(i),
-                                        Integer.toString(matchedSubgraphs.size()),
-                                        new String(Long.toString(end - start) + "ms")
-                                ));
+                                        Integer.toString(i),matchedSubgraphs.size()));
                             }
                         }
 
@@ -98,7 +95,7 @@ public class SubgraphIsomorphism
                     }
                     else
                     {
-                        resultList.add(new Result(null,null,null, Integer.toString(matchedSubgraphs.size()),new String(Long.toString(end - start) + "ms")));
+                        resultList.add(new Result(null,null,null,matchedSubgraphs.size()));
                         return resultList.stream();
                     }
                 }
@@ -206,29 +203,29 @@ public class SubgraphIsomorphism
 
             tx.success();
 
-            //check redundant subgraphs
-            if(!matchedSubgraphs.isEmpty())
-            {
-                List<List<Node>> refinedMatchedSubgraphs=new ArrayList<>();
-
-                for(int i=0;i<matchedSubgraphs.size();i++)
-                {
-                    Set<Node> subgraphSet=matchedSubgraphs.get(i).stream().collect(Collectors.toSet());
-                    List<Set<Node>> verifySetList=new ArrayList<>();
-
-                    for(int j=i+1;j<matchedSubgraphs.size();j++)
-                    {
-                        Set<Node> verifySet=matchedSubgraphs.get(j).stream().collect(Collectors.toSet());
-                        verifySetList.add(verifySet);
-                    }
-                    if(verifySetList.stream().anyMatch(set->set.equals(subgraphSet)))
-                        continue;
-                    else
-                        refinedMatchedSubgraphs.add(matchedSubgraphs.get(i));
-                }
-
-                matchedSubgraphs=refinedMatchedSubgraphs;
-            }
+//            //check redundant subgraphs
+//            if(!matchedSubgraphs.isEmpty())
+//            {
+//                List<List<Node>> refinedMatchedSubgraphs=new ArrayList<>();
+//
+//                for(int i=0;i<matchedSubgraphs.size();i++)
+//                {
+//                    Set<Node> subgraphSet=matchedSubgraphs.get(i).stream().collect(Collectors.toSet());
+//                    List<Set<Node>> verifySetList=new ArrayList<>();
+//
+//                    for(int j=i+1;j<matchedSubgraphs.size();j++)
+//                    {
+//                        Set<Node> verifySet=matchedSubgraphs.get(j).stream().collect(Collectors.toSet());
+//                        verifySetList.add(verifySet);
+//                    }
+//                    if(verifySetList.stream().anyMatch(set->set.equals(subgraphSet)))
+//                        continue;
+//                    else
+//                        refinedMatchedSubgraphs.add(matchedSubgraphs.get(i));
+//                }
+//
+//                matchedSubgraphs=refinedMatchedSubgraphs;
+//            }
         }
         return matchedSubgraphs;
 

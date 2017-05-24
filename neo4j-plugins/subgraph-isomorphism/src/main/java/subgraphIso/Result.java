@@ -17,19 +17,18 @@ import org.neo4j.graphdb.Node;
 
 public class Result {
 
-    public Node resultNode;
-    public Node queryNode;
+    public String resultNodeID;
+    public String queryNodeID;
     public String subgraphIndex;
     public String totalNumSubgraph;
-    public String executionTime;
+   // public String executionTime;
 
-
-    public Result(Node resultNode, Node queryNode, String subgraphIndex, String totalNumSubgraph, String executionTime) {
-        this.resultNode = resultNode;
-        this.queryNode = queryNode;
+    public Result(Node resultNode, Node queryNode, String subgraphIndex,int totalNumSubgraph) {
+        this.resultNodeID = String.valueOf(resultNode.getId());
+        this.queryNodeID = String.valueOf(queryNode.getId());
         this.subgraphIndex = subgraphIndex;
-        this.totalNumSubgraph=totalNumSubgraph;
-        this.executionTime=executionTime;
+        this.totalNumSubgraph=Integer.toString(totalNumSubgraph);
+        //this.executionTime=executionTime;
     }
 }
 

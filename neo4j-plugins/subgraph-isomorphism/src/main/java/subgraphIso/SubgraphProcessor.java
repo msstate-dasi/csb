@@ -4,12 +4,6 @@ import java.util.*;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RecursiveTask;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
-import java.io.*;
-
-import java.io.IOException;
-
-import org.neo4j.cypher.internal.compiler.v2_3.planDescription.Fork;
 import org.neo4j.graphdb.*;
 
 public class SubgraphProcessor extends RecursiveTask<List<List<Node>>>{
@@ -23,9 +17,9 @@ public class SubgraphProcessor extends RecursiveTask<List<List<Node>>>{
     final private int hi;
     final private ForkJoinPool pool;
     private List<List<Node>> matchedSubgraphs;
-    final int THRESHOLD;
+    final private int THRESHOLD;
 
-    public SubgraphProcessor(List<List<Node>> candidateList, Map<Node,Integer> candidateNode2Index, int[] candidateListSize,
+    SubgraphProcessor(List<List<Node>> candidateList, Map<Node,Integer> candidateNode2Index, int[] candidateListSize,
                              List<List<Node>> queryNeighborList,
                              List<List<Node>> nodeNeighborList, Map<Node,Integer> nodeNeighborListMap, int THRESHOLD, ForkJoinPool pool)
     {
@@ -117,7 +111,7 @@ public class SubgraphProcessor extends RecursiveTask<List<List<Node>>>{
                     matchedSubgraphs.addAll(pendingResult);
             }
 
-            removeUniqueNodes(originalCandidateList.get(numLayer).get(i), originalCandidateList, candidateListSize,numLayer+1,true);//trim the branches
+      //      removeUniqueNodes(originalCandidateList.get(numLayer).get(i), originalCandidateList, candidateListSize,numLayer+1,true);//trim the branches
 
 
             candidateList=copyNodeList(originalCandidateList,0,originalCandidateList.get(0).size());//resume the candidate list and continue searching
@@ -162,9 +156,6 @@ public class SubgraphProcessor extends RecursiveTask<List<List<Node>>>{
 
     private void refineCandidate(List<List<Node>> candidateList,List<List<Node>> queryNeighborList,List<List<Node>> nodeNeighborList,
                                  Map<Node,Integer> candidateNode2Index,Map<Node,Integer> nodeNeighborListMap) {//given the three lists, refine the candidate list
-
-
-        long start = System.currentTimeMillis();
 
         List<List<Node>> nodesToRemove = new ArrayList<>();
 
