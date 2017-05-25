@@ -5,7 +5,7 @@ import org.apache.spark.graphx.Graph
 
 /**
  * Contains all the probability distributions of the domain. All conditional
- * distributions are conditioned by origin bytes values.
+ * distributions are conditioned by originator bytes values.
  *
  * @param graph the graph used to compute the distributions
  */
@@ -22,7 +22,12 @@ class DataDistributions(graph: Graph[VertexData, EdgeData]) extends Serializable
   val outDegree: Distribution[Int] = Distribution(graph.outDegrees.values)
 
   /**
-   * The origin bytes distribution.
+   * The timestamp distribution.
+   */
+  val ts: Distribution[Long] = Distribution(graph.edges.map(e => e.attr.ts))
+
+  /**
+   * The originator bytes distribution.
    */
   val origBytes: Distribution[Long] = Distribution(graph.edges.map(e => e.attr.origBytes))
 
@@ -43,7 +48,7 @@ class DataDistributions(graph: Graph[VertexData, EdgeData]) extends Serializable
   }
 
   /**
-   * The response bytes conditional distribution.
+   * The responder bytes conditional distribution.
    */
   val respBytes: ConditionalDistribution[Long, Long] = {
     val data = graph.edges.map(e => (e.attr.respBytes, e.attr.origBytes))
@@ -59,7 +64,7 @@ class DataDistributions(graph: Graph[VertexData, EdgeData]) extends Serializable
   }
 
   /**
-   * The origin packets conditional distribution.
+   * The originator packets conditional distribution.
    */
   val origPkts: ConditionalDistribution[Long, Long] = {
     val data = graph.edges.map(e => (e.attr.origPkts, e.attr.origBytes))
@@ -67,7 +72,7 @@ class DataDistributions(graph: Graph[VertexData, EdgeData]) extends Serializable
   }
 
   /**
-   * The origin IP bytes conditional distribution.
+   * The originator IP bytes conditional distribution.
    */
   val origIpBytes: ConditionalDistribution[Long, Long] = {
     val data = graph.edges.map(e => (e.attr.origIpBytes, e.attr.origBytes))
@@ -75,7 +80,7 @@ class DataDistributions(graph: Graph[VertexData, EdgeData]) extends Serializable
   }
 
   /**
-   * The response packets conditional distribution.
+   * The responder packets conditional distribution.
    */
   val respPkts: ConditionalDistribution[Long, Long] = {
     val data = graph.edges.map(e => (e.attr.respPkts, e.attr.origBytes))
@@ -83,7 +88,7 @@ class DataDistributions(graph: Graph[VertexData, EdgeData]) extends Serializable
   }
 
   /**
-   * The response IP bytes conditional distribution.
+   * The responder IP bytes conditional distribution.
    */
   val respIpBytes: ConditionalDistribution[Long, Long] = {
     val data = graph.edges.map(e => (e.attr.respIpBytes, e.attr.origBytes))
@@ -103,6 +108,7 @@ object DataDistributions {
   def apply(graph: Graph[VertexData, EdgeData], bucketSize: Int = 0): DataDistributions = {
     if (bucketSize > 0) {
       new DataDistributions(graph.mapEdges(e => e.attr.copy(
+        ts = e.attr.ts - e.attr.ts % bucketSize,
         duration = e.attr.duration - e.attr.duration % bucketSize,
         origBytes = e.attr.origBytes - e.attr.origBytes % bucketSize,
         respBytes = e.attr.respBytes - e.attr.respBytes % bucketSize,
