@@ -24,6 +24,7 @@ trait GraphSynth {
       val origBytes = dataDist.origBytes.sample
 
       EdgeData(
+        ts = dataDist.ts.sample,
         proto = dataDist.proto.sample(origBytes),
         duration = dataDist.duration.sample(origBytes),
         origBytes = origBytes,
