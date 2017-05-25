@@ -66,7 +66,7 @@ object EdgeData {
     if (text == "null") {
       null.asInstanceOf[EdgeData]
     } else {
-      // EdgeData example: EdgeData(udp,0.003044,116,230,SF,2,172,2,286,)
+      // EdgeData example: EdgeData(1318226897,udp,0.003044,116,230,SF,2,172,2,286,)
       val dataRegex = "\\w+\\(|[,)]"
 
       text.replaceFirst("^" + dataRegex, "").split(dataRegex) match {
@@ -102,6 +102,6 @@ object EdgeData {
     }
   }
 
-  def neo4jCsvHeader: String = "ts,proto,duration:double,origBytes:long,respBytes:long,connState,origPkts:long," +
+  def neo4jCsvHeader: String = "ts:long,proto,duration:double,origBytes:long,respBytes:long,connState,origPkts:long," +
     "origIpBytes:long,respPkts:long,respIpBytes:long,desc"
 }
