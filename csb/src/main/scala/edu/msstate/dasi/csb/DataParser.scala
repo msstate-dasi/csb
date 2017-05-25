@@ -39,7 +39,7 @@ object DataParser {
       val dstId = inetToLong(respIp) | (respPort.toLong << 32)
 
       Edge(srcId, dstId, EdgeData(
-        /* ts = new Date(pieces(0).split('.')(0).toLong * 1000), */
+        ts = pieces(0).split('.')(0).toLong,
         /* uid = pieces(1), */
         proto = pieces(6),
         /* service = pieces(7), */
