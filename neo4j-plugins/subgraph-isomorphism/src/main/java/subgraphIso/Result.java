@@ -1,6 +1,5 @@
 package subgraphIso;
 
-import org.neo4j.graphdb.Node;
 /**
  * The Result class defines the output to the Cypher console
  * Use ONLY String and Node for instance variable!!
@@ -9,25 +8,32 @@ import org.neo4j.graphdb.Node;
  * The instance variables will be posted into different columns
  * e.g., in the Cypher console, four columns will be created for the returned results: resultNode, queryNode, index and totalNumSubgraph
  *
- * resultNode: a node in the matching subgraph
- * queryNode: a node in the query graph
+ * resultNodeProperty: a node's property in the matching subgraph
+ * queryNodeID: a node's unique Neo4j ID in the query graph
  * subgraphIndex: which subgraph does the resultNode belong to
  * totalNumSubgraph: the total number of subgraphs
  */
 
 public class Result {
 
-    public String resultNodeID;
+    public String resultNodeProperty;
+
     public String queryNodeID;
+
     public String subgraphIndex;
+
     public String totalNumSubgraph;
    // public String executionTime;
 
-    public Result(Node resultNode, Node queryNode, String subgraphIndex,int totalNumSubgraph) {
-        this.resultNodeID = String.valueOf(resultNode.getId());
-        this.queryNodeID = String.valueOf(queryNode.getId());
+    public Result(String resultNodeProperty, String queryNodeID, String subgraphIndex, String totalNumSubgraph) {
+
+        this.resultNodeProperty = resultNodeProperty;
+
+        this.queryNodeID = queryNodeID;
+
         this.subgraphIndex = subgraphIndex;
-        this.totalNumSubgraph=Integer.toString(totalNumSubgraph);
+
+        this.totalNumSubgraph=totalNumSubgraph;
         //this.executionTime=executionTime;
     }
 }

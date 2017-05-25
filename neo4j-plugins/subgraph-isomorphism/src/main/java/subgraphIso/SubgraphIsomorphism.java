@@ -3,7 +3,6 @@ package subgraphIso;
 import java.util.*;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.Future;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -38,7 +37,9 @@ public class SubgraphIsomorphism
 
     @Procedure("SubgraphIso")
     @Description("Execute lucene query in the given index, return found nodes")
-    public Stream<Result> SubgraphIso(@Name("query") String query, @Name("target") String target, @Name("parallelFactor") String parallelFactor, @Name("SplitSize") String SplitSize, @Name("suppressResult") String suppressResult)
+    public Stream<Result> SubgraphIso(@Name("query") String query, @Name("target") String target,
+                                      @Name("parallelFactor") String parallelFactor, @Name("SplitSize") String SplitSize,
+                                      @Name("selectPropertyName") String selectPropertyName, @Name("suppressResult") String suppressResult)
     {
 
         Label queryLabel=Label.label(query);//query label
@@ -50,6 +51,8 @@ public class SubgraphIsomorphism
         final int THRESHOLD=Integer.parseInt(SplitSize);// the split size (threshold) assigned to each thread
 
         int numCores = Runtime.getRuntime().availableProcessors();// the available number of CPU cores
+
+        String selectProperty; // user defined property that will represent the subgraph nodes
 
         ForkJoinPool threadPool=new ForkJoinPool(numCores*pFactor);
 
@@ -65,7 +68,7 @@ public class SubgraphIsomorphism
 
         ArrayList<Node> queryNodeList=new ArrayList<>();//the list that store all query nodes
 
-        long start=System.currentTimeMillis();
+        long start=System.currentTimeMillis();//give the program execution time
 
         List<List<Node>> matchedSubgraphs = UllmannAlg(queryLabel, targetLabel,queryNodeList,THRESHOLD,threadPool);
 
@@ -73,20 +76,47 @@ public class SubgraphIsomorphism
 
         ArrayList<Result> resultList=new ArrayList<>();
 
+
+
         try {
             //return the results
             //each row of the matchedSubgraphs contains nodes in a matched subgraph ordered by the query nodes in the queryNodeList
             //i.e., queryNodeList.size()==matchedSubgraphs.get(i).size();
 
             if (matchedSubgraphs.isEmpty())
+
                 return null;
+
             else {
-                    if(!isSuppressed) {
-                        for (int i = 0; i < matchedSubgraphs.size(); i++) {
-                            for (int j = 0; j < matchedSubgraphs.get(i).size(); j++) {
-                                resultList.add(new Result(matchedSubgraphs.get(i).get(j),
-                                        queryNodeList.get(j),
-                                        Integer.toString(i),matchedSubgraphs.size()));
+
+                    if(!isSuppressed)
+                    {
+
+                        for (int i = 0; i < matchedSubgraphs.size(); i++)
+                        {
+
+                            for (int j = 0; j < matchedSubgraphs.get(i).size(); j++)
+                            {
+
+                                if (selectPropertyName.equals("ID"))
+
+                                    selectProperty=new String("Neo4j ID: "+Long.toString(matchedSubgraphs.get(i).get(j).getId()));
+
+                                else
+
+                                    selectProperty=new String(selectPropertyName+": "+matchedSubgraphs.get(i).get(j).getProperty(selectPropertyName).toString());
+
+                                String queryID=new String("Neo4j ID: "+Long.toString(queryNodeList.get(j).getId()));
+
+                                resultList.add(new Result(
+
+                                        selectProperty,
+
+                                        queryID,
+
+                                        Integer.toString(i),
+
+                                        Integer.toString(matchedSubgraphs.size())));
                             }
                         }
 
@@ -95,13 +125,26 @@ public class SubgraphIsomorphism
                     }
                     else
                     {
-                        resultList.add(new Result(null,null,null,matchedSubgraphs.size()));
+                        resultList.add(new Result(
+
+                                null,
+
+                                null,
+
+                                null,
+
+                                Integer.toString(matchedSubgraphs.size())));
+
                         return resultList.stream();
                     }
                 }
+
             } catch (Exception e) {
-                String errMsg = "Error encountered while calculating subgraph isomorphism";
+
+                String errMsg = new String("Error encountered while calculating subgraph isomorphism. selectProperty \""+selectPropertyName+"\" may not exist.");
+
                 log.error(errMsg, e);
+
                 throw new RuntimeException(errMsg, e);}
    }
 
@@ -228,7 +271,6 @@ public class SubgraphIsomorphism
 //            }
         }
         return matchedSubgraphs;
-
     }
 
 
@@ -240,7 +282,6 @@ public class SubgraphIsomorphism
 
         }
         return true;
-
     }
 
 
