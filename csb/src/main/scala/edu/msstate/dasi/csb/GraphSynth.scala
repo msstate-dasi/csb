@@ -1,5 +1,6 @@
 package edu.msstate.dasi.csb
 
+import edu.msstate.dasi.csb.distributions.DataDistributions
 import org.apache.spark.graphx.Graph
 
 /**
@@ -17,23 +18,22 @@ trait GraphSynth {
   private def genProperties(synth: Graph[VertexData, EdgeData], seedDists : DataDistributions): Graph[VertexData, EdgeData] = {
     val dataDistBroadcast = sc.broadcast(seedDists)
 
-    // There is no need to invoke also mapVertices because the vertex has no properties right now
+    // There is no need to invoke also mapVertices because the vertex has no properties in the current implementation
     synth.mapEdges( _ => {
       val dataDist = dataDistBroadcast.value
-      val origBytes = dataDist.getOrigBytesSample
+      val origBytes = dataDist.origBytes.sample
 
       EdgeData(
-        proto = dataDist.getProtoSample(origBytes),
-        duration = dataDist.getDurationSample(origBytes),
+        proto = dataDist.proto.sample(origBytes),
+        duration = dataDist.duration.sample(origBytes),
         origBytes = origBytes,
-        respBytes = dataDist.getRespBytesSample(origBytes),
-        connState = dataDist.getConnectionStateSample(origBytes),
-        origPkts = dataDist.getOrigPktsSample(origBytes),
-        origIpBytes = dataDist.getOrigIPBytesSample(origBytes),
-        respPkts = dataDist.getRespPktsSample(origBytes),
-        respIpBytes = dataDist.getRespIPBytesSample(origBytes),
-        desc = dataDist.getDescSample(origBytes)
-      )
+        respBytes = dataDist.respBytes.sample(origBytes),
+        connState = dataDist.connState.sample(origBytes),
+        origPkts = dataDist.origPkts.sample(origBytes),
+        origIpBytes = dataDist.origIpBytes.sample(origBytes),
+        respPkts = dataDist.respPkts.sample(origBytes),
+        respIpBytes = dataDist.respIpBytes.sample(origBytes),
+        desc = dataDist.desc.sample(origBytes))
     })
   }
 

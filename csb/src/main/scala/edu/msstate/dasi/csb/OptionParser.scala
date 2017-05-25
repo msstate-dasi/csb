@@ -67,7 +67,17 @@ class OptionParser(override val programName: String, programVersion: String, con
         opt[String]('t', "as-text")
         .valueName("<format>")
         .text(s"Graph saver for text format. Supported: spark|neo4j|none [default: ${config.textSaver}].")
-        .action((x, c) => c.copy(textSaver = x))
+        .action((x, c) => c.copy(textSaver = x)),
+
+      opt[String]('d', "distributions")
+        .valueName("<path>")
+        .text(s"Output path of the generated seed property distributions [default: ${config.seedDistributions}].")
+        .action((x, c) => c.copy(seedGraphPrefix = x)),
+
+      opt[String]('s', "bucket-size")
+        .valueName("<path>")
+        .text(s"Size of the buckets used in the seed property distributions [default: ${config.bucketSize}].")
+        .action((x, c) => c.copy(seedGraphPrefix = x))
     )
 
   note("")
@@ -84,6 +94,11 @@ class OptionParser(override val programName: String, programVersion: String, con
       opt[String]('s', "seed-graph")
         .valueName("<path>")
         .text(s"Path prefix of the seed graph [default: ${config.seedGraphPrefix}].")
+        .action((x, c) => c.copy(seedGraphPrefix = x)),
+
+      opt[String]('d', "distributions")
+        .valueName("<path>")
+        .text(s"Path of the seed property distributions [default: ${config.seedDistributions}].")
         .action((x, c) => c.copy(seedGraphPrefix = x)),
 
       opt[String]('l', "log")

@@ -1,5 +1,6 @@
 package edu.msstate.dasi.csb
 
+import edu.msstate.dasi.csb.distributions.DataDistributions
 import org.apache.spark.graphx.{Edge, Graph, VertexId}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
@@ -70,10 +71,10 @@ class KroSynth(partitions: Int, mtxFile: String, genIter: Int) extends GraphSynt
     val dataDistBroadcast = sc.broadcast(seedDists)
 
     val multiEdgeList = edgeList.flatMap { edge =>
-      val multiEdgesNum = dataDistBroadcast.value.getOutEdgeSample
+      val multiEdgesNum = dataDistBroadcast.value.outDegree.sample
       var multiEdges = Array.empty[Edge[EdgeData]]
 
-      for ( _ <- 1L until multiEdgesNum.toLong ) {
+      for ( _ <- 1 until multiEdgesNum ) {
         multiEdges :+= Edge[EdgeData](edge.srcId, edge.dstId)
       }
 

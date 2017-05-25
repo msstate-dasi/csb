@@ -1,5 +1,6 @@
 package edu.msstate.dasi.csb
 
+import edu.msstate.dasi.csb.distributions.DataDistributions
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.graphx.Graph
 
@@ -45,8 +46,6 @@ object Benchmark {
       seed
     } )
 
-    Util.time( "Seed distributions", new DataDistributions(config.augLog) )
-
     factory.getSaver match {
       case Some(saver) =>
         Util.time("Save seed graph", saver.saveGraph(seed, config.seedGraphPrefix, overwrite = true))
@@ -58,6 +57,10 @@ object Benchmark {
         Util.time( "Save seed graph as text", textSaver.saveAsText(seed, config.seedGraphPrefix, overwrite = true) )
       case None =>
     }
+
+    val distributions = Util.time("Gen seed distributions", DataDistributions(seed, config.bucketSize))
+
+    Util.time("Save seed distributions", FileSerializer.save(distributions, config.seedDistributions))
 
     true
   }
@@ -77,9 +80,10 @@ object Benchmark {
       seed
     } )
 
-    val seedDists = new DataDistributions(config.augLog)
+    val seedDistributions = Util.time("Load seed distributions",
+      FileSerializer.load[DataDistributions](config.seedDistributions))
 
-    val synth = factory.getSynthesizer.synthesize(seed, seedDists, !config.skipProperties)
+    val synth = factory.getSynthesizer.synthesize(seed, seedDistributions, !config.skipProperties)
 
     factory.getSaver match {
       case Some(saver) =>
