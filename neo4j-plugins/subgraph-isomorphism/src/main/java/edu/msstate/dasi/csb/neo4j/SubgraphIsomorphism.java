@@ -1,4 +1,4 @@
-package subgraphIso;
+package edu.msstate.dasi.csb.neo4j;
 
 import java.util.*;
 import java.util.concurrent.ForkJoinPool;
@@ -35,53 +35,33 @@ public class SubgraphIsomorphism
     public Log log;
 
 
-    @Procedure("SubgraphIso")
-    @Description("Execute lucene query in the given index, return found nodes")
-    public Stream<Result> SubgraphIso(@Name("query") String query, @Name("target") String target,
-                                      @Name("parallelFactor") String parallelFactor, @Name("SplitSize") String SplitSize,
-                                      @Name("selectPropertyName") String selectPropertyName, @Name("suppressResult") String suppressResult)
+    @Procedure("csb.subgraphIsomorphism")
+    @Description("Given the pattern graph label and the target graph label, execute subgraph isomorphism algorithm and return subgraphs. " +
+            "CALL csb.subgraphIsomorphism(patternLabel, targetLabel) YIELD subgraphIndex, patternNode, targetNode")
+    public Stream<Result> subgraphIsomorphism(@Name("patternLabel") String patternLabelString, @Name("targetLabel") String targetLabelString,
+                                      @Name(value = "parallelFactor",defaultValue = "2") Long parallelFactor)
     {
 
-        Label queryLabel=Label.label(query);//query label
+        Label patternLabel=Label.label(patternLabelString);//pattern label
 
-        Label targetLabel=Label.label(target);//target label
+        Label targetLabel=Label.label(targetLabelString);//target label
 
-        int pFactor=Integer.parseInt(parallelFactor);//parallel factor
-
-        final int THRESHOLD=Integer.parseInt(SplitSize);// the split size (threshold) assigned to each thread
+//        int parallelFactor=Integer.parseInt(parallelFactorString);//parallel factor
 
         int numCores = Runtime.getRuntime().availableProcessors();// the available number of CPU cores
 
-        String selectProperty; // user defined property that will represent the subgraph nodes
+        ForkJoinPool threadPool=new ForkJoinPool(numCores*parallelFactor.intValue());
 
-        ForkJoinPool threadPool=new ForkJoinPool(numCores*pFactor);
+        ArrayList<Node> patternNodeList=new ArrayList<>();//the list that store all pattern nodes
 
-        boolean isSuppressed;
-
-        if(suppressResult.equals("False")||suppressResult.equals("false")||suppressResult.equals("f")||suppressResult.equals("F"))
-
-            isSuppressed=false;
-
-        else
-
-            isSuppressed=true;//by default, the results are suppressed. only execution time and total number of subgraphs are returned
-
-        ArrayList<Node> queryNodeList=new ArrayList<>();//the list that store all query nodes
-
-        long start=System.currentTimeMillis();//give the program execution time
-
-        List<List<Node>> matchedSubgraphs = UllmannAlg(queryLabel, targetLabel,queryNodeList,THRESHOLD,threadPool);
-
-        long end=System.currentTimeMillis();
+        List<List<Node>> matchedSubgraphs = ullmannAlg(patternLabel, targetLabel,patternNodeList,threadPool);//execute the algorithm
 
         ArrayList<Result> resultList=new ArrayList<>();
 
-
-
         try {
             //return the results
-            //each row of the matchedSubgraphs contains nodes in a matched subgraph ordered by the query nodes in the queryNodeList
-            //i.e., queryNodeList.size()==matchedSubgraphs.get(i).size();
+            //each row of the matchedSubgraphs contains nodes in a matched subgraph ordered by the pattern nodes in the patternNodeList
+            //i.e., patternNodeList.size()==matchedSubgraphs.get(i).size();
 
             if (matchedSubgraphs.isEmpty())
 
@@ -89,59 +69,31 @@ public class SubgraphIsomorphism
 
             else {
 
-                    if(!isSuppressed)
-                    {
-
-                        for (int i = 0; i < matchedSubgraphs.size(); i++)
+                        for (Long i = 0L; i < matchedSubgraphs.size(); i++)
                         {
 
-                            for (int j = 0; j < matchedSubgraphs.get(i).size(); j++)
+                            for (int j = 0; j < matchedSubgraphs.get(i.intValue()).size(); j++)
                             {
-
-                                if (selectPropertyName.equals("ID"))
-
-                                    selectProperty=new String("Neo4j ID: "+Long.toString(matchedSubgraphs.get(i).get(j).getId()));
-
-                                else
-
-                                    selectProperty=new String(selectPropertyName+": "+matchedSubgraphs.get(i).get(j).getProperty(selectPropertyName).toString());
-
-                                String queryID=new String("Neo4j ID: "+Long.toString(queryNodeList.get(j).getId()));
 
                                 resultList.add(new Result(
 
-                                        selectProperty,
+                                        i,
 
-                                        queryID,
+                                        patternNodeList.get(j),
 
-                                        Integer.toString(i),
+                                        matchedSubgraphs.get(i.intValue()).get(j)
 
-                                        Integer.toString(matchedSubgraphs.size())));
+                                       ));
                             }
                         }
 
-                        //Note: the Result objects can only have String or Node type instance variables.
-                        return resultList.stream();
-                    }
-                    else
-                    {
-                        resultList.add(new Result(
-
-                                null,
-
-                                null,
-
-                                null,
-
-                                Integer.toString(matchedSubgraphs.size())));
 
                         return resultList.stream();
-                    }
                 }
 
             } catch (Exception e) {
 
-                String errMsg = new String("Error encountered while calculating subgraph isomorphism. selectProperty \""+selectPropertyName+"\" may not exist.");
+                String errMsg = new String("Error encountered while calculating subgraph isomorphism.");
 
                 log.error(errMsg, e);
 
@@ -152,10 +104,10 @@ public class SubgraphIsomorphism
 
 
 
-    private List<List<Node>> UllmannAlg(Label queryLabel, Label targetLabel,ArrayList<Node> queryNodeList,final int THRESHOLD, ForkJoinPool threadPool){
+    private List<List<Node>> ullmannAlg(Label patternLabel, Label targetLabel,ArrayList<Node> patternNodeList, ForkJoinPool threadPool){
 
 
-        List<List<Node>> queryNeighborList=new ArrayList<>();// the neighbor list for query vertices
+        List<List<Node>> patternNeighborList=new ArrayList<>();// the neighbor list for pattern vertices
         List<List<Node>> nodeNeighborList=new ArrayList<>();// the neighbor list for the Neo4j database with the target label
         List<List<Node>> matchedSubgraphs=new ArrayList<>();//store the final results
 
@@ -169,7 +121,7 @@ public class SubgraphIsomorphism
             ResourceIterator<Node> targetNodes;
             ArrayList<Node> nodeNeighborListIndex = new ArrayList<>();
             Map<Node,Integer> nodeNeighborListMap=new HashMap<>();//given an node, get the index in the node neighbor list
-            if (targetLabel.name().equals("All"))
+            if (targetLabel.name().equals(""))
                 targetNodes = db.getAllNodes().iterator();
             else
                 targetNodes = db.findNodes(targetLabel);
@@ -178,8 +130,8 @@ public class SubgraphIsomorphism
             while (targetNodes.hasNext()) {
                 Node targetNode = targetNodes.next();
 
-                //pass the query graph nodes if all neo4j database is selected
-                if (targetLabel.name().equals("All") && targetNode.hasLabel(queryLabel))
+                //pass the pattern graph nodes if all neo4j database is selected
+                if (targetLabel.name().equals("") && targetNode.hasLabel(patternLabel))
                     continue;
 
                 nodeNeighborList.add(findNodeNeighbors(targetNode, targetLabel));
@@ -194,16 +146,16 @@ public class SubgraphIsomorphism
            ///////////////////////////////////////////////////////////////
             //Step 2: create the candidate list and its index
             Map<Node,Integer> candidateListMap=new HashMap<>();
-            List<List<Node>> candidateList = findCandidates(queryLabel, candidateListMap, nodeNeighborList, nodeNeighborListIndex,queryNodeList);
+            List<List<Node>> candidateList = findCandidates(patternLabel, candidateListMap, nodeNeighborList, nodeNeighborListIndex,patternNodeList);
 
 
             //////////////////////////////////////////////////////////////////
-            //Step 3: create the query graph's neighbor list
-            queryNodeList.stream().forEach(node -> queryNeighborList.add(new ArrayList<>()));//insert empty lists
-            queryNodeList.parallelStream().forEach(node ->
+            //Step 3: create the pattern graph's neighbor list
+            patternNodeList.stream().forEach(node -> patternNeighborList.add(new ArrayList<>()));//insert empty lists
+            patternNodeList.parallelStream().forEach(node ->
                     {
                         try(Transaction tx1= db.beginTx()) {
-                            queryNeighborList.set(candidateListMap.get(node), findNodeNeighbors(node, queryLabel));
+                            patternNeighborList.set(candidateListMap.get(node), findNodeNeighbors(node, patternLabel));
                             tx1.success();
                         }
                     });
@@ -211,8 +163,9 @@ public class SubgraphIsomorphism
 
             ////////////////////////////////////////////////////////
             //refine the candidate list preliminarily, check if it is valid
-            refineCandidate(candidateList, queryNeighborList, nodeNeighborList, candidateListMap, nodeNeighborListMap);
+            refineCandidate(candidateList, patternNeighborList, nodeNeighborList, candidateListMap, nodeNeighborListMap);
             if (!isCorrect(candidateList)) {
+                tx.success();
                 return matchedSubgraphs;
             }
 
@@ -228,9 +181,12 @@ public class SubgraphIsomorphism
             //begin multithreading execution of the algorithm
 
 
+            int threadPoolSize=threadPool.getParallelism();
+            int jobSize=candidateList.get(0).size();
+            final long splitSize = (jobSize>threadPoolSize*2)?jobSize/(threadPoolSize*2):1;
             SubgraphProcessor mainProcessor=new SubgraphProcessor(candidateList,candidateListMap,candidateListSize,
-                    queryNeighborList,
-                    nodeNeighborList,nodeNeighborListMap,THRESHOLD,
+                    patternNeighborList,
+                    nodeNeighborList,nodeNeighborListMap,splitSize,
                     threadPool);
 
             Future<List<List<Node>>> futureMatchedSubgraphs=threadPool.submit(mainProcessor);
@@ -246,29 +202,6 @@ public class SubgraphIsomorphism
 
             tx.success();
 
-//            //check redundant subgraphs
-//            if(!matchedSubgraphs.isEmpty())
-//            {
-//                List<List<Node>> refinedMatchedSubgraphs=new ArrayList<>();
-//
-//                for(int i=0;i<matchedSubgraphs.size();i++)
-//                {
-//                    Set<Node> subgraphSet=matchedSubgraphs.get(i).stream().collect(Collectors.toSet());
-//                    List<Set<Node>> verifySetList=new ArrayList<>();
-//
-//                    for(int j=i+1;j<matchedSubgraphs.size();j++)
-//                    {
-//                        Set<Node> verifySet=matchedSubgraphs.get(j).stream().collect(Collectors.toSet());
-//                        verifySetList.add(verifySet);
-//                    }
-//                    if(verifySetList.stream().anyMatch(set->set.equals(subgraphSet)))
-//                        continue;
-//                    else
-//                        refinedMatchedSubgraphs.add(matchedSubgraphs.get(i));
-//                }
-//
-//                matchedSubgraphs=refinedMatchedSubgraphs;
-//            }
         }
         return matchedSubgraphs;
     }
@@ -285,7 +218,7 @@ public class SubgraphIsomorphism
     }
 
 
-    private void refineCandidate(List<List<Node>> candidateList,List<List<Node>> queryNeighborList,List<List<Node>> nodeNeighborList,
+    private void refineCandidate(List<List<Node>> candidateList,List<List<Node>> patternNeighborList,List<List<Node>> nodeNeighborList,
                                  Map<Node,Integer> candidateListMap, Map<Node,Integer> nodeNeighborListMap)
     {//given the three lists, refine the candidate list
 
@@ -302,7 +235,7 @@ public class SubgraphIsomorphism
         candidateList.stream().forEach(list->nodesToRemove.add(new ArrayList<>()));//create the list of node that should be removed
 
         IntStream.range(0,candidateList.size()).parallel().forEach(ii->candidateList.get(ii).stream().forEach(node-> {
-            boolean refinable = queryNeighborList.get(ii).parallelStream().allMatch(qnode ->
+            boolean refinable = patternNeighborList.get(ii).parallelStream().allMatch(qnode ->
                     candidateList.get(candidateListMap.get(qnode)).parallelStream().anyMatch(subnode ->
                             nodeNeighborList.get(nodeNeighborListMap.get(node)).contains(subnode)));
 
@@ -322,24 +255,24 @@ public class SubgraphIsomorphism
     }
 
 
-    private List<List<Node>> findCandidates(Label queryLabel, Map<Node,Integer> candidateListMap,List<List<Node>> nodeNeighborList, ArrayList<Node> nodeNeighborListIndex,ArrayList<Node> queryNodeList)
-    {//find all query vertex candidates in the Neo4j database under the label "targetLabel"
+    private List<List<Node>> findCandidates(Label patternLabel, Map<Node,Integer> candidateListMap,List<List<Node>> nodeNeighborList, ArrayList<Node> nodeNeighborListIndex,ArrayList<Node> patternNodeList)
+    {//find all pattern vertex candidates in the Neo4j database under the label "targetLabel"
         //input an empty candidate-list index list for modification
         List<List<Node>> candidateList = new ArrayList<>();
         try(Transaction tx= db.beginTx()) {
-            ResourceIterator<Node> queryNodes = db.findNodes(queryLabel);
+            ResourceIterator<Node> patternNodes = db.findNodes(patternLabel);
 
-            while (queryNodes.hasNext()) {
+            while (patternNodes.hasNext()) {
                 ArrayList<Node> candidateListPerVertex = new ArrayList<>();
-                Node queryNode = queryNodes.next();
-                int queryNodeDegree = findNodeNeighbors(queryNode, queryLabel).size();
+                Node patternNode = patternNodes.next();
+                int patternNodeDegree = findNodeNeighbors(patternNode, patternLabel).size();
 
                 for (int i = 0; i < nodeNeighborList.size(); i++) {
                     int targetNodeDegree = nodeNeighborList.get(i).size();
-                    if (targetNodeDegree >= queryNodeDegree)
+                    if (targetNodeDegree >= patternNodeDegree)
                         candidateListPerVertex.add(nodeNeighborListIndex.get(i));
                 }
-                candidateListPerVertex.add(0, queryNode);// temporarily append the query node to the first position of the list
+                candidateListPerVertex.add(0, patternNode);// temporarily append the pattern node to the first position of the list
                 candidateList.add(candidateListPerVertex);
             }
 
@@ -355,12 +288,12 @@ public class SubgraphIsomorphism
 
             for (int i=0;i<candidateList.size();i++)
             {
-                queryNodeList.add(candidateList.get(i).get(0));
+                patternNodeList.add(candidateList.get(i).get(0));
                 candidateListMap.put(candidateList.get(i).get(0),i);
             }
 
-            candidateList.stream().forEach(nodes -> nodes.remove(0));//remove the temporary query node at position 0
-            queryNodes.close();
+            candidateList.stream().forEach(nodes -> nodes.remove(0));//remove the temporary pattern node at position 0
+            patternNodes.close();
             tx.success();
         }
         return candidateList;
@@ -372,7 +305,7 @@ public class SubgraphIsomorphism
         Iterator<Relationship> relationships=node.getRelationships().iterator();
         while(relationships.hasNext()){
             Node neighborNode=relationships.next().getOtherNode(node);
-            if (targetLabel.name().equals("All"))
+            if (targetLabel.name().equals(""))
             {
                 neighborsOfnode.add(neighborNode);
             }

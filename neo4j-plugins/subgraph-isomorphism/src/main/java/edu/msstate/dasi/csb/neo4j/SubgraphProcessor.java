@@ -1,4 +1,4 @@
-package subgraphIso;
+package edu.msstate.dasi.csb.neo4j;
 
 import java.util.*;
 import java.util.concurrent.ForkJoinPool;
@@ -15,13 +15,13 @@ public class SubgraphProcessor extends RecursiveTask<List<List<Node>>>{
     final private Map<Node,Integer> nodeNeighborListMap;
     final private int lo;
     final private int hi;
-    final private ForkJoinPool pool;
+    final private ForkJoinPool threadPool;
     private List<List<Node>> matchedSubgraphs;
-    final private int THRESHOLD;
+    final private long splitSize;
 
     SubgraphProcessor(List<List<Node>> candidateList, Map<Node,Integer> candidateNode2Index, int[] candidateListSize,
                              List<List<Node>> queryNeighborList,
-                             List<List<Node>> nodeNeighborList, Map<Node,Integer> nodeNeighborListMap, int THRESHOLD, ForkJoinPool pool)
+                             List<List<Node>> nodeNeighborList, Map<Node,Integer> nodeNeighborListMap, long splitSize, ForkJoinPool threadPool)
     {
         this.lo=0;
         this.hi=candidateList.get(0).size();
@@ -31,9 +31,9 @@ public class SubgraphProcessor extends RecursiveTask<List<List<Node>>>{
         this.queryNeighborList=queryNeighborList;
         this.nodeNeighborList=nodeNeighborList;
         this.nodeNeighborListMap=nodeNeighborListMap;
-        this.pool=pool;
+        this.threadPool=threadPool;
         this.matchedSubgraphs=new ArrayList<>();
-        this.THRESHOLD=THRESHOLD;
+        this.splitSize=splitSize;
 
     }
 
@@ -43,7 +43,7 @@ public class SubgraphProcessor extends RecursiveTask<List<List<Node>>>{
         //assign tasks to different threads
         List<SubgraphProcessor> tasks=new ArrayList<>();
 
-        if(hi-lo<=THRESHOLD) {
+        if(hi-lo<=splitSize) {
 
             //a task is small enough for a single thread
             matchedSubgraphs.addAll(backtracking(0, candidateList, candidateNode2Index, candidateListSize, queryNeighborList, nodeNeighborList, nodeNeighborListMap));
@@ -55,8 +55,8 @@ public class SubgraphProcessor extends RecursiveTask<List<List<Node>>>{
             List<List<Node>> leftCandidateList=copyNodeList(candidateList,lo,mid);
             List<List<Node>> rightCandidateList=copyNodeList(candidateList,mid,hi);
 
-            SubgraphProcessor forkedTask1=new SubgraphProcessor(leftCandidateList,candidateNode2Index,candidateListSize,queryNeighborList,nodeNeighborList,nodeNeighborListMap,THRESHOLD,pool);
-            SubgraphProcessor forkedTask2=new SubgraphProcessor(rightCandidateList,candidateNode2Index,candidateListSize,queryNeighborList,nodeNeighborList,nodeNeighborListMap,THRESHOLD,pool);
+            SubgraphProcessor forkedTask1=new SubgraphProcessor(leftCandidateList,candidateNode2Index,candidateListSize,queryNeighborList,nodeNeighborList,nodeNeighborListMap,splitSize,threadPool);
+            SubgraphProcessor forkedTask2=new SubgraphProcessor(rightCandidateList,candidateNode2Index,candidateListSize,queryNeighborList,nodeNeighborList,nodeNeighborListMap,splitSize,threadPool);
 
             invokeAll(forkedTask1,forkedTask2);//don't use two fork() here, as that will make the current thread idle waiting for the forked threads until they finish the task
             tasks.add(forkedTask1);
