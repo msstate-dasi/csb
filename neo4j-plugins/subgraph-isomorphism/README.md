@@ -22,11 +22,11 @@ This plugin is supposed to be used in the Cypher console, either in the Web brow
 
 ### Parameters:
 
-patternLabel: the Neo4j database label of the query graph
+patternLabel (String): the Neo4j database label of the pattern graph
 
-targetLabel: the Neo4j database label of the target graph. if use "All", all nodes in the dataset will be calculated
+targetLabel (String): the Neo4j database label of the target graph. If the empty string `""` is used, all nodes except nodes with patternLabel in the database will be analyzed.
 
-parallelFactor: define the size of the thread pool. The number of threads in the pool is parallelFactor*NumberofCores.
+parallelFactor (Long): define the size of the thread pool. The number of threads in the pool is parallelFactor*NumberofCores.
 
 
 ### Return:
