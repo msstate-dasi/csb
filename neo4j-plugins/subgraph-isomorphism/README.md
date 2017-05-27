@@ -1,6 +1,6 @@
 # subgraph-isomorphism-neo4j
 
-This project under @msstate-dasi provides a subgraph isomorphism Java plugin for Neo4j database. Given a query graph and a target graph, it calculates all possible subgraphs of the target graph isomorphic to the query graph. Both the query graph and target graph are stored in the same Neo4j database. Currently it utilized the Ullmann's algorithm and works only with undirected graphs (ignore directions in a directional graph).
+This project under @msstate-dasi provides a subgraph isomorphism Java plugin for Neo4j database. Given a pattern graph and a target graph, it calculates all possible subgraphs of the target graph isomorphic to the pattern graph. Both the pattern graph and target graph are stored in the same Neo4j database. Currently it utilized the Ullmann's algorithm and works only with undirected graphs (ignore directions in a directional graph).
 
 ## Compile: 
 
@@ -16,31 +16,24 @@ Copy the JAR file `subgraph-isomorphism-0.x-SNAPSHOT.jar` under `target\` to you
 
 This plugin is supposed to be used in the Cypher console, either in the Web browser or in the commandline console.
 
-`call SubgraphIso("QueryLabel","TargetLabel","2","100","False")`
+`CALL csb.subgraphIsomorphism(patternLabel, targetLabel) YIELD subgraphIndex, patternNode, targetNode`
 
-### Arguments:
+`CALL csb.subgraphIsomorphism(patternLabel, targetLabel, parallelFactor) YIELD subgraphIndex, patternNode, targetNode`
 
-QueryLabel: the Neo4j database label of the query graph
+### Parameters:
 
-TargetLabel: the Neo4j database label of the target graph. if use "All", all nodes in the dataset will be calculated
+patternLabel: the Neo4j database label of the query graph
 
-The parallelism factor (pFactor): the size of the thread pool. The number of threads in the pool is pFactor*NumberofCores
+targetLabel: the Neo4j database label of the target graph. if use "All", all nodes in the dataset will be calculated
 
-The Split Size (SplitSize): the number of iterations assigned to a single thread. A bigger SplitSize value requires less threads.
+parallelFactor: define the size of the thread pool. The number of threads in the pool is parallelFactor*NumberofCores.
 
-Suppressed result:
-	-True only display the total number of matching subgraphs and execution time
-	-False display full information
 
 ### Return:
-All matching subgraphs and related info. Four columns:
+All matching subgraphs and related info. Three columns:
 
-1. Isomorphic subgraph nodes
+1. Isomorphic subgraph index 
 
-2. Matching query graph nodes
+2. Pattern graph nodes
 
-3. Subgraph index: which subgraph does the resultNode belong to
-
-4. Total number of subgraphs
-
-5. Execution Time
+2. Isomorphic subgraph nodes in the target graph
