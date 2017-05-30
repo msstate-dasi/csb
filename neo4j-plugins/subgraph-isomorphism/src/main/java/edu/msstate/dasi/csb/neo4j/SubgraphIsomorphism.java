@@ -65,7 +65,7 @@ public class SubgraphIsomorphism
                 return resultList.stream();
             }
         } catch (Exception e) {
-            String errMsg = new String("Error encountered while calculating subgraph isomorphism.");
+            String errMsg = "Error encountered while calculating subgraph isomorphism.";
             log.error(errMsg, e);
             throw new RuntimeException(errMsg, e);}
     }
@@ -118,7 +118,7 @@ public class SubgraphIsomorphism
 
             /* Create the pattern graph's neighbor list ***************************************************************/
 
-            patternNodeList.stream().forEach(node -> patternNeighborList.add(new ArrayList<>()));
+            patternNodeList.parallelStream().forEach(node -> patternNeighborList.add(new ArrayList<>()));
             patternNodeList.parallelStream().forEach(node -> {
                 try(Transaction tx1 = db.beginTx()) {
                     patternNeighborList.set(candidateListMap.get(node), findNodeNeighbors(node, patternLabel));
@@ -168,8 +168,8 @@ public class SubgraphIsomorphism
      * Check if the current candidate list is correct. (i.e., is there any empty candidate list?)
      */
     private boolean isCorrect(List<List<Node>> candidateList) {
-        for (int i=0;i<candidateList.size();i++) {
-            if (candidateList.get(i).isEmpty()) return false;
+        for (List<Node> aCandidateList : candidateList) {
+            if (aCandidateList.isEmpty()) return false;
         }
         return true;
     }
@@ -190,9 +190,9 @@ public class SubgraphIsomorphism
         List<List<Node>> nodesToRemove = new ArrayList<>();
 
         // Create the list of node that should be removed
-        candidateList.stream().forEach( list -> nodesToRemove.add(new ArrayList<>()) );
+        candidateList.parallelStream().forEach(list -> nodesToRemove.add(new ArrayList<>()));
 
-        IntStream.range(0,candidateList.size()).parallel().forEach( ii -> candidateList.get(ii).stream().forEach(node -> {
+        IntStream.range(0,candidateList.size()).parallel().forEach( ii -> candidateList.get(ii).parallelStream().forEach(node -> {
             boolean refinable = patternNeighborList.get(ii).parallelStream().allMatch(qnode ->
                     candidateList.get(candidateListMap.get(qnode)).parallelStream().anyMatch(subnode ->
                             nodeNeighborList.get(nodeNeighborListMap.get(node)).contains(subnode)));
@@ -236,13 +236,7 @@ public class SubgraphIsomorphism
             }
 
             // Sort the candidate list by the number of candidates (ascending)
-            Comparator<List<Node>> candidateListSizeComparator = new Comparator<List<Node>>() {
-                @Override
-                public int compare(List<Node> o1, List<Node> o2) {
-
-                    return o1.size() - o2.size();
-                }
-            };
+            Comparator<List<Node>> candidateListSizeComparator = Comparator.comparingInt(List::size);
             candidateList.sort(candidateListSizeComparator);
 
             for (int i=0; i < candidateList.size(); i++) {
@@ -251,7 +245,7 @@ public class SubgraphIsomorphism
             }
 
             // Remove the temporary pattern node at position 0
-            candidateList.stream().forEach(nodes -> nodes.remove(0));
+            candidateList.parallelStream().forEach(nodes -> nodes.remove(0));
             patternNodes.close();
             tx.success();
         }
@@ -263,15 +257,13 @@ public class SubgraphIsomorphism
      */
     private ArrayList<Node> findNodeNeighbors(Node node, Label targetLabel) {
         ArrayList<Node> neighborsOfnode = new ArrayList<>();
-        Iterator<Relationship> relationships = node.getRelationships().iterator();
 
-        while( relationships.hasNext() ) {
-            Node neighborNode = relationships.next().getOtherNode(node);
+        for (Relationship relationship : node.getRelationships()) {
+            Node neighborNode = relationship.getOtherNode(node);
 
             if (targetLabel.name().equals("")) {
                 neighborsOfnode.add(neighborNode);
-            }
-            else if (neighborNode.hasLabel(targetLabel)) {
+            } else if (neighborNode.hasLabel(targetLabel)) {
                 // Only add nodes that have the target label and ignore others
                 neighborsOfnode.add(neighborNode);
             }

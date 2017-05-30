@@ -83,12 +83,12 @@ public class SubgraphProcessor extends RecursiveTask<List<List<Node>>>{
                                           Map<Node, Integer> nodeNeighborListMap) {
         List<List<Node>> matchedSubgraphs=new ArrayList<>();
 
-        if( numLayer == queryNeighborList.size() ) {
+        if (numLayer == queryNeighborList.size()) {
             // A matching subgraph is found
             ArrayList<Node> subgraph = new ArrayList<>();
 
-            for (int i=0;i<candidateList.size();i++) {
-                subgraph.add(candidateList.get(i).get(0));
+            for (List<Node> aCandidateList : candidateList) {
+                subgraph.add(aCandidateList.get(0));
             }
             matchedSubgraphs.add(subgraph);
             return matchedSubgraphs;
@@ -141,9 +141,7 @@ public class SubgraphProcessor extends RecursiveTask<List<List<Node>>>{
         for (int i = 1; i < originalList.size(); i++) {
             ArrayList<Node> temp = new ArrayList<>();
 
-            for (int j = 0; j < originalList.get(i).size(); j++) {
-                temp.add(originalList.get(i).get(j));
-            }
+            temp.addAll(originalList.get(i));
             copyList.add(temp);
         }
         return copyList;
@@ -160,9 +158,9 @@ public class SubgraphProcessor extends RecursiveTask<List<List<Node>>>{
         List<List<Node>> nodesToRemove = new ArrayList<>();
 
         // Create the list of node that should be removed
-        candidateList.stream().forEach( list -> nodesToRemove.add(new ArrayList<>()) );
+        candidateList.parallelStream().forEach( list -> nodesToRemove.add(new ArrayList<>()) );
 
-        IntStream.range(0, candidateList.size()).parallel().forEach(ii -> candidateList.get(ii).stream().forEach(node -> {
+        IntStream.range(0, candidateList.size()).parallel().forEach(ii -> candidateList.get(ii).parallelStream().forEach(node -> {
             boolean refinable = queryNeighborList.get(ii).parallelStream().allMatch(qnode ->
                     candidateList.get(candidateNode2Index.get(qnode)).parallelStream().anyMatch(subnode ->
                             nodeNeighborList.get(nodeNeighborListMap.get(node)).contains(subnode)));
@@ -180,8 +178,8 @@ public class SubgraphProcessor extends RecursiveTask<List<List<Node>>>{
      * Check if the current candidate list is correct. (i.e., is there any empty candidate list?)
      */
     private boolean isCorrect(List<List<Node>> candidateList) {
-        for (int i = 0; i < candidateList.size(); i++) {
-            if ( candidateList.get(i).isEmpty() ) return false;
+        for (List<Node> aCandidateList : candidateList) {
+            if (aCandidateList.isEmpty()) return false;
         }
         return true;
     }
