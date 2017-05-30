@@ -228,9 +228,12 @@ object SparkWorkload extends Workload {
         .map{ case (_, (vertex, candidatesArray)) => (vertex, Array(candidatesArray))}
         .reduceByKey((array1, array2) => array1 ++ array2, partitions)
 
-      val refinedCandidates = neighborsOfCandidates.join(candidatesOfPatternNeighbors)
-        .filter{ case (_, ((_, candidateNeighbors), candidatesOfNeighbors)) =>
-          candidatesOfNeighbors.forall( _.intersect(candidateNeighbors).nonEmpty ) }
+      val refinedCandidates = neighborsOfCandidates.leftOuterJoin(candidatesOfPatternNeighbors)
+        .filter{
+          case (_, ((_, candidateNeighbors), Some(candidatesOfNeighbors))) =>
+            candidatesOfNeighbors.forall( _.intersect(candidateNeighbors).nonEmpty )
+          case (_, ((_, _), None)) => true
+        }
         .repartition(partitions)
         .map{ case (vertex, ((candidate, _), _)) => (vertex, Array(candidate)) }
         .reduceByKey((array1, array2) => array1 ++ array2, partitions)
@@ -357,6 +360,16 @@ object SparkWorkload extends Workload {
 
     val partitions = graph.vertices.getNumPartitions
 
+    val patternVerticesWithDegree = pattern.outDegrees.union(
+      // Get all vertices with a degree value of 0
+      pattern.vertices.subtractByKey(pattern.outDegrees).mapValues( _ => 0)
+    )
+
+    val graphVerticesWithDegree = graph.outDegrees.union(
+      // Get all vertices with a 0 degree
+      graph.vertices.subtractByKey(graph.outDegrees).mapValues( _ => 0)
+    )
+
     /**
      * The definition of a candidate is the following statement:
      *
@@ -365,8 +378,8 @@ object SparkWorkload extends Workload {
      * c(x) = {y ∈ vertices(graph): degree(y) ≥ degree(x)}
      *
      */
-    val candidates = pattern.degrees.sortBy(_._2, ascending = false)
-      .cartesian(graph.degrees)
+    val candidates = patternVerticesWithDegree.sortBy(_._2, ascending = false)
+      .cartesian(graphVerticesWithDegree)
       .coalesce(partitions)
       .filter{ case ( (_, vertexDegree), (_, candidateDegree) ) => candidateDegree >= vertexDegree }
       .repartition(partitions)
@@ -382,9 +395,9 @@ object SparkWorkload extends Workload {
       return
     }
 
-    val graphNeighbors = graph.collectNeighborIds(EdgeDirection.Either).cache()
+    val graphNeighbors = graph.collectNeighborIds(EdgeDirection.Out).cache()
 
-    val patternNeighbors = pattern.collectNeighborIds(EdgeDirection.Either)
+    val patternNeighbors = pattern.collectNeighborIds(EdgeDirection.Out)
       .flatMap{ case (vertex, neighbors) => neighbors.map( (vertex, _) ) } // Unroll the neighbors array into separate entries
       .cache()
 
