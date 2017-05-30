@@ -38,26 +38,26 @@ package edu.msstate.dasi.csb
  *                    total_length header field).
  * @param desc        Connection description
  */
-case class EdgeData(ts: Long = Long.MinValue,
+case class EdgeData(ts: Long,
                     /* uid: String */
-                    origPort: Int = Int.MinValue,
-                    respPort: Int = Int.MinValue,
-                    proto: String = "",
+                    origPort: Int,
+                    respPort: Int,
+                    proto: String,
                     /* service: String, */
-                    duration: Double = Double.MinValue,
-                    origBytes: Long = Long.MinValue,
-                    respBytes: Long = Long.MinValue,
-                    connState: String = "",
+                    duration: Double,
+                    origBytes: Long,
+                    respBytes: Long,
+                    connState: String,
                     /* localOrig: Boolean, */
                     /* localResp: Boolean, */
                     /* missedBytes: Long, */
                     /* history: String, */
-                    origPkts: Long = Long.MinValue,
-                    origIpBytes: Long = Long.MinValue,
-                    respPkts: Long = Long.MinValue,
-                    respIpBytes: Long = Long.MinValue,
+                    origPkts: Long,
+                    origIpBytes: Long,
+                    respPkts: Long,
+                    respIpBytes: Long,
                     /* tunnelParents: String, */
-                    desc: String = "") {
+                    desc: String) {
   def toCsv: String = s"$ts,$origPort,$respPort,$proto,$duration,$origBytes,$respBytes,$connState,$origPkts," +
     s"$origIpBytes,$respPkts,$respIpBytes,$desc"
 }
@@ -106,7 +106,8 @@ object EdgeData {
             origPkts.toLong,
             origIpBytes.toLong,
             respPkts.toLong,
-            respIpBytes.toLong
+            respIpBytes.toLong,
+            ""
           )
       }
     }
