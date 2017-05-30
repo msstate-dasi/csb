@@ -118,7 +118,7 @@ public class SubgraphIsomorphism
 
             /* Create the pattern graph's neighbor list ***************************************************************/
 
-            patternNodeList.parallelStream().forEach(node -> patternNeighborList.add(new ArrayList<>()));
+            patternNodeList.forEach(node -> patternNeighborList.add(new ArrayList<>()));
             patternNodeList.parallelStream().forEach(node -> {
                 try(Transaction tx1 = db.beginTx()) {
                     patternNeighborList.set(candidateListMap.get(node), findNodeNeighbors(node, patternLabel));
@@ -190,9 +190,9 @@ public class SubgraphIsomorphism
         List<List<Node>> nodesToRemove = new ArrayList<>();
 
         // Create the list of node that should be removed
-        candidateList.parallelStream().forEach(list -> nodesToRemove.add(new ArrayList<>()));
+        candidateList.forEach(list -> nodesToRemove.add(new ArrayList<>()));
 
-        IntStream.range(0,candidateList.size()).parallel().forEach( ii -> candidateList.get(ii).parallelStream().forEach(node -> {
+        IntStream.range(0,candidateList.size()).parallel().forEach( ii -> candidateList.get(ii).forEach(node -> {
             boolean refinable = patternNeighborList.get(ii).parallelStream().allMatch(qnode ->
                     candidateList.get(candidateListMap.get(qnode)).parallelStream().anyMatch(subnode ->
                             nodeNeighborList.get(nodeNeighborListMap.get(node)).contains(subnode)));
@@ -245,7 +245,7 @@ public class SubgraphIsomorphism
             }
 
             // Remove the temporary pattern node at position 0
-            candidateList.parallelStream().forEach(nodes -> nodes.remove(0));
+            candidateList.forEach(nodes -> nodes.remove(0));
             patternNodes.close();
             tx.success();
         }

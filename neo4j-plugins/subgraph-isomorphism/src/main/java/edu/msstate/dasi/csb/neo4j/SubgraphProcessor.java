@@ -158,9 +158,9 @@ public class SubgraphProcessor extends RecursiveTask<List<List<Node>>>{
         List<List<Node>> nodesToRemove = new ArrayList<>();
 
         // Create the list of node that should be removed
-        candidateList.parallelStream().forEach( list -> nodesToRemove.add(new ArrayList<>()) );
+        candidateList.forEach( list -> nodesToRemove.add(new ArrayList<>()) );
 
-        IntStream.range(0, candidateList.size()).parallel().forEach(ii -> candidateList.get(ii).parallelStream().forEach(node -> {
+        IntStream.range(0, candidateList.size()).parallel().forEach(ii -> candidateList.get(ii).forEach(node -> {
             boolean refinable = queryNeighborList.get(ii).parallelStream().allMatch(qnode ->
                     candidateList.get(candidateNode2Index.get(qnode)).parallelStream().anyMatch(subnode ->
                             nodeNeighborList.get(nodeNeighborListMap.get(node)).contains(subnode)));
