@@ -64,7 +64,7 @@ object SparkPersistence extends GraphPersistence {
       }
     )
 
-    // Edge example: Edge(230520062210,227807592450,EdgeData(1318226897,udp,0.003044,116,230,SF,2,172,2,286,))
+    // Edge example: Edge(230520062210,227807592450,EdgeData(**data**))
     val edgesRegex = "\\w+\\(|,"
 
     val edges = edgesText.map(line =>

@@ -4,6 +4,8 @@ package edu.msstate.dasi.csb
  * Defines the edge data which represents the connection properties.
  *
  * @param ts          The timestamp of the first packet.
+ * @param origPort    The originator’s port number.
+ * @param respPort    The responder’s port number.
  * @param proto       The transport layer protocol of the connection.
  * @param duration    How long the connection lasted. For 3-way or 4-way connection tear-downs, this will not include
  *                    the final ACK.
@@ -38,6 +40,8 @@ package edu.msstate.dasi.csb
  */
 case class EdgeData(ts: Long = Long.MinValue,
                     /* uid: String */
+                    origPort: Int = Int.MinValue,
+                    respPort: Int = Int.MinValue,
                     proto: String = "",
                     /* service: String, */
                     duration: Double = Double.MinValue,
@@ -54,8 +58,8 @@ case class EdgeData(ts: Long = Long.MinValue,
                     respIpBytes: Long = Long.MinValue,
                     /* tunnelParents: String, */
                     desc: String = "") {
-  def toCsv: String = s"$ts,$proto,$duration,$origBytes,$respBytes,$connState,$origPkts,$origIpBytes,$respPkts," +
-    s"$respIpBytes,$desc"
+  def toCsv: String = s"$ts,$origPort,$respPort,$proto,$duration,$origBytes,$respBytes,$connState,$origPkts," +
+    s"$origIpBytes,$respPkts,$respIpBytes,$desc"
 }
 
 object EdgeData {
@@ -66,13 +70,16 @@ object EdgeData {
     if (text == "null") {
       null.asInstanceOf[EdgeData]
     } else {
-      // EdgeData example: EdgeData(1318226897,udp,0.003044,116,230,SF,2,172,2,286,)
+      // EdgeData example: EdgeData(1318226897,68,67,udp,0.003044,116,230,SF,2,172,2,286,)
       val dataRegex = "\\w+\\(|[,)]"
 
       text.replaceFirst("^" + dataRegex, "").split(dataRegex) match {
-        case Array(ts, proto, duration, origBytes, respBytes, connState, origPkts, origIpBytes, respPkts, respIpBytes, desc) =>
+        case Array(ts, origPort, respPort, proto, duration, origBytes, respBytes, connState, origPkts, origIpBytes,
+        respPkts, respIpBytes, desc) =>
           new EdgeData(
             ts.toLong,
+            origPort.toInt,
+            respPort.toInt,
             proto,
             duration.toDouble,
             origBytes.toLong,
@@ -85,9 +92,12 @@ object EdgeData {
             desc
           )
         // TODO: check why we need the following, i.e. why might "desc" be empty?
-        case Array(ts, proto, duration, origBytes, respBytes, connState, origPkts, origIpBytes, respPkts, respIpBytes) =>
+        case Array(ts, origPort, respPort, proto, duration, origBytes, respBytes, connState, origPkts, origIpBytes,
+        respPkts, respIpBytes) =>
           new EdgeData(
             ts.toLong,
+            origPort.toInt,
+            respPort.toInt,
             proto,
             duration.toDouble,
             origBytes.toLong,
@@ -102,6 +112,6 @@ object EdgeData {
     }
   }
 
-  def neo4jCsvHeader: String = "ts:long,proto,duration:double,origBytes:long,respBytes:long,connState,origPkts:long," +
-    "origIpBytes:long,respPkts:long,respIpBytes:long,desc"
+  def neo4jCsvHeader: String = "ts:long,origPort:int,respPort:int,proto,duration:double,origBytes:long," +
+    "respBytes:long,connState,origPkts:long,origIpBytes:long,respPkts:long,respIpBytes:long,desc"
 }

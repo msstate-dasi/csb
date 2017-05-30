@@ -31,16 +31,16 @@ object DataParser {
       val pieces = line.split('\t')
 
       val origIp = pieces(2)
-      val origPort = pieces(3)
-      val srcId = inetToLong(origIp) | (origPort.toLong << 32)
+      val srcId = inetToLong(origIp)
 
       val respIp = pieces(4)
-      val respPort = pieces(5)
-      val dstId = inetToLong(respIp) | (respPort.toLong << 32)
+      val dstId = inetToLong(respIp)
 
       Edge(srcId, dstId, EdgeData(
         ts = pieces(0).split('.')(0).toLong,
         /* uid = pieces(1), */
+        origPort = pieces(3).toInt,
+        respPort = pieces(5).toInt,
         proto = pieces(6),
         /* service = pieces(7), */
         duration = pieces(8).toDouble,

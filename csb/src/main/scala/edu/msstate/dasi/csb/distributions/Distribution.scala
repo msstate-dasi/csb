@@ -38,11 +38,11 @@ class Distribution[T](distribution: Array[(T, Double)]) extends Serializable {
 }
 
 /**
- *
+ * The [[Distribution]] object contains helper methods to build [[Distribution]] instances from RDDs.
  */
 object Distribution {
   /**
-   * Builds a distribution object from an [[RDD]] of values.
+   * Builds a distribution instance from an [[RDD]] of values.
    *
    * @note the resulting distribution is expected to be small, as it will be loaded into the driver's memory.
    *
