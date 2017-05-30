@@ -18,20 +18,13 @@ import org.neo4j.graphdb.Node;
 public class Result {
 
     public Long subgraphIndex;
-
     public Node patternNode;
-
     public Node targetNode;
 
-
-    public Result(Long subgraphIndex,Node patternNode,Node targetNode) {
-
+    public Result(Long subgraphIndex, Node patternNode, Node targetNode) {
         this.subgraphIndex = subgraphIndex;
-
         this.patternNode = patternNode;
-
         this.targetNode = targetNode;
-
     }
 }
 
