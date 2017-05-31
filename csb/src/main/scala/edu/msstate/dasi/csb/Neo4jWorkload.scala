@@ -138,7 +138,7 @@ class Neo4jWorkload(url: String, username: String, password: String) extends Wor
    * @return RDD of Arrays which contain VertexId and VD for each neighbor
    */
   def inNeighbors[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = {
-    val query = "MATCH (n) RETURN n, [ (n)<--(m) | m ];"
+    val query = "MATCH (n)<--(m) RETURN n, collect(m);"
 
     run(query)
   }
@@ -154,7 +154,7 @@ class Neo4jWorkload(url: String, username: String, password: String) extends Wor
    * @return RDD of Arrays which contain VertexId and VD for each neighbor
    */
   def outNeighbors[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = {
-    val query = "MATCH (n) RETURN n, [ (n)-->(m) | m ];"
+    val query = "MATCH (n)-->(m) RETURN n, collect(m);"
 
     run(query)
   }
@@ -170,7 +170,7 @@ class Neo4jWorkload(url: String, username: String, password: String) extends Wor
    * @return RDD of Arrays which contain VertexId and VD for each neighbor
    */
   def neighbors[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = {
-    val query = "MATCH (n) RETURN n, [ (n)--(m) | m ];"
+    val query = "MATCH (n)--(m) RETURN n, collect(m);"
 
     run(query)
   }
@@ -185,7 +185,7 @@ class Neo4jWorkload(url: String, username: String, password: String) extends Wor
    * @return RDD containing pairs of (VertexID, Iterable of Edges) for every vertex in the graph
    */
   def inEdges[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = {
-    val query = "MATCH (n) RETURN n, [ (n)<-[r]-() | r ];"
+    val query = "MATCH (n)<-[r]-() RETURN n, collect(r);"
 
     run(query)
   }
@@ -200,7 +200,7 @@ class Neo4jWorkload(url: String, username: String, password: String) extends Wor
    * @return RDD containing pairs of (VertexID, Iterable of Edges) for every vertex in the graph
    */
   def outEdges[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = {
-    val query = "MATCH (n) RETURN n, [ (n)-[r]->() | r ];"
+    val query = "MATCH (n)-[r]->() RETURN n, collect(r);"
 
     run(query)
   }
@@ -269,13 +269,19 @@ class Neo4jWorkload(url: String, username: String, password: String) extends Wor
   /**
    * Computes the closeness centrality of a node using the formula N/(sum(distances)).
    */
-  def closenessCentrality[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], vertex: VertexId): Unit = ???
+  def closenessCentrality[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], vertex: VertexId): Unit = {
+    val query = "MATCH (a), (b {name:\"" + vertex + "\"}) WHERE a<>b " +
+      "WITH length(shortestPath((a)-[]-(b))) AS dist, a, b" +
+      "RETURN DISTINCT a, sum(1.0/dist) AS close_central ORDER BY close_central DESC;"
+
+    run(query)
+  }
 
   /**
    * Computes the shortest path from a source vertex to all other vertices.
    */
   def sssp[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], src: VertexId): Unit = {
-    val query ="MATCH (src {name:\"" + src + "\"}), (dst), " +
+    val query = "MATCH (src {name:\"" + src + "\"}), (dst), " +
       "path = shortestPath((src)-[*]->(dst)) " +
       "WHERE dst.name <> src.name " +
       "RETURN src, dst, path;"
@@ -291,5 +297,12 @@ class Neo4jWorkload(url: String, username: String, password: String) extends Wor
   /**
    * Finds one or more subgraphs of the graph which are isomorphic to the pattern.
    */
-  def subgraphIsomorphism[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], pattern: Graph[VD, ED]): Unit = ???
+  def subgraphIsomorphism[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], pattern: Graph[VD, ED]): Unit = {
+    val patternLabel = "pattern"
+    val graphLabel = "graph"
+
+    val query = s"CALL csb.subgraphIsomorphism(\"" + patternLabel + "\", \"" + graphLabel + "\")"
+
+    run(query)
+  }
 }
