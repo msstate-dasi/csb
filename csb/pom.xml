@@ -4,7 +4,7 @@
 
     <groupId>edu.msstate.dasi</groupId>
     <artifactId>csb</artifactId>
-    <version>0.1.4-SNAPSHOT</version>
+    <version>0.1.4</version>
 
     <name>${project.artifactId}</name>
     <description>Big Data Benchmarking Suite for Cyber-Security Analytics </description>
