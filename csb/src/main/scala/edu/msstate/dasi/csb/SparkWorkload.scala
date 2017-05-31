@@ -1,6 +1,6 @@
 package edu.msstate.dasi.csb
 
-import org.apache.spark.graphx.{Edge, EdgeDirection, Graph, VertexId, VertexRDD}
+import org.apache.spark.graphx.{Edge, EdgeDirection, Graph, VertexId}
 import org.apache.spark.rdd.RDD
 
 import scala.reflect.ClassTag
@@ -208,8 +208,17 @@ object SparkWorkload extends Workload {
    * Finds one or more subgraphs of the graph which are isomorphic to the pattern.
    */
   def subgraphIsomorphism[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], pattern: Graph[VD, ED]): Unit = {
-    def refine(candidates: RDD[(VertexId, Array[VertexId])], graphNeighbors: VertexRDD[Array[VertexId]],
-               patternNeighbors: RDD[(VertexId, VertexId)]): RDD[(VertexId, Array[VertexId])] = {
+
+    /**
+     * Refines the candidates' list, keeping only the candidates that satisfy the following statement:
+     *
+     * "y is a refined candidate of x iff every neighbor of x has at least one candidate among neighbors of y"
+     *
+     * r(x) = {y ∈ c(x): ∀w ∈ n(x).c(W) ∩ n(y) ≠ ∅}
+     *
+     */
+    def refine(candidates: RDD[(VertexId, Array[VertexId])], graphNeighbors: RDD[(VertexId, Array[VertexId])],
+               patternNeighbors: RDD[(VertexId, VertexId)], partitions: Int): RDD[(VertexId, Array[VertexId])] = {
       val neighborsOfCandidates = candidates
         .flatMap{ case (patternVertex, candidatesArray) => candidatesArray.map( (patternVertex, _) ) }
         .map(_.swap).join(graphNeighbors)
@@ -217,35 +226,50 @@ object SparkWorkload extends Workload {
 
       val candidatesOfPatternNeighbors = patternNeighbors.map(_.swap).join(candidates)
         .map{ case (_, (vertex, candidatesArray)) => (vertex, Array(candidatesArray))}
-        .reduceByKey( (array1, array2) => array1 ++ array2 )
+        .reduceByKey((array1, array2) => array1 ++ array2, partitions)
 
-      val refinedCandidates = neighborsOfCandidates.join(candidatesOfPatternNeighbors)
-        .filter{ case (_, ((_, candidateNeighbors), candidatesOfNeighbors)) =>
-          candidatesOfNeighbors.forall( _.intersect(candidateNeighbors).nonEmpty ) }
+      val refinedCandidates = neighborsOfCandidates.leftOuterJoin(candidatesOfPatternNeighbors)
+        .filter{
+          case (_, ((_, candidateNeighbors), Some(candidatesOfNeighbors))) =>
+            candidatesOfNeighbors.forall( _.intersect(candidateNeighbors).nonEmpty )
+          case (_, ((_, _), None)) => true
+        }
+        .repartition(partitions)
         .map{ case (vertex, ((candidate, _), _)) => (vertex, Array(candidate)) }
-        .reduceByKey( (array1, array2) => array1 ++ array2 )
+        .reduceByKey((array1, array2) => array1 ++ array2, partitions)
 
       refinedCandidates
     }
 
-    def purgeUniques(candidates: RDD[(VertexId, Array[VertexId])], partitions: Int): RDD[(VertexId, Array[VertexId])] = {
-      val uniqueCandidates = candidates.filter{ case (_, candidatesArray) => candidatesArray.length == 1 }.values
+    /**
+     * For each vertex with only one candidate, removes any other candidate's occurrences among the candidates of the
+     * other vertices.
+     */
+    def cleanup(candidates: RDD[(VertexId, Array[VertexId])], partitions: Int): RDD[(VertexId, Array[VertexId])] = {
+      val uniqueCandidates = candidates.filter{ case (_, candidatesArray) => candidatesArray.length == 1 }
+        .repartition(partitions)
+        .values
 
       if ( ! uniqueCandidates.isEmpty() ) {
-        val purgedCandidates = candidates.cartesian(uniqueCandidates).coalesce(partitions)
+        val cleanedCandidates = candidates.cartesian(uniqueCandidates).coalesce(partitions)
           .map { case ((vertex, candidatesArray), uniqueCandidate) => if (candidatesArray.length > 1) {
             (vertex, candidatesArray.diff(uniqueCandidate))
           } else {
             (vertex, candidatesArray)
           }
-        }.reduceByKey((array1, array2) => array1.intersect(array2))
+        }.reduceByKey((array1, array2) => array1.intersect(array2), partitions)
 
-        purgedCandidates
+        cleanedCandidates
       } else {
         candidates
       }
     }
 
+    /**
+     * Given a vertex and one of its candidates:
+     *  * removes any other candidate's occurrences among the candidates of the other vertices
+     *  * removes all the other vertex's candidates
+     */
     def select(candidates: RDD[(VertexId, Array[VertexId])], selectedVertex: VertexId,
                selectedCandidate: VertexId): RDD[(VertexId, Array[VertexId])] = {
       candidates.map{ case (vertex, candidatesArray) =>
@@ -257,60 +281,110 @@ object SparkWorkload extends Workload {
       }
     }
 
+    /**
+     * Prints the candidates' list.
+     */
     def printCandidates(candidates: RDD[(VertexId, Array[VertexId])]): Unit = {
       for ( (vertex, candidatesArray) <- candidates.toLocalIterator ) {
         println(s"$vertex -> ${candidatesArray.mkString(",")}")
       }
     }
 
+    /**
+     * Goes through the candidates' list following these steps:
+     *  1. Cleanup unique candidates
+     *  2. Select the vertex with fewer candidates (at least two) and select one of its candidates
+     *  3. Refine
+     *  4. Backtrack
+     *
+     * Stop when:
+     *  * any vertex has no more candidates, OR
+     *  * every vertex has exactly one candidate.
+     *
+     */
     def backtracking(candidates: RDD[(VertexId, Array[VertexId])], patternVerticesCount: Long,
-                     graphNeighbors: VertexRDD[Array[VertexId]], patternNeighbors: RDD[(VertexId, VertexId)],
-                     partitions: Int): Boolean = {
-      val purgedCandidates = purgeUniques(candidates, partitions).cache()
+                     graphNeighbors: RDD[(VertexId, Array[VertexId])], patternNeighbors: RDD[(VertexId, VertexId)],
+                     partitions: Int): Int = {
+      var count = 0
 
-      val actualCandidates = purgedCandidates.filter{ case (_, candidatesArray) => candidatesArray.length > 1 }
+      // Cleanup unique candidates
+      val cleanedCandidates = cleanup(candidates, partitions).cache()
+
+      // Extract all candidates which have more than one candidate
+      val actualCandidates = cleanedCandidates.filter{ case (_, candidatesArray) => candidatesArray.length > 1 }
+        .repartition(partitions)
 
       if ( actualCandidates.isEmpty() ) {
-        printCandidates(purgedCandidates)
-        purgedCandidates.unpersist()
-        return true
+        // Every vertex has exactly one candidate
+        count += 1
+
+        println("** Subgraph found **")
+        printCandidates(cleanedCandidates)
+        println("********************")
+        cleanedCandidates.unpersist()
+
+        return count
       }
 
+      // Pick the first vertex with the lowest number of candidates (at least two)
       val (currentVertex, currentArray) = actualCandidates.sortBy(_._2.length).first()
 
-      var found = false
-
       for (candidate <- currentArray) {
-        val candidatesAttempt = select(purgedCandidates, currentVertex, candidate).cache()
+        val candidatesAttempt = select(cleanedCandidates, currentVertex, candidate).cache()
 
-        val candidatesResult = refine(candidatesAttempt, graphNeighbors, patternNeighbors).cache()
+        val candidatesResult = refine(candidatesAttempt, graphNeighbors, patternNeighbors, partitions).cache()
         val candidatesResultCount = candidatesResult.count
 
         candidatesAttempt.unpersist()
-        purgedCandidates.unpersist()
+        cleanedCandidates.unpersist()
 
         if (candidatesResultCount == patternVerticesCount) {
           if ( candidatesResult.filter{ case (_, candidatesArray) => candidatesArray.length > 1 }.isEmpty() ) {
+            // Every vertex has exactly one candidate
+            count += 1
+
+            println("** Subgraph found **")
             printCandidates(candidatesResult)
-            found = true
+            println("********************")
           } else {
-            found = backtracking(candidatesResult, patternVerticesCount, graphNeighbors, patternNeighbors, partitions: Int)
+            // Some vertex has more than one candidates, backtrack
+            count += backtracking(candidatesResult, patternVerticesCount, graphNeighbors, patternNeighbors, partitions)
           }
-          candidatesResult.unpersist()
         }
+        candidatesResult.unpersist()
       }
-      found
+      count
     }
 
     val patternVerticesCount = pattern.vertices.count
 
     val partitions = graph.vertices.getNumPartitions
 
-    val candidates = pattern.degrees.sortBy(_._2, ascending = false)
-      .cartesian(graph.degrees).coalesce(partitions)
+    val patternVerticesWithDegree = pattern.outDegrees.union(
+      // Get all vertices with a degree value of 0
+      pattern.vertices.subtractByKey(pattern.outDegrees).mapValues( _ => 0)
+    )
+
+    val graphVerticesWithDegree = graph.outDegrees.union(
+      // Get all vertices with a 0 degree
+      graph.vertices.subtractByKey(graph.outDegrees).mapValues( _ => 0)
+    )
+
+    /**
+     * The definition of a candidate is the following statement:
+     *
+     * y is a candidate of x iff degree(y) ≥ degree(x)
+     *
+     * c(x) = {y ∈ vertices(graph): degree(y) ≥ degree(x)}
+     *
+     */
+    val candidates = patternVerticesWithDegree.sortBy(_._2, ascending = false)
+      .cartesian(graphVerticesWithDegree)
+      .coalesce(partitions)
       .filter{ case ( (_, vertexDegree), (_, candidateDegree) ) => candidateDegree >= vertexDegree }
+      .repartition(partitions)
       .map{ case ( (vertex, _), (candidate, _) ) => (vertex, Array(candidate)) }
-      .reduceByKey( (array1, array2) => array1 ++ array2 )
+      .reduceByKey((array1, array2) => array1 ++ array2, partitions)
       .cache()
 
     if (candidates.count < patternVerticesCount) {
@@ -321,13 +395,13 @@ object SparkWorkload extends Workload {
       return
     }
 
-    val graphNeighbors = graph.collectNeighborIds(EdgeDirection.Either).cache()
+    val graphNeighbors = graph.collectNeighborIds(EdgeDirection.Out).cache()
 
-    val patternNeighbors = pattern.collectNeighborIds(EdgeDirection.Either)
+    val patternNeighbors = pattern.collectNeighborIds(EdgeDirection.Out)
       .flatMap{ case (vertex, neighbors) => neighbors.map( (vertex, _) ) } // Unroll the neighbors array into separate entries
       .cache()
 
-    val refinedCandidates = refine(candidates, graphNeighbors, patternNeighbors).cache()
+    val refinedCandidates = refine(candidates, graphNeighbors, patternNeighbors, partitions).cache()
     val refinedCandidatesCount = refinedCandidates.count
 
     candidates.unpersist()
@@ -342,9 +416,9 @@ object SparkWorkload extends Workload {
       return
     }
 
-    val found = backtracking(refinedCandidates, patternVerticesCount, graphNeighbors, patternNeighbors, partitions)
+    val count = backtracking(refinedCandidates, patternVerticesCount, graphNeighbors, patternNeighbors, partitions)
 
-    if (found) println("One or more subgraphs found.") else println("Subgraph not found.")
+    println(s"$count subgraphs found.")
 
     refinedCandidates.unpersist()
     graphNeighbors.unpersist()
