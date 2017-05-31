@@ -25,6 +25,8 @@ trait GraphSynth {
 
       EdgeData(
         ts = dataDist.ts.sample,
+        origPort = dataDist.origPort.sample,
+        respPort = dataDist.respPort.sample,
         proto = dataDist.proto.sample(origBytes),
         duration = dataDist.duration.sample(origBytes),
         origBytes = origBytes,
