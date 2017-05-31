@@ -297,5 +297,12 @@ class Neo4jWorkload(url: String, username: String, password: String) extends Wor
   /**
    * Finds one or more subgraphs of the graph which are isomorphic to the pattern.
    */
-  def subgraphIsomorphism[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], pattern: Graph[VD, ED]): Unit = ???
+  def subgraphIsomorphism[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], pattern: Graph[VD, ED]): Unit = {
+    val patternLabel = "pattern"
+    val graphLabel = "graph"
+
+    val query = s"CALL csb.subgraphIsomorphism(\"" + patternLabel + "\", \"" + graphLabel + "\")"
+
+    run(query)
+  }
 }
