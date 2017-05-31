@@ -269,13 +269,19 @@ class Neo4jWorkload(url: String, username: String, password: String) extends Wor
   /**
    * Computes the closeness centrality of a node using the formula N/(sum(distances)).
    */
-  def closenessCentrality[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], vertex: VertexId): Unit = ???
+  def closenessCentrality[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], vertex: VertexId): Unit = {
+    val query = "MATCH (a), (b {name:\"" + vertex + "\"}) WHERE a<>b " +
+      "WITH length(shortestPath((a)-[]-(b))) AS dist, a, b" +
+      "RETURN DISTINCT a, sum(1.0/dist) AS close_central ORDER BY close_central DESC;"
+
+    run(query)
+  }
 
   /**
    * Computes the shortest path from a source vertex to all other vertices.
    */
   def sssp[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], src: VertexId): Unit = {
-    val query ="MATCH (src {name:\"" + src + "\"}), (dst), " +
+    val query = "MATCH (src {name:\"" + src + "\"}), (dst), " +
       "path = shortestPath((src)-[*]->(dst)) " +
       "WHERE dst.name <> src.name " +
       "RETURN src, dst, path;"
