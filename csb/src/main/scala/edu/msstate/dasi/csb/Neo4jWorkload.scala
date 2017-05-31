@@ -301,7 +301,7 @@ class Neo4jWorkload(url: String, username: String, password: String) extends Wor
     val patternLabel = "pattern"
     val graphLabel = "graph"
 
-    val query = s"CALL csb.subgraphIsomorphism(\"" + patternLabel + "\", \"" + graphLabel + "\")"
+    val query = "CALL csb.subgraphIsomorphism(\"" + patternLabel + "\", \"" + graphLabel + "\")"
 
     run(query)
   }
