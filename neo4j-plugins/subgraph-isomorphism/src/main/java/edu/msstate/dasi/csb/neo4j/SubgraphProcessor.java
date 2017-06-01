@@ -105,8 +105,9 @@ public class SubgraphProcessor extends RecursiveTask<List<List<Node>>> {
             // A matching subgraph is found
             ArrayList<Node> subgraph = new ArrayList<>();
 
-            for (List<Node> aCandidateList : candidateList)
+            for (List<Node> aCandidateList : candidateList) {
                 subgraph.add(aCandidateList.get(0));
+            }
 
             matchedSubgraphs.add(subgraph);
 
@@ -159,8 +160,9 @@ public class SubgraphProcessor extends RecursiveTask<List<List<Node>>> {
 
         ArrayList<Node> firstRow = new ArrayList<>();
 
-        for (int k = start; k < end; k++)
+        for (int k = start; k < end; k++) {
             firstRow.add(originalList.get(0).get(k));
+        }
 
         copyList.add(firstRow);
 
@@ -219,22 +221,24 @@ public class SubgraphProcessor extends RecursiveTask<List<List<Node>>> {
      */
     private boolean isCorrect(List<List<Node>> candidateList) {
 
-        for (List<Node> aCandidateList : candidateList)
+        for (List<Node> aCandidateList : candidateList) {
             if (aCandidateList.isEmpty()) return false;
+        }
 
         return true;
     }
 
     /**
-     * Remove redundant apprearance of the unique node in the candidate list
+     * Remove redundant appearance of the unique node in the candidate list
      */
 
     private void removeUniqueNodes(Node unique,
                                    List<List<Node>> candidateList,
                                    int layer) {
 
-        for (int i = layer + 1; i < candidateList.size(); i++)
+        for (int i = layer + 1; i < candidateList.size(); i++) {
             if (candidateList.get(i).contains(unique)) candidateList.get(i).remove(unique);
+        }
 
     }
 }

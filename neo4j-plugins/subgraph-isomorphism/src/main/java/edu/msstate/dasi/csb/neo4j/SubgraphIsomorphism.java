@@ -63,8 +63,9 @@ public class SubgraphIsomorphism {
 
                 for (Long i = 0L; i < matchedSubgraphs.size(); i++) {
 
-                    for (int j = 0; j < matchedSubgraphs.get(i.intValue()).size(); j++)
+                    for (int j = 0; j < matchedSubgraphs.get(i.intValue()).size(); j++) {
                         resultList.add(new Result(i, patternNodeList.get(j), matchedSubgraphs.get(i.intValue()).get(j)));
+                    }
 
                 }
 
@@ -251,8 +252,7 @@ public class SubgraphIsomorphism {
                     candidateList.get(candidateListMap.get(qnode)).parallelStream().anyMatch(subnode ->
                             targetOutNeighborList.get(targetNeighborListMap.get(node)).contains(subnode)));
 
-            if (!(inRefinable && outRefinable))
-                nodesToRemove.get(ii).add(node);
+            if (!(inRefinable && outRefinable)) nodesToRemove.get(ii).add(node);
 
         }));
     }
@@ -317,8 +317,7 @@ public class SubgraphIsomorphism {
                 }
             }
 
-            if (swapPoint != 0)
-                Collections.swap(candidateList, 0, swapPoint);
+            if (swapPoint != 0) Collections.swap(candidateList, 0, swapPoint);
 
             for (int i = 0; i < candidateList.size(); i++) {
 
