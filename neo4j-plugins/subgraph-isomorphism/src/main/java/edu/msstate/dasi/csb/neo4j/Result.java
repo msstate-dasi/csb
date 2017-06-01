@@ -15,10 +15,11 @@ public class Result {
      * Builds a Result object.
      *
      * @param subgraphIndex which subgraph does the resultNode belong to
-     * @param patternNode a node in the pattern graph
-     * @param targetNode a node in the isomorphic subgraph of the target graph
+     * @param patternNode   a node in the pattern graph
+     * @param targetNode    a node in the isomorphic subgraph of the target graph
      */
     public Result(Long subgraphIndex, Node patternNode, Node targetNode) {
+
         this.subgraphIndex = subgraphIndex;
         this.patternNode = patternNode;
         this.targetNode = targetNode;

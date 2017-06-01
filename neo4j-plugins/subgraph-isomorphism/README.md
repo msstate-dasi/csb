@@ -1,6 +1,6 @@
 # subgraph-isomorphism-neo4j
 
-This project under @msstate-dasi provides a subgraph isomorphism Java plugin for Neo4j database. Given a pattern graph and a target graph, it calculates all possible subgraphs of the target graph isomorphic to the pattern graph. Both the pattern graph and target graph are stored in the same Neo4j database. Currently it utilized the Ullmann's algorithm and works only with undirected graphs (ignore directions in a directional graph).
+This project under @msstate-dasi provides a subgraph isomorphism Java plugin for Neo4j database. Given a pattern graph and a target graph, it calculates all possible subgraphs of the target graph isomorphic to the pattern graph. Both the pattern graph and target graph are stored in the same Neo4j database. Currently it utilized the Ullmann's algorithm and works on both directed and undirected graphs.
 
 ## Compile: 
 
