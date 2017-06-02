@@ -9,7 +9,6 @@ import scala.util.Random
  * Represents a probability distribution.
  *
  * @note the input probabilities should be in descending order to maximize sampling performance.
- *
  * @param distribution the array containing the distribution
  * @tparam T the distribution data type
  */
@@ -45,20 +44,18 @@ object Distribution {
    * Builds a distribution instance from an [[RDD]] of values.
    *
    * @note the resulting distribution is expected to be small, as it will be loaded into the driver's memory.
-   *
    * @param data the input [[RDD]] data
    * @tparam T the input data type
+   *
    * @return the resulting [[Distribution]] object
    */
   def apply[T: ClassTag](data: RDD[T]): Distribution[T] = {
-    val occurrences = data.map((_, 1L)).reduceByKey(_+_) // Count how many occurrences for each value
+    val occurrences = data.map((_, 1L)).reduceByKey(_ + _) // Count how many occurrences for each value
       .sortBy(_._2, ascending = false) // Descending order to maximize sampling performance
       .cache()
 
-    val occurrencesSum = occurrences.values.reduce(_+_) // Compute the total amount of elements
-
+    val occurrencesSum = occurrences.values.reduce(_ + _) // Compute the total amount of elements
     val distribution = occurrences.mapValues(_ / occurrencesSum.toDouble) // Normalize to obtain probabilities
-
     val result = distribution.collect()
 
     occurrences.unpersist()
