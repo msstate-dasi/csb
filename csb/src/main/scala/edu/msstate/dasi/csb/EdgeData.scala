@@ -76,35 +76,18 @@ object EdgeData {
         case Array(ts, origPort, respPort, proto, duration, origBytes, respBytes, connState, origPkts, origIpBytes,
         respPkts, respIpBytes) =>
           new EdgeData(
-            ts.toLong,
-            origPort.toInt,
-            respPort.toInt,
+            try { ts.toLong } catch { case NumberFormatException => 0L},
+            try { origPort.toInt } catch { case NumberFormatException => 0},
+            try { respPort.toInt } catch { case NumberFormatException => 0},
             proto,
-            duration.toDouble,
-            origBytes.toLong,
-            respBytes.toLong,
+            try { duration.toDouble} catch { case NumberFormatException => 0.0},
+            try {origBytes.toLong} catch { case NumberFormatException => 0L},
+            try {respBytes.toLong} catch { case NumberFormatException => 0L},
             connState,
-            origPkts.toLong,
-            origIpBytes.toLong,
-            respPkts.toLong,
-            respIpBytes.toLong
-          )
-        // TODO: check why we need the following, i.e. why might "desc" be empty?
-        case Array(ts, origPort, respPort, proto, duration, origBytes, respBytes, connState, origPkts, origIpBytes,
-        respPkts, respIpBytes) =>
-          new EdgeData(
-            ts.toLong,
-            origPort.toInt,
-            respPort.toInt,
-            proto,
-            duration.toDouble,
-            origBytes.toLong,
-            respBytes.toLong,
-            connState,
-            origPkts.toLong,
-            origIpBytes.toLong,
-            respPkts.toLong,
-            respIpBytes.toLong
+            try {origPkts.toLong} catch { case NumberFormatException => 0L},
+            try {origIpBytes.toLong} catch { case NumberFormatException => 0L},
+            try {respPkts.toLong} catch { case NumberFormatException => 0L},
+            try {respIpBytes.toLong} catch { case NumberFormatException => 0l}
           )
       }
     }
