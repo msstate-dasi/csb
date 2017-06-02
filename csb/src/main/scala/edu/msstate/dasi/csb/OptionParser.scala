@@ -90,12 +90,6 @@ class OptionParser(override val programName: String, programVersion: String, con
         .text(s"Path of the seed property distributions [default: ${config.seedDistributions}].")
         .action((x, c) => c.copy(seedGraphPrefix = x)),
 
-      opt[String]('l', "log")
-        .valueName("<path>")
-        .text(s"Path of the bro log [default: ${config.connLog}].")
-        .validate(path => if ( new File(path).isFile ) success else failure(s"$path is not a regular file") )
-        .action((x, c) => c.copy(connLog = x)),
-
       opt[String]('w', "saver")
         .valueName("<value>")
         .text(s"Graph saver. Supported: spark|neo4j|none [default: ${config.graphSaver}].")
