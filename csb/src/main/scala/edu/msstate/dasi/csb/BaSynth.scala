@@ -1,7 +1,8 @@
 package edu.msstate.dasi.csb
 
 import edu.msstate.dasi.csb.distributions.DataDistributions
-import org.apache.spark.graphx.{Graph, Edge, VertexId}
+import edu.msstate.dasi.csb.model.{EdgeData, VertexData}
+import org.apache.spark.graphx.{Edge, Graph, VertexId}
 import org.apache.spark.rdd.RDD
 
 import scala.util.Random

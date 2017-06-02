@@ -1,5 +1,6 @@
 package edu.msstate.dasi.csb
 
+import edu.msstate.dasi.csb.model.EdgeData
 import org.apache.spark.graphx.{Edge, Graph, VertexId}
 
 import scala.reflect.ClassTag

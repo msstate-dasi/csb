@@ -2,6 +2,7 @@ package edu.msstate.dasi.csb
 
 import java.util.concurrent.TimeUnit
 
+import edu.msstate.dasi.csb.model.EdgeData
 import org.apache.spark.graphx.{Edge, Graph, VertexId}
 import org.neo4j.driver.v1.summary.ResultSummary
 import org.neo4j.driver.v1.{AccessMode, AuthTokens, GraphDatabase}

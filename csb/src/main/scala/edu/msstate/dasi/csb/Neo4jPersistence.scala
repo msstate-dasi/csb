@@ -2,6 +2,7 @@ package edu.msstate.dasi.csb
 
 import java.io.{File, PrintWriter}
 
+import edu.msstate.dasi.csb.model.{EdgeData, VertexData}
 import org.apache.hadoop.fs.FileUtil
 import org.apache.spark.graphx.Graph
 

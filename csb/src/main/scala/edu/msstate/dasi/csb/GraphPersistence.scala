@@ -1,5 +1,6 @@
 package edu.msstate.dasi.csb
 
+import edu.msstate.dasi.csb.model.{EdgeData, VertexData}
 import org.apache.spark.graphx.Graph
 
 trait GraphPersistence {

@@ -1,4 +1,4 @@
-package edu.msstate.dasi.csb
+package edu.msstate.dasi.csb.model
 
 /**
  * Defines the edge data which represents the connection properties.
@@ -41,12 +41,12 @@ case class EdgeData(ts: Long,
                     /* uid: String */
                     origPort: Int,
                     respPort: Int,
-                    proto: String,
+                    proto: Protocols.Value,
                     /* service: String, */
                     duration: Double,
                     origBytes: Long,
                     respBytes: Long,
-                    connState: String,
+                    connState: ConnStates.Value,
                     /* localOrig: Boolean, */
                     /* localResp: Boolean, */
                     /* missedBytes: Long, */
@@ -79,15 +79,15 @@ object EdgeData {
             try { ts.toLong } catch { case _: NumberFormatException => 0L},
             try { origPort.toInt } catch { case _: NumberFormatException => 0},
             try { respPort.toInt } catch { case _: NumberFormatException => 0},
-            proto,
-            try { duration.toDouble} catch { case _: NumberFormatException => 0.0},
-            try {origBytes.toLong} catch { case _: NumberFormatException => 0L},
-            try {respBytes.toLong} catch { case _: NumberFormatException => 0L},
-            connState,
-            try {origPkts.toLong} catch { case _: NumberFormatException => 0L},
-            try {origIpBytes.toLong} catch { case _: NumberFormatException => 0L},
-            try {respPkts.toLong} catch { case _: NumberFormatException => 0L},
-            try {respIpBytes.toLong} catch { case _: NumberFormatException => 0l}
+            Protocols.withName(proto.toUpperCase),
+            try { duration.toDouble } catch { case _: NumberFormatException => 0.0},
+            try { origBytes.toLong } catch { case _: NumberFormatException => 0L},
+            try { respBytes.toLong } catch { case _: NumberFormatException => 0L},
+            ConnStates.withName(connState.toUpperCase),
+            try { origPkts.toLong } catch { case _: NumberFormatException => 0L},
+            try { origIpBytes.toLong } catch { case _: NumberFormatException => 0L},
+            try { respPkts.toLong } catch { case _: NumberFormatException => 0L},
+            try { respIpBytes.toLong } catch { case _: NumberFormatException => 0l}
           )
       }
     }
