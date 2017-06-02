@@ -1,6 +1,6 @@
 package edu.msstate.dasi.csb.distributions
 
-import edu.msstate.dasi.csb.{EdgeData, VertexData}
+import edu.msstate.dasi.csb.{ConnStates, EdgeData, Protocols, VertexData}
 import org.apache.spark.graphx.Graph
 
 /**
@@ -44,7 +44,7 @@ class DataDistributions(graph: Graph[VertexData, EdgeData]) extends Serializable
   /**
    * The protocol conditional distribution.
    */
-  val proto: ConditionalDistribution[String, Long] = {
+  val proto: ConditionalDistribution[Protocols.Value, Long] = {
     val data = graph.edges.map(e => (e.attr.proto, e.attr.origBytes))
     new ConditionalDistribution(data)
   }
@@ -68,7 +68,7 @@ class DataDistributions(graph: Graph[VertexData, EdgeData]) extends Serializable
   /**
    * The connection state conditional distribution.
    */
-  val connState: ConditionalDistribution[String, Long] = {
+  val connState: ConditionalDistribution[ConnStates.Value, Long] = {
     val data = graph.edges.map(e => (e.attr.connState, e.attr.origBytes))
     new ConditionalDistribution(data)
   }

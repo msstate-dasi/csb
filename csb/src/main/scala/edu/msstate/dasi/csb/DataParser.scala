@@ -41,12 +41,12 @@ object DataParser {
         /* uid = pieces(1), */
         origPort = try {pieces(3).toInt } catch { case _: NumberFormatException => 0},
         respPort = try {pieces(5).toInt } catch { case _: NumberFormatException => 0},
-        proto = pieces(6),
+        proto = Protocols.withName(pieces(6).toUpperCase),
         /* service = pieces(7), */
         duration = try {pieces(8).toDouble } catch { case _: NumberFormatException => 0.0},
         origBytes = try {pieces(9).toLong } catch { case _: NumberFormatException => 0L},
         respBytes = try {pieces(10).toLong } catch { case _: NumberFormatException => 0L},
-        connState = pieces(11),
+        connState = ConnStates.withName(pieces(11).toUpperCase),
         /* localOrig = pieces(12).toBoolean, */
         /* localResp = pieces(13).toBoolean, */
         /* missedBytes = pieces(14).toLong, */

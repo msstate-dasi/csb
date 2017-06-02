@@ -41,12 +41,12 @@ case class EdgeData(ts: Long,
                     /* uid: String */
                     origPort: Int,
                     respPort: Int,
-                    proto: String,
+                    proto: Protocols.Value,
                     /* service: String, */
                     duration: Double,
                     origBytes: Long,
                     respBytes: Long,
-                    connState: String,
+                    connState: ConnStates.Value,
                     /* localOrig: Boolean, */
                     /* localResp: Boolean, */
                     /* missedBytes: Long, */
@@ -79,11 +79,11 @@ object EdgeData {
             try { ts.toLong } catch { case _: NumberFormatException => 0L},
             try { origPort.toInt } catch { case _: NumberFormatException => 0},
             try { respPort.toInt } catch { case _: NumberFormatException => 0},
-            proto,
+            Protocols.withName(proto.toUpperCase),
             try { duration.toDouble} catch { case _: NumberFormatException => 0.0},
             try {origBytes.toLong} catch { case _: NumberFormatException => 0L},
             try {respBytes.toLong} catch { case _: NumberFormatException => 0L},
-            connState,
+            ConnStates.withName(connState.toUpperCase),
             try {origPkts.toLong} catch { case _: NumberFormatException => 0L},
             try {origIpBytes.toLong} catch { case _: NumberFormatException => 0L},
             try {respPkts.toLong} catch { case _: NumberFormatException => 0L},
