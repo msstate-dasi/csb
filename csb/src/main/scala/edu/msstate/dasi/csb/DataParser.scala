@@ -44,24 +44,24 @@ object DataParser {
       val dstId = inetToLong(respIp)
 
       Edge(srcId, dstId, EdgeData(
-        ts = pieces(0).split('.')(0).toLong,
+        ts = try { pieces(0).split('.')(0).toLong } catch { case NumberFormatException => 0L},
         /* uid = pieces(1), */
-        origPort = pieces(3).toInt,
-        respPort = pieces(5).toInt,
+        origPort = try {pieces(3).toInt } catch { case NumberFormatException => 0},
+        respPort = try {pieces(5).toInt } catch { case NumberFormatException => 0},
         proto = pieces(6),
         /* service = pieces(7), */
-        duration = if (pieces(8) != "-") pieces(8).toDouble else 0.0,
-        origBytes = if (pieces(9) != "-") pieces(9).toLong else 0L,
-        respBytes = if (pieces(10) != "-") pieces(10).toLong else 0L,
+        duration = try {pieces(8).toDouble } catch { case NumberFormatException => 0.0},
+        origBytes = try {pieces(9).toLong } catch { case NumberFormatException => 0L},
+        respBytes = try {pieces(10).toLong } catch { case NumberFormatException => 0L},
         connState = pieces(11),
         /* localOrig = pieces(12).toBoolean, */
         /* localResp = pieces(13).toBoolean, */
         /* missedBytes = pieces(14).toLong, */
         /* history = pieces(15), */
-        origPkts = pieces(16).toLong,
-        origIpBytes = pieces(17).toLong,
-        respPkts = pieces(18).toLong,
-        respIpBytes = pieces(19).toLong
+        origPkts = try {pieces(16).toLong } catch { case NumberFormatException => 0L},
+        origIpBytes = try {pieces(17).toLong } catch { case NumberFormatException => 0L},
+        respPkts = try {pieces(18).toLong } catch { case NumberFormatException => 0L},
+        respIpBytes = try {pieces(19).toLong } catch { case NumberFormatException => 0L}
         /* tunnelParents = pieces(20), */
       )
       )
