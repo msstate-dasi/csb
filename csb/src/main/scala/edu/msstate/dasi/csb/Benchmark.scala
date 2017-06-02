@@ -37,9 +37,6 @@ object Benchmark {
   }
 
   private def run_seed(config: Config, factory: ComponentFactory): Boolean = {
-    //val logAug = new log_Augment()
-    //logAug.run(config.alertLog, config.connLog, config.augLog)
-
     val seed = Util.time( "Log to graph", {
       val seed = DataParser.logToGraph(config.connLog, config.partitions)
       println("Vertices #: " + seed.numVertices + ", Edges #: " + seed.numEdges)
