@@ -105,13 +105,6 @@ class DataDistributions(graph: Graph[VertexData, EdgeData]) extends Serializable
     new ConditionalDistribution(data)
   }
 
-  /**
-   * The description conditional distribution.
-   */
-  val desc: ConditionalDistribution[String, Long] = {
-    val data = graph.edges.map(e => (e.attr.desc, e.attr.origBytes))
-    new ConditionalDistribution(data)
-  }
 }
 
 object DataDistributions {

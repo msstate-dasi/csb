@@ -20,14 +20,14 @@ object DataParser {
   }
 
 
-  def logToGraph(augLogPath: String, partitions: Int): Graph[VertexData, EdgeData] = {
-    val augLogFile = sc.textFile(augLogPath, partitions)
+  def logToGraph(logPath: String, partitions: Int): Graph[VertexData, EdgeData] = {
+    val logFile = sc.textFile(logPath, partitions)
 
     // Drop the 8-lines header and filter lines that contains only IPv4 addresses
-    val augLog = augLogFile.mapPartitionsWithIndex { (idx, lines) => if (idx == 0) lines.drop(8) else lines }
+    val theLog = logFile.mapPartitionsWithIndex { (idx, lines) => if (idx == 0) lines.drop(8) else lines }
       .filter(isInet4).filter(isAllowedProto)
 
-    val edges = augLog.map(line => {
+    val edges = theLog.map(line => {
       val pieces = line.split('\t')
 
       val origIp = pieces(2)
@@ -54,10 +54,9 @@ object DataParser {
         origPkts = pieces(16).toLong,
         origIpBytes = pieces(17).toLong,
         respPkts = pieces(18).toLong,
-        respIpBytes = pieces(19).toLong,
+        respIpBytes = pieces(19).toLong
         /* tunnelParents = pieces(20), */
-        // TODO: why is the following check needed?
-        desc = if (pieces.length > 21) pieces(21) else "")
+      )
       )
     })
 
