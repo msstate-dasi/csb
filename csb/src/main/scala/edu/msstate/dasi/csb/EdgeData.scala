@@ -76,18 +76,18 @@ object EdgeData {
         case Array(ts, origPort, respPort, proto, duration, origBytes, respBytes, connState, origPkts, origIpBytes,
         respPkts, respIpBytes) =>
           new EdgeData(
-            try { ts.toLong } catch { case NumberFormatException => 0L},
-            try { origPort.toInt } catch { case NumberFormatException => 0},
-            try { respPort.toInt } catch { case NumberFormatException => 0},
+            try { ts.toLong } catch { case e: NumberFormatException => 0L},
+            try { origPort.toInt } catch { case e: NumberFormatException => 0},
+            try { respPort.toInt } catch { case e: NumberFormatException => 0},
             proto,
-            try { duration.toDouble} catch { case NumberFormatException => 0.0},
-            try {origBytes.toLong} catch { case NumberFormatException => 0L},
-            try {respBytes.toLong} catch { case NumberFormatException => 0L},
+            try { duration.toDouble} catch { case e: NumberFormatException => 0.0},
+            try {origBytes.toLong} catch { case e: NumberFormatException => 0L},
+            try {respBytes.toLong} catch { case e: NumberFormatException => 0L},
             connState,
-            try {origPkts.toLong} catch { case NumberFormatException => 0L},
-            try {origIpBytes.toLong} catch { case NumberFormatException => 0L},
-            try {respPkts.toLong} catch { case NumberFormatException => 0L},
-            try {respIpBytes.toLong} catch { case NumberFormatException => 0l}
+            try {origPkts.toLong} catch { case e: NumberFormatException => 0L},
+            try {origIpBytes.toLong} catch { case e: NumberFormatException => 0L},
+            try {respPkts.toLong} catch { case e: NumberFormatException => 0L},
+            try {respIpBytes.toLong} catch { case e: NumberFormatException => 0l}
           )
       }
     }
