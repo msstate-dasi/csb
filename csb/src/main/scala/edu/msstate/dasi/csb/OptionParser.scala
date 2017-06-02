@@ -37,7 +37,7 @@ class OptionParser(override val programName: String, programVersion: String, con
     .text("Generates a property graph and the probability distributions of its properties starting from a bro log file.")
     .action( (_, c) => c.copy(mode = "seed") )
     .children(
-      opt[String]('b', "bro-log")
+      opt[String]('l', "log")
         .valueName("<path>")
         .text(s"Path of the Bro connection log [default: ${config.connLog}].")
         .validate(path => if ( new File(path).isFile ) success else failure(s"$path is not a regular file") )
