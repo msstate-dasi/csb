@@ -37,24 +37,24 @@ object DataParser {
       val dstId = inetToLong(respIp)
 
       Edge(srcId, dstId, EdgeData(
-        ts = try { pieces(0).split('.')(0).toLong } catch { case e: NumberFormatException => 0L},
+        ts = try { pieces(0).split('.')(0).toLong } catch { case _: NumberFormatException => 0L},
         /* uid = pieces(1), */
-        origPort = try {pieces(3).toInt } catch { case e: NumberFormatException => 0},
-        respPort = try {pieces(5).toInt } catch { case e: NumberFormatException => 0},
+        origPort = try {pieces(3).toInt } catch { case _: NumberFormatException => 0},
+        respPort = try {pieces(5).toInt } catch { case _: NumberFormatException => 0},
         proto = pieces(6),
         /* service = pieces(7), */
-        duration = try {pieces(8).toDouble } catch { case e: NumberFormatException => 0.0},
-        origBytes = try {pieces(9).toLong } catch { case e: NumberFormatException => 0L},
-        respBytes = try {pieces(10).toLong } catch { case e: NumberFormatException => 0L},
+        duration = try {pieces(8).toDouble } catch { case _: NumberFormatException => 0.0},
+        origBytes = try {pieces(9).toLong } catch { case _: NumberFormatException => 0L},
+        respBytes = try {pieces(10).toLong } catch { case _: NumberFormatException => 0L},
         connState = pieces(11),
         /* localOrig = pieces(12).toBoolean, */
         /* localResp = pieces(13).toBoolean, */
         /* missedBytes = pieces(14).toLong, */
         /* history = pieces(15), */
-        origPkts = try {pieces(16).toLong } catch { case e: NumberFormatException => 0L},
-        origIpBytes = try {pieces(17).toLong } catch { case e: NumberFormatException => 0L},
-        respPkts = try {pieces(18).toLong } catch { case e: NumberFormatException => 0L},
-        respIpBytes = try {pieces(19).toLong } catch { case e: NumberFormatException => 0L}
+        origPkts = try {pieces(16).toLong } catch { case _: NumberFormatException => 0L},
+        origIpBytes = try {pieces(17).toLong } catch { case _: NumberFormatException => 0L},
+        respPkts = try {pieces(18).toLong } catch { case _: NumberFormatException => 0L},
+        respIpBytes = try {pieces(19).toLong } catch { case _: NumberFormatException => 0L}
         /* tunnelParents = pieces(20), */
       )
       )
