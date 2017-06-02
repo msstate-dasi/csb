@@ -34,25 +34,14 @@ class OptionParser(override val programName: String, programVersion: String, con
   note("")
 
   cmd("seed")
-    .text("Generates a property graph and the probability distributions of its properties starting from two log files.")
+    .text("Generates a property graph and the probability distributions of its properties starting from a bro log file.")
     .action( (_, c) => c.copy(mode = "seed") )
     .children(
-      opt[String]('a', "alert-log")
-        .valueName("<path>")
-        .text(s"Path of the Snort connection log [default: ${config.alertLog}].")
-        .validate(path => if ( new File(path).isFile ) success else failure(s"$path is not a regular file") )
-        .action((x, c) => c.copy(alertLog = x)),
-
       opt[String]('b', "bro-log")
         .valueName("<path>")
         .text(s"Path of the Bro connection log [default: ${config.connLog}].")
         .validate(path => if ( new File(path).isFile ) success else failure(s"$path is not a regular file") )
         .action((x, c) => c.copy(connLog = x)),
-
-      opt[String]('l', "log")
-        .valueName("<path>")
-        .text(s"Output path of the resulting augmented log [default: ${config.augLog}].")
-        .action((x, c) => c.copy(augLog = x)),
 
       opt[String]('w', "saver")
         .valueName("<value>")
@@ -103,9 +92,9 @@ class OptionParser(override val programName: String, programVersion: String, con
 
       opt[String]('l', "log")
         .valueName("<path>")
-        .text(s"Path of the augmented log [default: ${config.augLog}].")
+        .text(s"Path of the bro log [default: ${config.connLog}].")
         .validate(path => if ( new File(path).isFile ) success else failure(s"$path is not a regular file") )
-        .action((x, c) => c.copy(augLog = x)),
+        .action((x, c) => c.copy(connLog = x)),
 
       opt[String]('w', "saver")
         .valueName("<value>")
