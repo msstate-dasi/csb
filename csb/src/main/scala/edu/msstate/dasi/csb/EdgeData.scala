@@ -36,7 +36,6 @@ package edu.msstate.dasi.csb
  * @param respPkts    Number of packets that the responder sent.
  * @param respIpBytes Number of IP level bytes that the responder sent (as seen on the wire, taken from the IP
  *                    total_length header field).
- * @param desc        Connection description
  */
 case class EdgeData(ts: Long,
                     /* uid: String */
@@ -55,11 +54,11 @@ case class EdgeData(ts: Long,
                     origPkts: Long,
                     origIpBytes: Long,
                     respPkts: Long,
-                    respIpBytes: Long,
+                    respIpBytes: Long
                     /* tunnelParents: String, */
-                    desc: String) {
+                    ) {
   def toCsv: String = s"$ts,$origPort,$respPort,$proto,$duration,$origBytes,$respBytes,$connState,$origPkts," +
-    s"$origIpBytes,$respPkts,$respIpBytes,$desc"
+    s"$origIpBytes,$respPkts,$respIpBytes"
 }
 
 object EdgeData {
@@ -70,49 +69,30 @@ object EdgeData {
     if (text == "null") {
       null.asInstanceOf[EdgeData]
     } else {
-      // EdgeData example: EdgeData(1318226897,68,67,udp,0.003044,116,230,SF,2,172,2,286,)
+      // EdgeData example: EdgeData(1318226897,68,67,udp,0.003044,116,230,SF,2,172,2,286)
       val dataRegex = "\\w+\\(|[,)]"
 
       text.replaceFirst("^" + dataRegex, "").split(dataRegex) match {
         case Array(ts, origPort, respPort, proto, duration, origBytes, respBytes, connState, origPkts, origIpBytes,
-        respPkts, respIpBytes, desc) =>
-          new EdgeData(
-            ts.toLong,
-            origPort.toInt,
-            respPort.toInt,
-            proto,
-            duration.toDouble,
-            origBytes.toLong,
-            respBytes.toLong,
-            connState,
-            origPkts.toLong,
-            origIpBytes.toLong,
-            respPkts.toLong,
-            respIpBytes.toLong,
-            desc
-          )
-        // TODO: check why we need the following, i.e. why might "desc" be empty?
-        case Array(ts, origPort, respPort, proto, duration, origBytes, respBytes, connState, origPkts, origIpBytes,
         respPkts, respIpBytes) =>
           new EdgeData(
-            ts.toLong,
-            origPort.toInt,
-            respPort.toInt,
+            try { ts.toLong } catch { case _: NumberFormatException => 0L},
+            try { origPort.toInt } catch { case _: NumberFormatException => 0},
+            try { respPort.toInt } catch { case _: NumberFormatException => 0},
             proto,
-            duration.toDouble,
-            origBytes.toLong,
-            respBytes.toLong,
+            try { duration.toDouble} catch { case _: NumberFormatException => 0.0},
+            try {origBytes.toLong} catch { case _: NumberFormatException => 0L},
+            try {respBytes.toLong} catch { case _: NumberFormatException => 0L},
             connState,
-            origPkts.toLong,
-            origIpBytes.toLong,
-            respPkts.toLong,
-            respIpBytes.toLong,
-            ""
+            try {origPkts.toLong} catch { case _: NumberFormatException => 0L},
+            try {origIpBytes.toLong} catch { case _: NumberFormatException => 0L},
+            try {respPkts.toLong} catch { case _: NumberFormatException => 0L},
+            try {respIpBytes.toLong} catch { case _: NumberFormatException => 0l}
           )
       }
     }
   }
 
   def neo4jCsvHeader: String = "ts:long,origPort:int,respPort:int,proto,duration:double,origBytes:long," +
-    "respBytes:long,connState,origPkts:long,origIpBytes:long,respPkts:long,respIpBytes:long,desc"
+    "respBytes:long,connState,origPkts:long,origIpBytes:long,respPkts:long,respIpBytes:long"
 }

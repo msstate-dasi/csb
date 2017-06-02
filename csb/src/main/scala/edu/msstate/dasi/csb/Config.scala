@@ -19,9 +19,7 @@ case class Config(
 
                  iterations: Int = 0,
 
-                 alertLog: String = "alert",
                  connLog: String = "conn.log",
-                 augLog: String = "aug.log",
 
                  synthesizer: String = "",
                  skipProperties: Boolean = false,

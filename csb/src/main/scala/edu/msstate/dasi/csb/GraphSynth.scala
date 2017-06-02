@@ -35,8 +35,7 @@ trait GraphSynth {
         origPkts = dataDist.origPkts.sample(origBytes),
         origIpBytes = dataDist.origIpBytes.sample(origBytes),
         respPkts = dataDist.respPkts.sample(origBytes),
-        respIpBytes = dataDist.respIpBytes.sample(origBytes),
-        desc = dataDist.desc.sample(origBytes))
+        respIpBytes = dataDist.respIpBytes.sample(origBytes))
     })
   }
 
