@@ -1,5 +1,6 @@
 package edu.msstate.dasi.csb
 
+import edu.msstate.dasi.csb.model.EdgeData
 import org.apache.spark.graphx.{Edge, EdgeDirection, Graph, VertexId}
 import org.apache.spark.rdd.RDD
 

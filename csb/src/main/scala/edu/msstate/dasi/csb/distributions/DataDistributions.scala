@@ -1,6 +1,6 @@
 package edu.msstate.dasi.csb.distributions
 
-import edu.msstate.dasi.csb.{ConnStates, EdgeData, Protocols, VertexData}
+import edu.msstate.dasi.csb.model.{ConnStates, EdgeData, Protocols, VertexData}
 import org.apache.spark.graphx.Graph
 
 /**

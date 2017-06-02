@@ -1,6 +1,7 @@
 package edu.msstate.dasi.csb
 
 import edu.msstate.dasi.csb.distributions.DataDistributions
+import edu.msstate.dasi.csb.model.{EdgeData, VertexData}
 import org.apache.spark.graphx.{Edge, Graph, VertexId}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
