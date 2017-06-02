@@ -43,9 +43,9 @@ object DataParser {
         respPort = pieces(5).toInt,
         proto = pieces(6),
         /* service = pieces(7), */
-        duration = pieces(8).toDouble,
-        origBytes = pieces(9).toLong,
-        respBytes = pieces(10).toLong,
+        duration = if (pieces(8)!="-") pieces(8).toDouble else 0.0,
+        origBytes = if (pieces(9)!="-") pieces(9).toLong else 0L,
+        respBytes = if (pieces(10)!="-") pieces(10).toLong else 0L,
         connState = pieces(11),
         /* localOrig = pieces(12).toBoolean, */
         /* localResp = pieces(13).toBoolean, */
