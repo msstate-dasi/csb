@@ -4,12 +4,6 @@ import org.apache.spark.graphx.{Edge, Graph}
 import org.apache.spark.storage.StorageLevel
 
 object DataParser {
-  private def isNotComment(line: String): Boolean = {
-    if (line(0) == '#')
-      false
-    else
-      true
-  }
 
   private def isAllowedProto(line: String): Boolean = {
     val pieces = line.split('\t')
@@ -31,8 +25,7 @@ object DataParser {
     val logFile = sc.textFile(logPath, partitions)
 
     // Drop the 8-lines header and 1-line footer and filter lines that contains only IPv4 addresses
-    val theLog = logFile.filter(isNotComment)
-      .filter(isInet4).filter(isAllowedProto)
+    val theLog = logFile.filter(line => line(0) != '#').filter(isInet4).filter(isAllowedProto)
 
     val edges = theLog.map(line => {
       val pieces = line.split('\t')
