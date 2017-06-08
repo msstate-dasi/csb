@@ -172,7 +172,7 @@ object SparkWorkload extends Workload {
   /**
    * Computes the betweenness centrality of a graph given a max k value.
    *
-   * Credits: Daniel Marcous (https://github.com/dmarcous/spark-betweenness/blob/master/src/main/scala/com/centrality/kBC/KBetweenness.scala)
+   * Credits: Daniel Marcous ([[https://github.com/dmarcous/spark-betweenness/blob/master/src/main/scala/com/centrality/kBC/KBetweenness.scala]])
    *
    * @param graph The input graph
    * @param k The maximum number of hops to compute

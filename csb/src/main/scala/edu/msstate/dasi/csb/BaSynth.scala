@@ -8,12 +8,15 @@ import org.apache.spark.rdd.RDD
 import scala.util.Random
 
 /**
-  * Created by spencer on 11/3/16.
+  * Contains methods relating to generating Barabasi-Albert graphs.
+  * @param partitions Number of partitions to use for RDDs inside the method.
+  * @param baIter Number of iterations to perform the BA algorithm for.
+  * @param nodesPerIter Percentage of nodes to generate per iteration.
   */
 class BaSynth(partitions: Int, baIter: Long, nodesPerIter: Long) extends GraphSynth {
 
   /**
-   *
+   * Internal method to generate a Barabasi-Albert graph.
    * @param inVertices RDD of vertices and their edu.msstate.dasi.VertexData
    * @param inEdges RDD of edges and their edu.msstate.dasi.EdgeData
    * @param iter Number of iterations to perform BA
@@ -26,7 +29,6 @@ class BaSynth(partitions: Int, baIter: Long, nodesPerIter: Long) extends GraphSy
     var theGraph = Graph(inVertices, inEdges, VertexData())
 
     var nodeIndices = Array.empty[VertexId]
-//    var nodeIndices: mutable.HashMap[String, VertexId] = new mutable.HashMap[String, VertexId]()
     var degList: Array[(VertexId, Int)] = theGraph.degrees.sortBy(_._1).collect()
 
     inVertices.foreach(record => nodeIndices :+= record._1)
@@ -94,6 +96,12 @@ class BaSynth(partitions: Int, baIter: Long, nodesPerIter: Long) extends GraphSy
     theGraph
   }
 
+  /**
+    * Method to generate a Barabasi-Albert graph.
+    * @param seed A seed graph consisting of edges and vertices
+    * @param seedDists A [[DataDistributions]] object containing the relevant property distributions of the seed graph
+    * @return
+    */
   protected def genGraph(seed: Graph[VertexData, EdgeData], seedDists : DataDistributions): Graph[VertexData, EdgeData] = {
     println()
     println("Running BA with " + baIter + " iterations.")

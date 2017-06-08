@@ -11,36 +11,34 @@ import scala.collection.mutable
   * Kro(n)Fit
   * Created by spencer on 1/27/2017.
   */
+
+/**
+  * KronFit object that fits a seed graph into a Kronecker Matrix
+  */
 object KroFit {
 
+  /**
+    * Method to perform Gradient Descent on a seed graph and output the resulting seed matrix.
+    * @param G Graph to use as the seed graph.
+    * @param gradIter Gradient iterations to use during fitting.
+    * @param lrnRate Percent to learn from gradient each iteration.
+    * @param mnStep Minimum value to compare with learning rate and adjust learning rate accordingly.
+    * @param mxStep Maximum value to compare with learning rate and adjust learning rate accordingly.
+    * @param warmUp Number of samples to perform as a warm-up.
+    * @param nSamples Number of samples to perform during fitting.
+    * @param inMtx Initial matrix to start gradient descent with.
+    * @return
+    */
     def run(G: Graph[VertexData, EdgeData], gradIter: Int = 100, lrnRate: Double = 0.00005, mnStep: Double = 0.005,
             mxStep: Double = 0.05, warmUp: Int = 10000, nSamples: Int = 100000, inMtx: Array[Double] = Array(.9,.7,.5,.2)): Array[Array[Double]] = {
-
-//      val edgeList: RDD[(Long, Long)] = G.edges.map(record => (record.srcId, record.dstId))
-//      val nodeList: RDD[Long] = G.vertices.map(record => record._1)
-
-//      val tempNodes = sc.parallelize(Array(0L,1L,2L,3L))
-//      val tempEdges = sc.parallelize(Array((0L,1L),(1L,2L),(3L,2L),(2L, 0L), (1L, 3L)))
-
 
       var newGraph = Util.convertLabelsToStandardForm(G)
       newGraph = Util.stripMultiEdges(newGraph)
       val edgeList = newGraph.edges.map(record => (record.srcId, record.dstId))
       val nodeList = newGraph.vertices.map(record => record._1)
-//      val (edgeList, nodeList) = (tempEdges, tempNodes)
 
       val permSwapNodeProb = 0.2
       val scaleInitMtx = true
-
-      /*
-      val lrnRate = 0.00005
-      val mnStep = 0.005
-      val mxStep = 0.05
-      val warmUp = 10000
-      val nSamples = 100000
-
-      val initKronMtx = new kronMtx(sc, )
-      */
 
       val initKronMtx = new kronMtx(inMtx)
 
@@ -77,7 +75,4 @@ object KroFit {
 
       return result
     }
-
-
-
 }
