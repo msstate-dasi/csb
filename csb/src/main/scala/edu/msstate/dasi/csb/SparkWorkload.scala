@@ -218,7 +218,8 @@ object SparkWorkload extends Workload {
      * r(x) = {y ∈ c(x): ∀w ∈ n(x).c(W) ∩ n(y) ≠ ∅}
      *
      */
-    def refine(candidates: RDD[(VertexId, Array[VertexId])], graphNeighbors: RDD[(VertexId, Array[VertexId])],
+    def refine(candidates: RDD[(VertexId, Array[VertexId])], graphVerticesCount: Long,
+               graphNeighbors: RDD[(VertexId, Array[VertexId])],
                patternNeighbors: RDD[(VertexId, VertexId)], partitions: Int): RDD[(VertexId, Array[VertexId])] = {
       val neighborsOfCandidates = candidates
         .flatMap{ case (patternVertex, candidatesArray) => candidatesArray.map( (patternVertex, _) ) }
@@ -232,7 +233,10 @@ object SparkWorkload extends Workload {
       val refinedCandidates = neighborsOfCandidates.leftOuterJoin(candidatesOfPatternNeighbors)
         .filter{
           case (_, ((_, candidateNeighbors), Some(candidatesOfNeighbors))) =>
-            candidatesOfNeighbors.forall( _.intersect(candidateNeighbors).nonEmpty )
+            candidatesOfNeighbors.forall( candidatesOfNeighbor =>
+              if (candidatesOfNeighbor.length == graphVerticesCount) true
+              else candidatesOfNeighbor.intersect(candidateNeighbors).nonEmpty
+            )
           case (_, ((_, _), None)) => true
         }
         .repartition(partitions)
@@ -303,7 +307,7 @@ object SparkWorkload extends Workload {
      *  * every vertex has exactly one candidate.
      *
      */
-    def backtracking(candidates: RDD[(VertexId, Array[VertexId])], patternVerticesCount: Long,
+    def backtracking(candidates: RDD[(VertexId, Array[VertexId])], patternVerticesCount: Long, graphVerticesCount: Long,
                      graphNeighbors: RDD[(VertexId, Array[VertexId])], patternNeighbors: RDD[(VertexId, VertexId)],
                      partitions: Int): Int = {
       var count = 0
@@ -333,7 +337,7 @@ object SparkWorkload extends Workload {
       for (candidate <- currentArray) {
         val candidatesAttempt = select(cleanedCandidates, currentVertex, candidate).cache()
 
-        val candidatesResult = refine(candidatesAttempt, graphNeighbors, patternNeighbors, partitions).cache()
+        val candidatesResult = refine(candidatesAttempt, graphVerticesCount, graphNeighbors, patternNeighbors, partitions).cache()
         val candidatesResultCount = candidatesResult.count
 
         candidatesAttempt.unpersist()
@@ -349,7 +353,7 @@ object SparkWorkload extends Workload {
             println("********************")
           } else {
             // Some vertex has more than one candidates, backtrack
-            count += backtracking(candidatesResult, patternVerticesCount, graphNeighbors, patternNeighbors, partitions)
+            count += backtracking(candidatesResult, patternVerticesCount, graphVerticesCount, graphNeighbors, patternNeighbors, partitions)
           }
         }
         candidatesResult.unpersist()
@@ -358,6 +362,7 @@ object SparkWorkload extends Workload {
     }
 
     val patternVerticesCount = pattern.vertices.count
+    val graphVerticesCount = graph.vertices.count
 
     val partitions = graph.vertices.getNumPartitions
 
@@ -402,7 +407,7 @@ object SparkWorkload extends Workload {
       .flatMap{ case (vertex, neighbors) => neighbors.map( (vertex, _) ) } // Unroll the neighbors array into separate entries
       .cache()
 
-    val refinedCandidates = refine(candidates, graphNeighbors, patternNeighbors, partitions).cache()
+    val refinedCandidates = refine(candidates, graphVerticesCount, graphNeighbors, patternNeighbors, partitions).cache()
     val refinedCandidatesCount = refinedCandidates.count
 
     candidates.unpersist()
@@ -417,7 +422,7 @@ object SparkWorkload extends Workload {
       return
     }
 
-    val count = backtracking(refinedCandidates, patternVerticesCount, graphNeighbors, patternNeighbors, partitions)
+    val count = backtracking(refinedCandidates, patternVerticesCount, graphVerticesCount, graphNeighbors, patternNeighbors, partitions)
 
     println(s"$count subgraphs found.")
 
