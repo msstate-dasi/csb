@@ -1,11 +1,10 @@
 package edu.msstate.dasi.csb.distributions
 
-import com.holdenkarau.spark.testing.SharedSparkContext
-import org.scalatest.FunSuite
+import edu.msstate.dasi.csb.test.UnitSpec
 
 import scala.collection.mutable
 
-class DistributionTest extends FunSuite with SharedSparkContext {
+class DistributionTest extends UnitSpec {
 
   private val samples = 1000000
   private val tolerance = 0.01
