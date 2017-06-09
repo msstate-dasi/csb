@@ -21,14 +21,14 @@ class DistributionTest extends UnitSpec {
     }
   }
 
-  test("testSample") {
+  test("A Distribution built from an array should return samples according to the given probabilities") {
     val input = Map('A' -> 0.55, 'B' -> 0.25, 'C' -> 0.15, 'D' -> 0.05)
     val distribution = new Distribution(input.toArray)
 
     testProbability(input, distribution)
   }
 
-  test("testApply") {
+  test("A Distribution built from an RDD should return samples according to the probability of the input occurrences") {
     val sequence = Seq(0, 0, 0, 0, 1, 1, 1, 2, 2, 3, 4, 4)
     val input = sequence.groupBy(identity).mapValues(_.length.toDouble / sequence.length)
 
