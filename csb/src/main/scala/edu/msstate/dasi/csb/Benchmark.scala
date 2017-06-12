@@ -91,7 +91,7 @@ object Benchmark {
 
     factory.getTextSaver match {
       case Some(textSaver) =>
-        Util.time( "Save synth graph as text", textSaver.saveAsText(seed, config.synthGraphPrefix, overwrite = true) )
+        Util.time( "Save synth graph as text", textSaver.saveAsText(synth, config.synthGraphPrefix, overwrite = true) )
       case None =>
     }
 
