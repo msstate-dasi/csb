@@ -49,8 +49,8 @@ object Util {
    * Executes a task and prints the elapsed time.
    *
    * @param taskName the name of the task
-   * @param task the code block to be executed
-
+   * @param task     the code block to be executed
+   *
    * @return the return value of the task
    */
   def time[R](taskName: String, task: => R): R = {

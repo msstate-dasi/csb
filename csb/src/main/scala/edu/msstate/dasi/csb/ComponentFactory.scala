@@ -47,7 +47,9 @@ class ComponentFactory(config: Config) {
     }
   }
 
-
+  /**
+   * Returns the veracity metrics.
+   */
   def getMetrics: Array[Veracity] = {
     var metrics = Array.empty[Veracity]
 

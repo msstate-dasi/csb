@@ -24,18 +24,21 @@ object SparkWorkload extends Workload {
 
   /**
    * The degree of each vertex in the graph.
+   *
    * @note Vertices with no edges not considered.
    */
   def degree[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = graph.degrees.foreach(doNothing)
 
   /**
    * The in-degree of each vertex in the graph.
+   *
    * @note Vertices with no incoming edges are not considered.
    */
   def inDegree[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = graph.inDegrees.foreach(doNothing)
 
   /**
    * The out-degree of each vertex in the graph.
+   *
    * @note Vertices with no outgoing edges are not considered.
    */
   def outDegree[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = graph.outDegrees.foreach(doNothing)
@@ -92,6 +95,7 @@ object SparkWorkload extends Workload {
   /**
    * Collects list of neighbors based solely on incoming direction, and returns a list of
    * those neighbors as well as their node attribute
+   *
    * @param graph The input graph
    *
    * @return RDD of Arrays which contain VertexId and VD for each neighbor
@@ -103,9 +107,11 @@ object SparkWorkload extends Workload {
   /**
    * Collects list of neighbors based solely on outgoing direction, and returns a list of
    * those neighbors as well as their node attribute
+   *
    * @param graph The input graph
    * @tparam VD Node attribute type for input graph
    * @tparam ED Edge attribute type for input graph
+   *
    * @return RDD of Arrays which contain VertexId and VD for each neighbor
    */
   def outNeighbors[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED]): Unit = {
@@ -115,9 +121,11 @@ object SparkWorkload extends Workload {
   /**
    * Collects list of neighbors in both incoming and outgoing direction, and returns a list of
    * those neighbors as well as their node attribute
+   *
    * @param graph The input graph
    * @tparam VD Node attribute type for input graph
    * @tparam ED Edge attribute type for input graph
+   *
    * @return RDD of Arrays which contain VertexId and VD for each neighbor
    */
   def neighbors[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED]): Unit = {
@@ -126,9 +134,11 @@ object SparkWorkload extends Workload {
 
   /**
    * Grabs all of the edges entering a node by grouping the edges by dstId attribute
+   *
    * @param graph The input graph
    * @tparam VD Node attribute type for input graph
    * @tparam ED Edge attribute type for input graph
+   *
    * @return RDD containing pairs of (VertexID, Iterable of Edges) for every vertex in the graph
    */
   def inEdges[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED]): Unit = {
@@ -137,9 +147,11 @@ object SparkWorkload extends Workload {
 
   /**
    * Grabs all of the edges exiting a node by grouping the edges by srcId attribute
+   *
    * @param graph The input graph
    * @tparam VD Node attribute type for input graph
    * @tparam ED Edge attribute type for input graph
+   *
    * @return RDD containing pairs of (VertexID, Iterable of Edges) for every vertex in the graph
    */
   def outEdges[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED]): Unit = {
@@ -175,7 +187,8 @@ object SparkWorkload extends Workload {
    * Credits: Daniel Marcous ([[https://github.com/dmarcous/spark-betweenness/blob/master/src/main/scala/com/centrality/kBC/KBetweenness.scala]])
    *
    * @param graph The input graph
-   * @param k The maximum number of hops to compute
+   * @param k     The maximum number of hops to compute
+   *
    * @return Graph containing the betweenness double values
    */
   def betweennessCentrality[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], k: Int): Unit = {
@@ -216,7 +229,6 @@ object SparkWorkload extends Workload {
      * "y is a refined candidate of x iff every neighbor of x has at least one candidate among neighbors of y"
      *
      * r(x) = {y ∈ c(x): ∀w ∈ n(x).c(W) ∩ n(y) ≠ ∅}
-     *
      */
     def refine(candidates: RDD[(VertexId, Array[VertexId])], graphNeighbors: RDD[(VertexId, Array[VertexId])],
                patternNeighbors: RDD[(VertexId, VertexId)], partitions: Int): RDD[(VertexId, Array[VertexId])] = {
@@ -268,8 +280,8 @@ object SparkWorkload extends Workload {
 
     /**
      * Given a vertex and one of its candidates:
-     *  * removes any other candidate's occurrences among the candidates of the other vertices
-     *  * removes all the other vertex's candidates
+     * * removes any other candidate's occurrences among the candidates of the other vertices
+     * * removes all the other vertex's candidates
      */
     def select(candidates: RDD[(VertexId, Array[VertexId])], selectedVertex: VertexId,
                selectedCandidate: VertexId): RDD[(VertexId, Array[VertexId])] = {
@@ -299,9 +311,8 @@ object SparkWorkload extends Workload {
      *  4. Backtrack
      *
      * Stop when:
-     *  * any vertex has no more candidates, OR
-     *  * every vertex has exactly one candidate.
-     *
+     * * any vertex has no more candidates, OR
+     * * every vertex has exactly one candidate.
      */
     def backtracking(candidates: RDD[(VertexId, Array[VertexId])], patternVerticesCount: Long,
                      graphNeighbors: RDD[(VertexId, Array[VertexId])], patternNeighbors: RDD[(VertexId, VertexId)],
@@ -377,7 +388,6 @@ object SparkWorkload extends Workload {
      * y is a candidate of x iff degree(y) ≥ degree(x)
      *
      * c(x) = {y ∈ vertices(graph): degree(y) ≥ degree(x)}
-     *
      */
     val candidates = patternVerticesWithDegree.sortBy(_._2, ascending = false)
       .cartesian(graphVerticesWithDegree)
