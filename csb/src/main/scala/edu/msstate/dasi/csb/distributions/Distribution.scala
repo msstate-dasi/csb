@@ -37,7 +37,7 @@ class Distribution[T](distribution: Array[(T, Double)]) extends Serializable {
 }
 
 /**
- * The [[Distribution]] object contains helper methods to build [[Distribution]] instances from RDDs.
+ * Factory for [[Distribution]] instances.
  */
 object Distribution {
   /**
