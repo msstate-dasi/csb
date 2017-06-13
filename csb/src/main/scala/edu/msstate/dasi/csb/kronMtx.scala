@@ -2,9 +2,7 @@ package edu.msstate.dasi.csb
 
 import scala.util.Random
 
-/**
-  * Created by spencer on 1/27/2017.
-  */
+
 class kronMtx() extends {
 
   val NInf: Double = Double.MaxValue

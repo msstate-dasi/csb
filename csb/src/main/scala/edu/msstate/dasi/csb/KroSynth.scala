@@ -155,9 +155,12 @@ class KroSynth(partitions: Int, mtxFile: String, genIter: Int) extends GraphSynt
     )
   }
 
-  /***
-   * Synthesize a graph from a seed graph and its property distributions.
-   */
+  /**
+    * Synthesize a graph from a seed graph and its property distributions.
+    * @param seed Seed graph object begin generating synthetic graph with.
+    * @param seedDists Seed distributions to use when generating the synthetic graph.
+    * @return Synthetic graph object containing properties
+    */
   protected def genGraph(seed: Graph[VertexData, EdgeData], seedDists: DataDistributions): Graph[VertexData, EdgeData] = {
     //val probMtx: Array[Array[Float]] = Array(Array(0.1f, 0.9f), Array(0.9f, 0.5f))
     val probMtx: Array[Array[Double]] = kronFit(seed)
