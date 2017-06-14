@@ -4,24 +4,55 @@ import edu.msstate.dasi.csb.model.{ConnStates, EdgeData, Protocols, VertexData}
 import org.apache.spark.graphx.{Edge, Graph}
 import org.apache.spark.storage.StorageLevel
 
+/**
+ * Handles log data parsing for the application.
+ */
 object DataParser {
 
+  /**
+   * Checks if a connection protocol is either TCP or UDP, otherwise drops the connection.
+   *
+   * @param line Single line of Bro IDS log to check.
+   *
+   * @return True if the connection is either TCP or UDP, otherwise false
+   */
   private def isAllowedProto(line: String): Boolean = {
     val pieces = line.split('\t')
     pieces(6).contains("tcp") || pieces(6).contains("udp")
   }
 
+  /**
+   * Checks if both addresses conform to IPv4, otherwise drops the connection
+   *
+   * @param line Single line of Bro IDS log to check.
+   *
+   * @return True if both addresses are IPv4, false if otherwise.
+   */
   private def isInet4(line: String): Boolean = {
     val pieces = line.split('\t')
     !(pieces(2).contains(':') || pieces(4).contains(':'))
   }
 
+  /**
+   * Converts an IPv4 address into a Long integer.
+   *
+   * @param inet String containing IPv4 address separated by periods.
+   *
+   * @return Long integer containing the numerical IPv4
+   */
   private def inetToLong(inet: String): Long = {
     val pieces = inet.split('.')
     pieces.zipWithIndex.map { case (value, index) => value.toLong << 8 * ((pieces.length - 1) - index) }.sum
   }
 
-
+  /**
+   * Method to parse a Bro IDS log and convert it into a seed graph object.
+   *
+   * @param logPath    File path to a Bro IDS Connection log
+   * @param partitions Number of partitions to use when parsing the log file as a Spark text object.
+   *
+   * @return Graph containing the filtered log entries.
+   */
   def logToGraph(logPath: String, partitions: Int): Graph[VertexData, EdgeData] = {
     val logFile = sc.textFile(logPath, partitions)
 

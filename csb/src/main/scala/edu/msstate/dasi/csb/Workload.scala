@@ -18,18 +18,21 @@ trait Workload {
 
   /**
    * The degree of each vertex in the graph.
+   *
    * @note Vertices with no edges are not considered.
    */
   def degree[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit
 
   /**
    * The in-degree of each vertex in the graph.
+   *
    * @note Vertices with no incoming edges are not considered.
    */
   def inDegree[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit
 
   /**
    * The out-degree of each vertex in the graph.
+   *
    * @note Vertices with no outgoing edges are not considered.
    */
   def outDegree[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit
@@ -49,6 +52,7 @@ trait Workload {
   /**
    * Collects list of neighbors based solely on incoming direction, and returns a list of
    * those neighbors as well as their node attribute
+   *
    * @param graph The input graph
    *
    * @return RDD of Arrays which contain VertexId and VD for each neighbor
@@ -58,9 +62,11 @@ trait Workload {
   /**
    * Collects list of neighbors based solely on outgoing direction, and returns a list of
    * those neighbors as well as their node attribute
+   *
    * @param graph The input graph
    * @tparam VD Node attribute type for input graph
    * @tparam ED Edge attribute type for input graph
+   *
    * @return RDD of Arrays which contain VertexId and VD for each neighbor
    */
   def outNeighbors[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED]): Unit
@@ -68,27 +74,33 @@ trait Workload {
   /**
    * Collects list of neighbors in both incoming and outgoing direction, and returns a list of
    * those neighbors as well as their node attribute
+   *
    * @param graph The input graph
    * @tparam VD Node attribute type for input graph
    * @tparam ED Edge attribute type for input graph
+   *
    * @return RDD of Arrays which contain VertexId and VD for each neighbor
    */
   def neighbors[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED]): Unit
 
   /**
    * Grabs all of the edges entering a node by grouping the edges by dstId attribute
+   *
    * @param graph The input graph
    * @tparam VD Node attribute type for input graph
    * @tparam ED Edge attribute type for input graph
+   *
    * @return RDD containing pairs of (VertexID, Iterable of Edges) for every vertex in the graph
    */
   def inEdges[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED]): Unit
 
   /**
    * Grabs all of the edges exiting a node by grouping the edges by srcId attribute
+   *
    * @param graph The input graph
    * @tparam VD Node attribute type for input graph
    * @tparam ED Edge attribute type for input graph
+   *
    * @return RDD containing pairs of (VertexID, Iterable of Edges) for every vertex in the graph
    */
   def outEdges[VD: ClassTag, ED: ClassTag](graph: Graph[VD,ED]): Unit
@@ -114,7 +126,8 @@ trait Workload {
    * Computes the betweenness centrality of a graph given a max k value.
    *
    * @param graph The input graph
-   * @param k The maximum number of hops to compute
+   * @param k     The maximum number of hops to compute
+   *
    * @return Graph containing the betweenness double values
    */
   def betweennessCentrality[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], k: Int): Unit

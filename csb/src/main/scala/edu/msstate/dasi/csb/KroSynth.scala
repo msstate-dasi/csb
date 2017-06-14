@@ -8,11 +8,9 @@ import org.apache.spark.storage.StorageLevel
 
 import scala.util.Random
 
-/***
-  * Created by spencer on 11/3/16.
-  *
-  * KroSynth: Kronecker based Graph generation given seed matrix.
-  */
+/**
+ * Kronecker based Graph generation given seed matrix.
+ */
 class KroSynth(partitions: Int, mtxFile: String, genIter: Int) extends GraphSynth {
 
   private def parseMtxDataFromFile(mtxFilePath: String): Array[Array[Double]] = {
@@ -63,10 +61,11 @@ class KroSynth(partitions: Int, mtxFile: String, genIter: Int) extends GraphSynt
   }
 
   /**
-   *  Computes the RDD of the additional edges that should be added accordingly to the edge distribution.
+   * Computes the RDD of the additional edges that should be added accordingly to the edge distribution.
    *
-   *  @param edgeList The RDD of the edges returned by the Kronecker algorithm.
-   *  @return The RDD of the additional edges that should be added to the one returned by Kronecker algorithm.
+   * @param edgeList The RDD of the edges returned by the Kronecker algorithm.
+   *
+   * @return The RDD of the additional edges that should be added to the one returned by Kronecker algorithm.
    */
   private def getMultiEdgesRDD(edgeList: RDD[Edge[EdgeData]], seedDists: DataDistributions): RDD[Edge[EdgeData]] = {
     val dataDistBroadcast = sc.broadcast(seedDists)
@@ -84,11 +83,11 @@ class KroSynth(partitions: Int, mtxFile: String, genIter: Int) extends GraphSynt
     multiEdgeList
   }
 
-  /*** Function to generate and return a kronecker graph
-    *
-    * @param probMtx Probability Matrix used to generate Kronecker Graph
-    * @return Graph containing vertices + VertexData, edges + EdgeData
-    */
+  /** Function to generate and return a kronecker graph
+   *
+   * @param probMtx Probability Matrix used to generate Kronecker Graph
+   *
+   * @return Graph containing vertices + VertexData, edges + EdgeData*/
   private def generateKroGraph(probMtx: Array[Array[Double]], seedDists: DataDistributions): Graph[VertexData, EdgeData] = {
     val mtxVerticesNum = probMtx.length
     val mtxSum = probMtx.map(record => record.sum).sum
@@ -155,8 +154,13 @@ class KroSynth(partitions: Int, mtxFile: String, genIter: Int) extends GraphSynt
     )
   }
 
-  /***
+  /**
    * Synthesize a graph from a seed graph and its property distributions.
+   *
+   * @param seed      Seed graph object begin generating synthetic graph with.
+   * @param seedDists Seed distributions to use when generating the synthetic graph.
+   *
+   * @return Synthetic graph object containing properties
    */
   protected def genGraph(seed: Graph[VertexData, EdgeData], seedDists: DataDistributions): Graph[VertexData, EdgeData] = {
     //val probMtx: Array[Array[Float]] = Array(Array(0.1f, 0.9f), Array(0.9f, 0.5f))

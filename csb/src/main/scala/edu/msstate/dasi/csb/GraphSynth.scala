@@ -10,11 +10,21 @@ import org.apache.spark.graphx.Graph
 trait GraphSynth {
   /**
    * Generates a synthetic graph with no properties starting from a seed graph.
+   *
+   * @param seed      Seed graph object begin generating synthetic graph with.
+   * @param seedDists Seed distributions to use when generating the synthetic graph.
+   *
+   * @return Synthetic graph object containing blank properties
    */
   protected def genGraph(seed: Graph[VertexData, EdgeData], seedDists : DataDistributions): Graph[VertexData, EdgeData]
 
   /**
    * Fills the properties of a synthesized graph using the property distributions of the seed.
+   *
+   * @param synth     Synthetic graph object to add properties.
+   * @param seedDists Seed distributions to use when generating synthetic properties.
+   *
+   * @return Synthetic graph object containing accurate properties
    */
   private def genProperties(synth: Graph[VertexData, EdgeData], seedDists : DataDistributions): Graph[VertexData, EdgeData] = {
     val dataDistBroadcast = sc.broadcast(seedDists)
@@ -42,6 +52,12 @@ trait GraphSynth {
 
   /**
    * Synthesizes a graph from a seed graph and its properties distributions.
+   *
+   * @param seed           Seed graph object begin generating synthetic graph with.
+   * @param seedDists      Seed distributions to use when generating the synthetic graph.
+   * @param withProperties Specifies whether to generate properties or return the synthetic graph with blank properties.
+   *
+   * @return Synthetic graph object.
    */
   def synthesize(seed: Graph[VertexData, EdgeData], seedDists : DataDistributions, withProperties: Boolean): Graph[VertexData, EdgeData] = {
 

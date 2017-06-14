@@ -2,6 +2,8 @@ package edu.msstate.dasi.csb
 
 /**
  * Provides factory methods for each benchmark component, defining their behavior from an input configuration.
+ *
+ * @param config the input configuration
  */
 class ComponentFactory(config: Config) {
 
@@ -47,7 +49,9 @@ class ComponentFactory(config: Config) {
     }
   }
 
-
+  /**
+   * Returns the veracity metrics.
+   */
   def getMetrics: Array[Veracity] = {
     var metrics = Array.empty[Veracity]
 

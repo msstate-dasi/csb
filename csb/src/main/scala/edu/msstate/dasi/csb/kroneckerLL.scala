@@ -6,8 +6,8 @@ import scala.collection.mutable
 import scala.util.Random
 
 /**
-  * Created by spencer on 1/27/2017.
-  */
+ * Handles all KronFit Log-likelihood functions. Part of Gradient Descent algorithm.
+ */
 class kroneckerLL() {
 
   val Rnd = new Random()
@@ -19,16 +19,11 @@ class kroneckerLL() {
   var realNodes = -1
   var realEdges = -1
   var nodeHash: mutable.HashMap[Long, Boolean] = null
-//  var edgeHash: mutable.HashMap[(Long, Long), Boolean] = null
   var edgeList: Array[(Long, Long)] = null
   var adjArrHash: Array[mutable.LongMap[Boolean]] = null
   var inAdjArrHash: Array[mutable.LongMap[Boolean]] = null
   var adjArrArr: Array[Array[Long]] = null
   var inAdjArrArr: Array[Array[Long]] = null
-//  var adjHash: mutable.HashMap[Long, Array[Long]] = null
-//  var inAdjHash: mutable.HashMap[Long, Array[Long]] = null
-//  var immutableAdjhash: scala.collection.immutable.Map[Long, Array[Long]] = null
-//  var immutableinAdjHash: scala.collection.immutable.Map[Long, Array[Long]] = null
   val NInf: Double = -Double.MaxValue
   var logLike: Double = 0
   var gradV: Array[Double] = Array.empty[Double]
@@ -53,14 +48,10 @@ class kroneckerLL() {
     this.permSwapNodeProb = permSwapNodeProb
     InitLL(edgeList, nodeList, paramMtx)
   }
-//  def this(sc: SparkContext, edgeList: Array[(Long,Long)], nodeList: Array[Long], paramMtx: kronMtx, nodeIdPermV: Array[Long]) = {
-//    this(sc)
-//    InitLL(edgeList, nodeList, paramMtx)
-//    nodePerm = nodeIdPermV
-//    setIPerm(nodePerm)
-//  }
 
-
+  /**
+   * Sets current permutation.
+   */
   def setPerm(): Unit =
   {
     //gather every (deg, nid)
@@ -83,7 +74,13 @@ class kroneckerLL() {
 //    setIPerm(nodePerm)
   }
 
-
+  /**
+   * Initializes Log-Likelihood object from a seed edge-list, vertex-list, and an initial matrix.
+   *
+   * @param edgeList List of edges in a seed graph.
+   * @param nodeList List of vertices in a seed graph.
+   * @param paramMtx Initial matrix to use for computation.
+   */
   def InitLL(edgeList: RDD[(Long,Long)], nodeList: RDD[Long], paramMtx: kronMtx): Unit = {
     probMtx = paramMtx
     LLMtx = probMtx.getLLMtx()
@@ -94,7 +91,12 @@ class kroneckerLL() {
     }
   }
 
-
+  /**
+   * Recalculates vertex IDs and updates edges to ensure that no gaps are present between IDs. Required for sequential lookups.
+   *
+   * @param edgeList List of edges in a seed graph.
+   * @param nodeList List of vertices in a seed graph.
+   */
   def setGraph(edgeList: RDD[(Long,Long)], nodeList: RDD[Long]): Unit = {
     this.nodeHash = new mutable.HashMap()
     //    val broadcastNodeHash = sc.broadcast(nodeHash)
@@ -167,10 +169,27 @@ class kroneckerLL() {
     lSelfEdge = 0
   }
 
+  /**
+   * Get the current probability matrix.
+   *
+   * @return Current probability matrix stored in memory.
+   */
   def getParams(): Int = {
     return probMtx.Len()
   }
 
+  /**
+   * Performs Gradient descent on the loaded graph using the specified parameters.
+   *
+   * @param nIter    Number of iterations to perform Gradient Descent for.
+   * @param lrnRate  Learn Rate to modify the current matrix by during each iteration.
+   * @param mnStep   Minimum value to compare with learning rate and adjust learning rate accordingly.
+   * @param inMxStep Maximum value to compare with learning rate and adjust learning rate accordingly.
+   * @param warmUp   Number of samples to perform as a warm-up.
+   * @param nSamples Number of samples to perform during fitting.
+   *
+   * @return Double containing the current matrix log-likelihood.
+   */
   def gradDescent(nIter: Int, lrnRate: Double, mnStep: Double, inMxStep: Double, warmUp: Int, nSamples: Int): Double = {
     println("----------------------------------------------------------------------")
     println("Fitting graph on " + nodes + " nodes, " + edges + " edges.")
@@ -235,6 +254,16 @@ class kroneckerLL() {
     return curLL
   }
 
+  /**
+   * Perform a sample on the gradient.
+   *
+   * @param warmUp     Number of samples to warm-up with.
+   * @param nSamples   Number of overall samples to perform.
+   * @param inAvgLL    Average log-likelihood for a matrix.
+   * @param inAvgGradV Average gradient values.
+   *
+   * @return Average log-likelihood for the samples and the average gradient values.
+   */
   def sampleGradient(warmUp: Int, nSamples: Int, inAvgLL: Double, inAvgGradV: Array[Double]): (Double, Array[Double]) = {
     println("SampleGradient: " + nSamples / 1000 + "K ("+ warmUp / 1000+"K warm-up):")
     var avgLL = inAvgLL
@@ -293,6 +322,11 @@ class kroneckerLL() {
     return (avgLL, avgGradV)
   }
 
+  /**
+   * Calculates approximate log-likelihood that the curent matrix will generate the seed graph.
+   *
+   * @return Approximate graph log-likelihood value.
+   */
   def calcApxGraphLL(): Double = {
     logLike = getApxEmptyGraphLL()
     var i = 0.0
@@ -310,6 +344,11 @@ class kroneckerLL() {
     return logLike
   }
 
+  /**
+   * Return the approximate log-likelihood that the current matrix will generate an empty graph.
+   *
+   * @return Approximate empty graph log-likelihood value.
+   */
   def getApxEmptyGraphLL(): Double = {
     var sum = 0.0
     var sumSq = 0.0
@@ -320,6 +359,14 @@ class kroneckerLL() {
     return -math.pow(sum, kronIters) - 0.5*math.pow(sumSq, kronIters)
   }
 
+  /**
+   * Samples a permutation of the seed graph by swapping two nodes.
+   *
+   * @param inid1 Node to swap.
+   * @param inid2 Node to swap with.
+   *
+   * @return
+   */
   def sampleNextPerm(inid1: Long, inid2: Long): ((Long, Long), Boolean) = {
     var nid1 = inid1
     var nid2 = inid2
@@ -355,6 +402,14 @@ class kroneckerLL() {
     return ((nid1, nid2), true)
   }
 
+  /**
+   * Method to swap two nodes in the graph.
+   *
+   * @param nid1
+   * @param nid2
+   *
+   * @return logliklihood that the nodes would be swapped from the current matrix.
+   */
   def swapNodesLL(nid1: Long, nid2: Long): Double = {
     logLike = logLike - nodeLLDelta(nid1) - nodeLLDelta(nid2)
     val (pid1, pid2) = (nodePerm(nid1.toInt), nodePerm(nid2.toInt))
@@ -394,10 +449,12 @@ class kroneckerLL() {
 
 
   /**
-    *
-    * @param nid
-    * @return
-    */
+   * Calculates the log-likelihood that the current graph will generate a node.
+   *
+   * @param nid The node to calculate log-likelihood on.
+   *
+   * @return Log-likelihood value.
+   */
   def nodeLLDelta(nid: Long): Double = {
     if (!nodeHash.contains(nid))
       {
@@ -460,6 +517,12 @@ class kroneckerLL() {
     return delta
   }
 
+  /**
+   * Perform a node permutation by swapping two nodes.
+   *
+   * @param nid1 Node to swap.
+   * @param nid2 Node to swap with.
+   */
   def swapNodesNodePerm(nid1: Long, nid2: Long) = {
     val temp1 = nodePerm(nid1.toInt)
     val temp2 = nodePerm(nid2.toInt)
@@ -468,7 +531,11 @@ class kroneckerLL() {
     nodePerm(nid2.toInt) = temp1
   }
 
-
+  /**
+   * Calculate the approximate graph dynamic log-likelihood from the matrix.
+   *
+   * @return Gradient matrix containing the dynamic log-likelihood values.
+   */
   def calcApxGraphDLL(): Array[Double] = {
     for(paramId <- 0 until LLMtx.Len()) {
       var DLL = getApxEmptyGraphDLL(paramId)
@@ -484,6 +551,13 @@ class kroneckerLL() {
     return gradV
   }
 
+  /**
+   * Get the dynamic log-likelihood that a value from the current matrix will generate an empty graph.
+   *
+   * @param paramId Index of current matrix to check.
+   *
+   * @return Log-likelihood that the value at index specified by paramId will generate an empty graph.
+   */
   def getApxEmptyGraphDLL(paramId: Int): Double = {
     var sum = 0.0
     var sumSq = 0.0
@@ -495,7 +569,12 @@ class kroneckerLL() {
     return -kronIters*math.pow(sum, kronIters - 1) - kronIters*math.pow(sumSq, kronIters-1)*probMtx.At(paramId)
   }
 
-
+  /**
+   * Update the graph dynamic log-likelihood by swapping two nodes.
+   *
+   * @param inid1 Node to swap
+   * @param inid2 Node to swap with.
+   */
   def updateGraphDLL(inid1: Long, inid2: Long): Unit = {
     var snid1 = inid1
     var snid2 = inid2
@@ -578,7 +657,14 @@ class kroneckerLL() {
     }
   }
 
-
+  /**
+   * Calculate change in node dynamic log-likelihood.
+   *
+   * @param paramId Index of current matix to check.
+   * @param nid     Node ID to check.
+   *
+   * @return The delta value of the dynamic log-likelihood that the current matrix will generate the node in the seed graph.
+   */
   def nodeDLLDelta(paramId: Int, nid: Long): Double = {
     if(!nodeHash.contains(nid)) return 0.0
     var delta = 0.0

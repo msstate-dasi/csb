@@ -6,9 +6,6 @@ import scala.collection.mutable
 import scala.collection.mutable.Queue
 import scala.reflect.ClassTag
 
-/**
-  * Created by justin on 2/17/17.
-  */
 object ClosenessCentrality {
   private class DistanceNodePair(var distance: Long, var totalPairs: Long) extends Comparable[DistanceNodePair] {
 

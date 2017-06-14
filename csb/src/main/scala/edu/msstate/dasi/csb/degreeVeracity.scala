@@ -9,7 +9,7 @@ sealed trait DegreeVeracity extends Veracity {
   /**
    * Computes the degree veracity factor between the degrees of two graphs.
    */
-  def degree(d1: VertexRDD[Int], d2: VertexRDD[Int], saveDistAsCSV: Boolean = false, filePrefix: String = "",
+  protected def degree(d1: VertexRDD[Int], d2: VertexRDD[Int], saveDistAsCSV: Boolean = false, filePrefix: String = "",
              overwrite: Boolean = false): Double = {
     val d1Values = d1.values.map { value => value.toDouble }
     // TODO: Handle the case when the values are less than two
