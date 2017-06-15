@@ -14,9 +14,11 @@
         <maven.compiler.source>1.7</maven.compiler.source>
         <maven.compiler.target>1.7</maven.compiler.target>
         <encoding>UTF-8</encoding>
-        <scala.tools.version>2.11</scala.tools.version>
         <scala.version>2.11.8</scala.version>
+        <scala.tools.version>2.11</scala.tools.version>
+        <scalatest.version>3.0.1</scalatest.version>
         <spark.version>2.1.0</spark.version>
+        <spark-testing-base.version>0.6.0</spark-testing-base.version>
         <neo4j-driver.version>1.2.0</neo4j-driver.version>
     </properties>
 
@@ -81,6 +83,36 @@
                 </executions>
             </plugin>
 
+            <!-- disable surefire -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.20</version>
+                <configuration>
+                    <skipTests>true</skipTests>
+                </configuration>
+            </plugin>
+
+            <!-- enable scalatest -->
+            <plugin>
+                <groupId>org.scalatest</groupId>
+                <artifactId>scalatest-maven-plugin</artifactId>
+                <version>1.0</version>
+                <configuration>
+                    <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
+                    <junitxml>.</junitxml>
+                    <filereports>WDF TestSuite.txt</filereports>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>test</id>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
         </plugins>
     </build>
 
@@ -90,6 +122,12 @@
             <artifactId>scala-library</artifactId>
             <version>${scala.version}</version>
             <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.scalatest</groupId>
+            <artifactId>scalatest_${scala.tools.version}</artifactId>
+            <version>${scalatest.version}</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.spark</groupId>
@@ -108,6 +146,12 @@
             <artifactId>spark-mllib_${scala.tools.version}</artifactId>
             <version>${spark.version}</version>
             <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.holdenkarau</groupId>
+            <artifactId>spark-testing-base_${scala.tools.version}</artifactId>
+            <version>${spark.version}_${spark-testing-base.version}</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.hadoop</groupId>

@@ -104,10 +104,21 @@ class DataDistributions(graph: Graph[VertexData, EdgeData]) extends Serializable
     val data = graph.edges.map(e => (e.attr.respIpBytes, e.attr.origBytes))
     new ConditionalDistribution(data)
   }
-
 }
 
+/**
+ * Factory for [[DataDistributions]] instances.
+ */
 object DataDistributions {
+  /**
+   * Builds a [[DataDistributions]] instance from a [[Graph]].
+   *
+   * @note the resulting distributions are expected to be small, as they will be loaded into the driver's memory.
+   * @param graph      the input graph
+   * @param bucketSize the normalization value to apply to each numeric value, non-negative values are ignored
+   *
+   * @return the resulting [[DataDistributions]] object
+   */
   def apply(graph: Graph[VertexData, EdgeData], bucketSize: Int = 0): DataDistributions = {
     if (bucketSize > 0) {
       new DataDistributions(graph.mapEdges(e => e.attr.copy(

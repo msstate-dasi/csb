@@ -12,7 +12,7 @@ import scala.util.Random
  * @param distribution the array containing the distribution
  * @tparam T the distribution data type
  */
-class Distribution[T](distribution: Array[(T, Double)]) extends Serializable {
+protected class Distribution[T](distribution: Array[(T, Double)]) extends Serializable {
   /**
    * Returns a sample of the distribution.
    *
@@ -39,7 +39,7 @@ class Distribution[T](distribution: Array[(T, Double)]) extends Serializable {
 /**
  * Factory for [[Distribution]] instances.
  */
-object Distribution {
+private object Distribution {
   /**
    * Builds a distribution instance from an [[RDD]] of values.
    *

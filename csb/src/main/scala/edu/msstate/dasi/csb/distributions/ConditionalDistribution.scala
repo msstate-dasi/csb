@@ -12,7 +12,7 @@ import scala.reflect.ClassTag
  * @tparam Value the input data type
  * @tparam Cond  the data type of the conditioning value
  */
-class ConditionalDistribution[Value: ClassTag, Cond: ClassTag](data: RDD[(Value, Cond)]) extends Serializable {
+protected class ConditionalDistribution[Value: ClassTag, Cond: ClassTag](data: RDD[(Value, Cond)]) extends Serializable {
 
   /**
    * The internal representation, a Map of conditioning values to [[Distribution]] objects.
