@@ -1,11 +1,12 @@
-package edu.msstate.dasi.csb
+package edu.msstate.dasi.csb.veracity
 
+import edu.msstate.dasi.csb.Util
 import org.apache.spark.graphx.{Graph, VertexRDD}
 import org.apache.spark.mllib.rdd.RDDFunctions._
 
 import scala.reflect.ClassTag
 
-sealed trait DegreeVeracity extends Veracity {
+sealed trait Degree extends Veracity {
   /**
    * Computes the degree veracity factor between the degrees of two graphs.
    */
@@ -35,7 +36,7 @@ sealed trait DegreeVeracity extends Veracity {
   }
 }
 
-object DegreeVeracity extends DegreeVeracity {
+object Degree extends Degree {
   val name: String = "Degree"
 
   /**
@@ -46,7 +47,7 @@ object DegreeVeracity extends DegreeVeracity {
     degree(g1.degrees, g2.degrees, saveDistAsCSV, filePrefix, overwrite)
   }
 }
-object InDegreeVeracity extends DegreeVeracity {
+object InDegree extends Degree {
   val name: String = "In-degree"
   /**
    * Computes the in-degree veracity factor between two graphs.
@@ -56,7 +57,7 @@ object InDegreeVeracity extends DegreeVeracity {
     degree(g1.inDegrees, g2.inDegrees, saveDistAsCSV, filePrefix, overwrite)
   }
 }
-object OutDegreeVeracity extends DegreeVeracity {
+object OutDegree extends Degree {
   val name: String = "Out-degree"
 
   /**

@@ -1,11 +1,11 @@
-package edu.msstate.dasi.csb
+package edu.msstate.dasi.csb.veracity
 
 import org.apache.spark.graphx.Graph
 import org.apache.spark.mllib.rdd.RDDFunctions._
 
 import scala.reflect.ClassTag
 
-object PageRankVeracity extends Veracity {
+object PageRank extends Veracity {
   val name: String = "PageRank"
 
   /**

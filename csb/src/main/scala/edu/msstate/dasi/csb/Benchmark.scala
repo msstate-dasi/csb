@@ -2,6 +2,7 @@ package edu.msstate.dasi.csb
 
 import edu.msstate.dasi.csb.distributions.DataDistributions
 import edu.msstate.dasi.csb.model.{EdgeData, VertexData}
+import edu.msstate.dasi.csb.veracity.Veracity
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.graphx.Graph
 

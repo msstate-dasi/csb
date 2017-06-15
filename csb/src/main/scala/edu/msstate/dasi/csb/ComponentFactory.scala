@@ -1,5 +1,7 @@
 package edu.msstate.dasi.csb
 
+import edu.msstate.dasi.csb.veracity._
+
 /**
  * Provides factory methods for each benchmark component, defining their behavior from an input configuration.
  *
@@ -59,10 +61,10 @@ class ComponentFactory(config: Config) {
 
     val all = config.metrics.contains("all")
 
-    if (all || config.metrics.contains("degree")) metrics :+= DegreeVeracity
-    if (all || config.metrics.contains("in-degree")) metrics :+= InDegreeVeracity
-    if (all || config.metrics.contains("out-degree")) metrics :+= OutDegreeVeracity
-    if (all || config.metrics.contains("pagerank")) metrics :+= PageRankVeracity
+    if (all || config.metrics.contains("degree")) metrics :+= Degree
+    if (all || config.metrics.contains("in-degree")) metrics :+= InDegree
+    if (all || config.metrics.contains("out-degree")) metrics :+= OutDegree
+    if (all || config.metrics.contains("pagerank")) metrics :+= PageRank
 
     metrics
   }
