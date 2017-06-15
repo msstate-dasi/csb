@@ -1,13 +1,14 @@
-package edu.msstate.dasi.csb
+package edu.msstate.dasi.csb.synth
 
 import edu.msstate.dasi.csb.distributions.DataDistributions
 import edu.msstate.dasi.csb.model.{EdgeData, VertexData}
+import edu.msstate.dasi.csb.sc
 import org.apache.spark.graphx.{Edge, Graph, VertexId}
 import org.apache.spark.storage.StorageLevel
 
 import scala.util.Random
 
-class ParallelBaSynth(partitions: Int, baIter: Long, fractionPerIter: Double) extends GraphSynth {
+class ParallelBa(partitions: Int, baIter: Long, fractionPerIter: Double) extends GraphSynth {
 
   /**
    * Generates a graph using a parallel implementation of the Barabási–Albert algorithm.

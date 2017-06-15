@@ -1,5 +1,6 @@
 package edu.msstate.dasi.csb
 
+import edu.msstate.dasi.csb.synth.{GraphSynth, StochasticKronecker, ParallelBa}
 import edu.msstate.dasi.csb.veracity._
 import edu.msstate.dasi.csb.workload.{Neo4jWorkload, SparkWorkload, Workload}
 
@@ -47,8 +48,8 @@ class ComponentFactory(config: Config) {
    */
   def getSynthesizer: GraphSynth = {
     config.synthesizer match {
-      case "ba" => new ParallelBaSynth(config.partitions, config.iterations, config.sampleFraction)
-      case "kro" => new KroSynth(config.partitions, config.seedMatrix, config.iterations)
+      case "ba" => new ParallelBa(config.partitions, config.iterations, config.sampleFraction)
+      case "kro" => new StochasticKronecker(config.partitions, config.seedMatrix, config.iterations)
     }
   }
 

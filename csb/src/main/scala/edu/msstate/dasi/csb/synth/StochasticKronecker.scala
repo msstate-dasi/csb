@@ -1,7 +1,8 @@
-package edu.msstate.dasi.csb
+package edu.msstate.dasi.csb.synth
 
 import edu.msstate.dasi.csb.distributions.DataDistributions
 import edu.msstate.dasi.csb.model.{EdgeData, VertexData}
+import edu.msstate.dasi.csb.sc
 import org.apache.spark.graphx.{Edge, Graph, VertexId}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
@@ -11,7 +12,7 @@ import scala.util.Random
 /**
  * Kronecker based Graph generation given seed matrix.
  */
-class KroSynth(partitions: Int, mtxFile: String, genIter: Int) extends GraphSynth {
+class StochasticKronecker(partitions: Int, mtxFile: String, genIter: Int) extends GraphSynth {
 
   private def parseMtxDataFromFile(mtxFilePath: String): Array[Array[Double]] = {
     sc.textFile(mtxFilePath)
