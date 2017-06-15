@@ -1,4 +1,4 @@
-package edu.msstate.dasi.csb
+package edu.msstate.dasi.csb.persistence
 
 import edu.msstate.dasi.csb.model.{EdgeData, VertexData}
 import org.apache.spark.graphx.Graph

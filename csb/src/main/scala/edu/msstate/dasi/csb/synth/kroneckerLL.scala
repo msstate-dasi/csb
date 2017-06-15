@@ -1,5 +1,6 @@
-package edu.msstate.dasi.csb
+package edu.msstate.dasi.csb.synth
 
+import edu.msstate.dasi.csb.sc
 import org.apache.spark.rdd.RDD
 
 import scala.collection.mutable

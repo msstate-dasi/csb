@@ -1,4 +1,4 @@
-package edu.msstate.dasi.csb
+package edu.msstate.dasi.csb.synth
 
 import scala.util.Random
 

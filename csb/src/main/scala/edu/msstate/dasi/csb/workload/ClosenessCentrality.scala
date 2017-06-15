@@ -1,4 +1,4 @@
-package edu.msstate.dasi.csb
+package edu.msstate.dasi.csb.workload
 
 import org.apache.spark.graphx._
 

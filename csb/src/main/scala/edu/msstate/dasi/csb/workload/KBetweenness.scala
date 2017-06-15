@@ -1,13 +1,9 @@
-package edu.msstate.dasi.csb
+package edu.msstate.dasi.csb.workload
 
-import scala.reflect.ClassTag
-import org.apache.spark.graphx.VertexId
-import org.apache.spark.graphx.Graph
-import org.apache.spark.graphx.EdgeTriplet
-import org.apache.spark.graphx.Pregel
-import org.apache.spark.graphx.EdgeDirection
+import org.apache.spark.graphx._
 
 import scala.collection.mutable
+import scala.reflect.ClassTag
 
 object KBetweenness {
   def run[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], k: Int): Graph[Double, Double] = {

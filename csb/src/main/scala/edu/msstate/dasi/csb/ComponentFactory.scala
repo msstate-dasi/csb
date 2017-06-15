@@ -1,6 +1,7 @@
 package edu.msstate.dasi.csb
 
-import edu.msstate.dasi.csb.synth.{GraphSynth, StochasticKronecker, ParallelBa}
+import edu.msstate.dasi.csb.persistence.{GraphPersistence, Neo4jPersistence, SparkPersistence}
+import edu.msstate.dasi.csb.synth.{GraphSynth, ParallelBa, StochasticKronecker}
 import edu.msstate.dasi.csb.veracity._
 import edu.msstate.dasi.csb.workload.{Neo4jWorkload, SparkWorkload, Workload}
 

@@ -1,5 +1,6 @@
-package edu.msstate.dasi.csb
+package edu.msstate.dasi.csb.synth
 
+import edu.msstate.dasi.csb.Util
 import edu.msstate.dasi.csb.model.{EdgeData, VertexData}
 import org.apache.spark.graphx.Graph
 
