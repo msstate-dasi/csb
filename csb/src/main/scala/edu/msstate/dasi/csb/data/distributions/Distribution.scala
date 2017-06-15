@@ -1,4 +1,4 @@
-package edu.msstate.dasi.csb.distributions
+package edu.msstate.dasi.csb.data.distributions
 
 import org.apache.spark.rdd.RDD
 

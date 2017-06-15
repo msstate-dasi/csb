@@ -1,4 +1,4 @@
-package edu.msstate.dasi.csb.synth
+package edu.msstate.dasi.csb.data.synth
 
 import edu.msstate.dasi.csb.sc
 import org.apache.spark.rdd.RDD

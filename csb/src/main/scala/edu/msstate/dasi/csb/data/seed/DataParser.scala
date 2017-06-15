@@ -1,6 +1,7 @@
-package edu.msstate.dasi.csb
+package edu.msstate.dasi.csb.data.seed
 
 import edu.msstate.dasi.csb.model.{ConnStates, EdgeData, Protocols, VertexData}
+import edu.msstate.dasi.csb.sc
 import org.apache.spark.graphx.{Edge, Graph}
 import org.apache.spark.storage.StorageLevel
 

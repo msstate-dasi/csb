@@ -1,4 +1,4 @@
-package edu.msstate.dasi.csb.distributions
+package edu.msstate.dasi.csb.data.distributions
 
 import com.holdenkarau.spark.testing.RDDGenerator
 import edu.msstate.dasi.csb.test.PropertySpec

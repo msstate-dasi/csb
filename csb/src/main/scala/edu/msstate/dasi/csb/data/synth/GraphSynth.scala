@@ -1,6 +1,6 @@
-package edu.msstate.dasi.csb.synth
+package edu.msstate.dasi.csb.data.synth
 
-import edu.msstate.dasi.csb.distributions.DataDistributions
+import edu.msstate.dasi.csb.data.distributions.DataDistributions
 import edu.msstate.dasi.csb.model.{EdgeData, VertexData}
 import edu.msstate.dasi.csb.{Util, sc}
 import org.apache.spark.graphx.Graph

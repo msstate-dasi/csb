@@ -11,7 +11,7 @@ import org.apache.spark.graphx.VertexId
  * @param partitions        Sets number of partitions to use for Spark RDD objects throughout the application.
  * @param seedGraphPrefix   Prefix to attach to seed graph when loading/saving it.
  * @param synthGraphPrefix  Prefix to attach to synthetic graph when loading/saving it.
- * @param seedDistributions Path to a serialized [[distributions.DataDistributions]] object file.
+ * @param seedDistributions Path to a serialized [[edu.msstate.dasi.csb.data.distributions.DataDistributions]] object file.
  * @param bucketSize        Size of byte-buckets to break distributions into.
  * @param graphLoader       Method to use when loading a graph into memory.
  * @param graphSaver        Backend to use when saving a graph.
