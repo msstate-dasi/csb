@@ -1,6 +1,7 @@
-package edu.msstate.dasi.csb
+package edu.msstate.dasi.csb.workload
 
 import edu.msstate.dasi.csb.model.EdgeData
+import edu.msstate.dasi.csb.{ClosenessCentrality, KBetweenness}
 import org.apache.spark.graphx.{Edge, EdgeDirection, Graph, VertexId}
 import org.apache.spark.rdd.RDD
 

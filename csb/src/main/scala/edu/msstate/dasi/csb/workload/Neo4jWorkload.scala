@@ -1,4 +1,4 @@
-package edu.msstate.dasi.csb
+package edu.msstate.dasi.csb.workload
 
 import java.util.concurrent.TimeUnit
 

@@ -1,4 +1,4 @@
-package edu.msstate.dasi.csb
+package edu.msstate.dasi.csb.workload
 
 import edu.msstate.dasi.csb.model.EdgeData
 import org.apache.spark.graphx.{Edge, Graph, VertexId}

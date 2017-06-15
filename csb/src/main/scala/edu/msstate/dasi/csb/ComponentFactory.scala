@@ -1,6 +1,7 @@
 package edu.msstate.dasi.csb
 
 import edu.msstate.dasi.csb.veracity._
+import edu.msstate.dasi.csb.workload.{Neo4jWorkload, SparkWorkload, Workload}
 
 /**
  * Provides factory methods for each benchmark component, defining their behavior from an input configuration.
