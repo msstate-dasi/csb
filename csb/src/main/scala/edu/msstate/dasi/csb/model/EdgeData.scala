@@ -44,9 +44,12 @@ case class EdgeData(ts: Long,
     s"$origIpBytes,$respPkts,$respIpBytes"
 }
 
+/**
+ * Factory and helpers for [[EdgeData]] instances.
+ */
 object EdgeData {
   /**
-   *
+   * Builds an instance from a [[String]].
    */
   def apply(text: String): EdgeData = {
     if (text == "null") {
