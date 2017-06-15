@@ -1,6 +1,8 @@
-package edu.msstate.dasi.csb
+package edu.msstate.dasi.csb.cli
 
 import java.io.File
+
+import edu.msstate.dasi.csb.config.Config
 
 class OptionParser(override val programName: String, programVersion: String, config: Config) extends scopt.OptionParser[Config](programName) {
   /**
