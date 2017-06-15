@@ -1,4 +1,4 @@
-package edu.msstate.dasi.csb
+package edu.msstate.dasi.csb.util
 
 import java.io.File
 

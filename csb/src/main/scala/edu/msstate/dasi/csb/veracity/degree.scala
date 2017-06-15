@@ -1,6 +1,6 @@
 package edu.msstate.dasi.csb.veracity
 
-import edu.msstate.dasi.csb.Util
+import edu.msstate.dasi.csb.util.Util
 import org.apache.spark.graphx.{Graph, VertexRDD}
 import org.apache.spark.mllib.rdd.RDDFunctions._
 

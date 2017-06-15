@@ -3,7 +3,8 @@ package edu.msstate.dasi.csb.persistence
 import java.io.File
 
 import edu.msstate.dasi.csb.model.{EdgeData, VertexData}
-import edu.msstate.dasi.csb.{Util, sc}
+import edu.msstate.dasi.csb.sc
+import edu.msstate.dasi.csb.util.Util
 import org.apache.hadoop.fs.FileUtil
 import org.apache.spark.graphx.{Edge, Graph, VertexId}
 import org.apache.spark.storage.StorageLevel

@@ -2,8 +2,8 @@ package edu.msstate.dasi.csb.persistence
 
 import java.io.{File, PrintWriter}
 
-import edu.msstate.dasi.csb.Util
 import edu.msstate.dasi.csb.model.{EdgeData, VertexData}
+import edu.msstate.dasi.csb.util.Util
 import org.apache.hadoop.fs.FileUtil
 import org.apache.spark.graphx.Graph
 
