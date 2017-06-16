@@ -1,4 +1,4 @@
-package edu.msstate.dasi.csb.util
+package edu.msstate.dasi.csb.persistence
 
 import java.io.{FileInputStream, FileOutputStream, ObjectInputStream, ObjectOutputStream}
 
