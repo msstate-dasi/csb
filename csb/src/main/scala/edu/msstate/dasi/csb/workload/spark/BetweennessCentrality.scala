@@ -1,12 +1,27 @@
-package edu.msstate.dasi.csb.workload
+package edu.msstate.dasi.csb.workload.spark
 
+import edu.msstate.dasi.csb.workload.Workload
 import org.apache.spark.graphx._
 
 import scala.collection.mutable
 import scala.reflect.ClassTag
 
-object KBetweenness {
-  def run[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], k: Int): Graph[Double, Double] = {
+/**
+ * Betweenness Centrality algorithm implementation.
+ *
+ * @param hops the maximum number of hops
+ */
+class BetweennessCentrality(engine: SparkEngine, hops: Int) extends Workload {
+  val name = "Betweenness Centrality"
+
+  /**
+   * Runs Betweenness Centrality.
+   */
+  def run[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED]): Unit = {
+    run(graph, hops)
+  }
+
+  private def run[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], k: Int): Graph[Double, Double] = {
     val kGraphletsGraph =
       createKGraphlets(graph, k)
 
@@ -20,7 +35,7 @@ object KBetweenness {
     kBCGraph
   }
 
-  def createKGraphlets[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], k: Int): Graph[(Double, List[VertexId], List[(VertexId, VertexId)]), Double] = {
+  private def createKGraphlets[VD: ClassTag, ED: ClassTag](graph: Graph[VD, ED], k: Int): Graph[(Double, List[VertexId], List[(VertexId, VertexId)]), Double] = {
     val graphContainingGraphlets: Graph[(Double, List[VertexId], List[(VertexId, VertexId)]), Double] =
       graph
         // Init edges to hold - Edge Betweenness to 0.0
@@ -50,7 +65,7 @@ object KBetweenness {
     //.reverse // return to originial directon
   }
 
-  def computeVertexBetweenessCentrality(id: VertexId, vlist: List[VertexId], elist: List[(VertexId, VertexId)]): List[(VertexId, Double)] = {
+  private def computeVertexBetweenessCentrality(id: VertexId, vlist: List[VertexId], elist: List[(VertexId, VertexId)]): List[(VertexId, Double)] = {
     // Init data structures
     val s = mutable.Stack[VertexId]()
     val q = mutable.Queue[VertexId]()
@@ -104,7 +119,7 @@ object KBetweenness {
     medBC.toList
   }
 
-  def getNeighbourMap(vlist: List[VertexId], elist: List[(VertexId, VertexId)]): mutable.HashMap[VertexId, List[VertexId]] = {
+  private def getNeighbourMap(vlist: List[VertexId], elist: List[(VertexId, VertexId)]): mutable.HashMap[VertexId, List[VertexId]] = {
     val neighbourList = new mutable.HashMap[VertexId, List[VertexId]]()
 
     vlist.foreach { case (v) =>
@@ -117,7 +132,7 @@ object KBetweenness {
     neighbourList
   }
 
-  def aggregateGraphletsBetweennessScores(vertexKBcGraph: Graph[(VertexId, List[(VertexId, Double)]), Double]): Graph[Double, Double] = {
+  private def aggregateGraphletsBetweennessScores(vertexKBcGraph: Graph[(VertexId, List[(VertexId, Double)]), Double]): Graph[Double, Double] = {
     val DEFAULT_BC = 0.0
 
     val kBCAdditions =
@@ -137,5 +152,4 @@ object KBetweenness {
 
     kBCGraph
   }
-
 }
