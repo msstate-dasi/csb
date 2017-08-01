@@ -1,7 +1,7 @@
 package edu.msstate.dasi.csb.data.distributions
 
 import edu.msstate.dasi.csb.model.{ConnStates, EdgeData, Protocols, VertexData}
-import org.apache.spark.graphx.Graph
+import org.apache.spark.graphx.{EdgeDirection, Graph, VertexId}
 
 /**
  * Contains all the probability distributions of the domain. All conditional
@@ -12,14 +12,23 @@ import org.apache.spark.graphx.Graph
 class DataDistributions(graph: Graph[VertexData, EdgeData]) extends Serializable {
 
   /**
-   * The in-degree distribution.
-   */
-  val inDegree: Distribution[Int] = Distribution(graph.inDegrees.values)
+    * The in-degree distribution.
+    */
+  val inDegree: Distribution[Int] = Distribution(graph.collectNeighborIds(EdgeDirection.In)
+    .flatMap{record => for (v <- record._2) yield (record._1, v.asInstanceOf[VertexId])}
+    .map((_, 1))
+    .reduceByKey(_ + _)
+    .values)
 
   /**
-   * The out-degree distribution.
-   */
-  val outDegree: Distribution[Int] = Distribution(graph.outDegrees.values)
+    * The out-degree distribution.
+    */
+  val outDegree: Distribution[Int] = Distribution(
+    graph.collectNeighborIds(EdgeDirection.Out)
+      .flatMap{record => for (v <- record._2) yield (record._1, v.asInstanceOf[VertexId])}
+      .map((_, 1))
+      .reduceByKey(_ + _)
+      .values)
 
   /**
    * The timestamp distribution.
