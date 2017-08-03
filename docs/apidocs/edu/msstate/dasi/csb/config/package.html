@@ -1,0 +1,137 @@
+<!DOCTYPE html >
+<html>
+        <head>
+          <title>config - csb 0.1.6-SNAPSHOT API - edu.msstate.dasi.csb.config</title>
+          <meta name="description" content="config - csb 0.1.6 - SNAPSHOT API - edu.msstate.dasi.csb.config" />
+          <meta name="keywords" content="config csb 0.1.6 SNAPSHOT API edu.msstate.dasi.csb.config" />
+          <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+          
+      <link href="../../../../../lib/template.css" media="screen" type="text/css" rel="stylesheet" />
+      <link href="../../../../../lib/diagrams.css" media="screen" type="text/css" rel="stylesheet" id="diagrams-css" />
+      <script type="text/javascript" src="../../../../../lib/jquery.js" id="jquery-js"></script>
+      <script type="text/javascript" src="../../../../../lib/jquery-ui.js"></script>
+      <script type="text/javascript" src="../../../../../lib/template.js"></script>
+      <script type="text/javascript" src="../../../../../lib/tools.tooltip.js"></script>
+      
+      <script type="text/javascript">
+         if(top === self) {
+            var url = '../../../../../index.html';
+            var hash = 'edu.msstate.dasi.csb.config.package';
+            var anchor = window.location.hash;
+            var anchor_opt = '';
+            if (anchor.length >= 1)
+              anchor_opt = '@' + anchor.substring(1);
+            window.location.href = url + '#' + hash + anchor_opt;
+         }
+   	  </script>
+    
+        </head>
+        <body class="value">
+      <div id="definition">
+        <img alt="Package" src="../../../../../lib/package_big.png" />
+        <p id="owner"><a href="../../../../package.html" class="extype" name="edu">edu</a>.<a href="../../../package.html" class="extype" name="edu.msstate">msstate</a>.<a href="../../package.html" class="extype" name="edu.msstate.dasi">dasi</a>.<a href="../package.html" class="extype" name="edu.msstate.dasi.csb">csb</a></p>
+        <h1>config</h1><span class="permalink">
+      <a href="../../../../../index.html#edu.msstate.dasi.csb.config.package" title="Permalink" target="_top">
+        <img src="../../../../../lib/permalink.png" alt="Permalink" />
+      </a>
+    </span>
+      </div>
+
+      <h4 id="signature" class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">package</span>
+      </span>
+      <span class="symbol">
+        <span class="name">config</span>
+      </span>
+      </h4>
+      
+          <div id="comment" class="fullcommenttop"></div>
+        
+
+      <div id="mbrsel">
+        <div id="textfilter"><span class="pre"></span><span class="input"><input id="mbrsel-input" type="text" accesskey="/" /></span><span class="post"></span></div>
+        
+        
+        <div id="visbl">
+            <span class="filtertype">Visibility</span>
+            <ol><li class="public in"><span>Public</span></li><li class="all out"><span>All</span></li></ol>
+          </div>
+      </div>
+
+      <div id="template">
+        <div id="allMembers">
+        
+
+        <div id="types" class="types members">
+              <h3>Type Members</h3>
+              <ol><li name="edu.msstate.dasi.csb.config.ComponentFactory" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="ComponentFactoryextendsAnyRef"></a>
+      <a id="ComponentFactory:ComponentFactory"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">class</span>
+      </span>
+      <span class="symbol">
+        <a href="ComponentFactory.html"><span class="name">ComponentFactory</span></a><span class="result"> extends <span class="extype" name="scala.AnyRef">AnyRef</span></span>
+      </span>
+      </h4><span class="permalink">
+      <a href="../../../../../index.html#edu.msstate.dasi.csb.config.package@ComponentFactoryextendsAnyRef" title="Permalink" target="_top">
+        <img src="../../../../../lib/permalink.png" alt="Permalink" />
+      </a>
+    </span>
+      <p class="shortcomment cmt">Provides factory methods for each benchmark component, defining their behavior from an input configuration.</p>
+    </li><li name="edu.msstate.dasi.csb.config.Config" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="ConfigextendsProductwithSerializable"></a>
+      <a id="Config:Config"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="Config.html"><span class="name">Config</span></a><span class="params">(<span name="debug">debug: <span class="extype" name="scala.Boolean">Boolean</span> = <span class="symbol">false</span></span>, <span name="mode">mode: <span class="extype" name="scala.Predef.String">String</span> = <span class="symbol">&quot;&quot;</span></span>, <span name="partitions">partitions: <span class="extype" name="scala.Int">Int</span> = <span class="symbol"><span class="name"><a href="../../../../package.html">sc.defaultParallelism</a></span></span></span>, <span name="seedGraphPrefix">seedGraphPrefix: <span class="extype" name="scala.Predef.String">String</span> = <span class="symbol">&quot;seed&quot;</span></span>, <span name="synthGraphPrefix">synthGraphPrefix: <span class="extype" name="scala.Predef.String">String</span> = <span class="symbol">&quot;synth&quot;</span></span>, <span name="seedDistributions">seedDistributions: <span class="extype" name="scala.Predef.String">String</span> = <span class="symbol">&quot;seed.distributions&quot;</span></span>, <span name="bucketSize">bucketSize: <span class="extype" name="scala.Int">Int</span> = <span class="symbol">10</span></span>, <span name="graphLoader">graphLoader: <span class="extype" name="scala.Predef.String">String</span> = <span class="symbol">&quot;spark&quot;</span></span>, <span name="graphSaver">graphSaver: <span class="extype" name="scala.Predef.String">String</span> = <span class="symbol">&quot;spark&quot;</span></span>, <span name="textSaver">textSaver: <span class="extype" name="scala.Predef.String">String</span> = <span class="symbol">&quot;none&quot;</span></span>, <span name="iterations">iterations: <span class="extype" name="scala.Int">Int</span> = <span class="symbol">0</span></span>, <span name="connLog">connLog: <span class="extype" name="scala.Predef.String">String</span> = <span class="symbol">&quot;conn.log&quot;</span></span>, <span name="synthesizer">synthesizer: <span class="extype" name="scala.Predef.String">String</span> = <span class="symbol">&quot;&quot;</span></span>, <span name="skipProperties">skipProperties: <span class="extype" name="scala.Boolean">Boolean</span> = <span class="symbol">false</span></span>, <span name="sampleFraction">sampleFraction: <span class="extype" name="scala.Double">Double</span> = <span class="symbol">0.1</span></span>, <span name="seedMatrix">seedMatrix: <span class="extype" name="scala.Predef.String">String</span> = <span class="symbol">&quot;seed.mtx&quot;</span></span>, <span name="metrics">metrics: <span class="extype" name="scala.Seq">Seq</span>[<span class="extype" name="scala.Predef.String">String</span>] = <span class="symbol">Seq(&quot;all&quot;)</span></span>, <span name="workloads">workloads: <span class="extype" name="scala.Seq">Seq</span>[<span class="extype" name="scala.Predef.String">String</span>] = <span class="symbol">Seq(&quot;all&quot;)</span></span>, <span name="workloadBackend">workloadBackend: <span class="extype" name="scala.Predef.String">String</span> = <span class="symbol">&quot;spark&quot;</span></span>, <span name="neo4jUrl">neo4jUrl: <span class="extype" name="scala.Predef.String">String</span> = <span class="symbol">&quot;bolt://localhost&quot;</span></span>, <span name="neo4jUsername">neo4jUsername: <span class="extype" name="scala.Predef.String">String</span> = <span class="symbol">&quot;neo4j&quot;</span></span>, <span name="neo4jPassword">neo4jPassword: <span class="extype" name="scala.Predef.String">String</span> = <span class="symbol">&quot;neo4j&quot;</span></span>, <span name="graphPrefix">graphPrefix: <span class="extype" name="scala.Predef.String">String</span> = <span class="symbol">&quot;graph&quot;</span></span>, <span name="srcVertex">srcVertex: <span class="extype" name="org.apache.spark.graphx.VertexId">VertexId</span> = <span class="symbol">0L</span></span>, <span name="dstVertex">dstVertex: <span class="extype" name="org.apache.spark.graphx.VertexId">VertexId</span> = <span class="symbol">0L</span></span>, <span name="patternPrefix">patternPrefix: <span class="extype" name="scala.Predef.String">String</span> = <span class="symbol">&quot;pattern&quot;</span></span>)</span><span class="result"> extends <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4><span class="permalink">
+      <a href="../../../../../index.html#edu.msstate.dasi.csb.config.package@ConfigextendsProductwithSerializable" title="Permalink" target="_top">
+        <img src="../../../../../lib/permalink.png" alt="Permalink" />
+      </a>
+    </span>
+      <p class="shortcomment cmt">Configuration object for the application.</p><div class="fullcomment"><div class="comment cmt"><p>Configuration object for the application. Contains all variables relevant to running methods. Not all will apply to
+every application scenario.
+</p></div><dl class="paramcmts block"><dt class="param">debug</dt><dd class="cmt"><p>Enables printing of extra command-line output and experimental code.</p></dd><dt class="param">mode</dt><dd class="cmt"><p>Specifies the mode that the application should operate in (e.g. seed, synth, veracity).</p></dd><dt class="param">partitions</dt><dd class="cmt"><p>Sets number of partitions to use for Spark RDD objects throughout the application.</p></dd><dt class="param">seedGraphPrefix</dt><dd class="cmt"><p>Prefix to attach to seed graph when loading/saving it.</p></dd><dt class="param">synthGraphPrefix</dt><dd class="cmt"><p>Prefix to attach to synthetic graph when loading/saving it.</p></dd><dt class="param">seedDistributions</dt><dd class="cmt"><p>Path to a serialized <a href="../data/distributions/DataDistributions.html" class="extype" name="edu.msstate.dasi.csb.data.distributions.DataDistributions">edu.msstate.dasi.csb.data.distributions.DataDistributions</a> object file.</p></dd><dt class="param">bucketSize</dt><dd class="cmt"><p>Size of byte-buckets to break distributions into.</p></dd><dt class="param">graphLoader</dt><dd class="cmt"><p>Method to use when loading a graph into memory.</p></dd><dt class="param">graphSaver</dt><dd class="cmt"><p>Backend to use when saving a graph.</p></dd><dt class="param">textSaver</dt><dd class="cmt"><p>Backend to use when saving a graph as pure-text</p></dd><dt class="param">iterations</dt><dd class="cmt"><p>Number of iterations to perform synthesis</p></dd><dt class="param">connLog</dt><dd class="cmt"><p>Path to a Bro IDS connection log file, similar to a CSV file.</p></dd><dt class="param">synthesizer</dt><dd class="cmt"><p>Method to use when synthesizing a new graph.</p></dd><dt class="param">skipProperties</dt><dd class="cmt"><p>Defines whether the application skips over the property-generation sections.</p></dd><dt class="param">sampleFraction</dt><dd class="cmt"><p>Percentage to sample during iterations of synthetic graph generation.</p></dd><dt class="param">seedMatrix</dt><dd class="cmt"><p>Path to a Kronecker seed matrix file. Saved as an N by N matrix separated by tabs.</p></dd><dt class="param">metrics</dt><dd class="cmt"><p>List of metrics to run on both seed and synthetic graphs when in veracity mode.</p></dd><dt class="param">workloads</dt><dd class="cmt"><p>List of workloads to run on both seed and synthetic graphs when in workload mode.</p></dd><dt class="param">workloadBackend</dt><dd class="cmt"><p>Computation backend for performing workloads.</p></dd><dt class="param">neo4jUrl</dt><dd class="cmt"><p>URL string to neo4j instance if using neo4j backend.</p></dd><dt class="param">neo4jUsername</dt><dd class="cmt"><p>Username to login to Neo4j with.</p></dd><dt class="param">neo4jPassword</dt><dd class="cmt"><p>Password to login to Neo4j with.</p></dd><dt class="param">graphPrefix</dt><dd class="cmt"><p>Path prefix of graph to load for workload mode.</p></dd><dt class="param">srcVertex</dt><dd class="cmt"><p>Sets a single vertex to use as the source for workload mode.</p></dd><dt class="param">dstVertex</dt><dd class="cmt"><p>Sets a single vertex to use as the destination for workload mode.</p></dd><dt class="param">patternPrefix</dt><dd class="cmt"><p>Path prefix of the pattern graph to use for subgraph-isomorphism workload.</p></dd></dl></div>
+    </li></ol>
+            </div>
+
+        
+
+        
+
+        
+
+        
+        </div>
+
+        <div id="inheritedMembers">
+        
+        
+        </div>
+
+        <div id="groupedMembers">
+        <div class="group" name="Ungrouped">
+              <h3>Ungrouped</h3>
+              
+            </div>
+        </div>
+
+      </div>
+
+      <div id="tooltip"></div>
+
+      <div id="footer">  </div>
+
+
+    </body>
+      </html>

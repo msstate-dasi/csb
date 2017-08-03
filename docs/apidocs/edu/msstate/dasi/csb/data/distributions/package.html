@@ -1,0 +1,176 @@
+<!DOCTYPE html >
+<html>
+        <head>
+          <title>distributions - csb 0.1.6-SNAPSHOT API - edu.msstate.dasi.csb.data.distributions</title>
+          <meta name="description" content="distributions - csb 0.1.6 - SNAPSHOT API - edu.msstate.dasi.csb.data.distributions" />
+          <meta name="keywords" content="distributions csb 0.1.6 SNAPSHOT API edu.msstate.dasi.csb.data.distributions" />
+          <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+          
+      <link href="../../../../../../lib/template.css" media="screen" type="text/css" rel="stylesheet" />
+      <link href="../../../../../../lib/diagrams.css" media="screen" type="text/css" rel="stylesheet" id="diagrams-css" />
+      <script type="text/javascript" src="../../../../../../lib/jquery.js" id="jquery-js"></script>
+      <script type="text/javascript" src="../../../../../../lib/jquery-ui.js"></script>
+      <script type="text/javascript" src="../../../../../../lib/template.js"></script>
+      <script type="text/javascript" src="../../../../../../lib/tools.tooltip.js"></script>
+      
+      <script type="text/javascript">
+         if(top === self) {
+            var url = '../../../../../../index.html';
+            var hash = 'edu.msstate.dasi.csb.data.distributions.package';
+            var anchor = window.location.hash;
+            var anchor_opt = '';
+            if (anchor.length >= 1)
+              anchor_opt = '@' + anchor.substring(1);
+            window.location.href = url + '#' + hash + anchor_opt;
+         }
+   	  </script>
+    
+        </head>
+        <body class="value">
+      <div id="definition">
+        <img alt="Package" src="../../../../../../lib/package_big.png" />
+        <p id="owner"><a href="../../../../../package.html" class="extype" name="edu">edu</a>.<a href="../../../../package.html" class="extype" name="edu.msstate">msstate</a>.<a href="../../../package.html" class="extype" name="edu.msstate.dasi">dasi</a>.<a href="../../package.html" class="extype" name="edu.msstate.dasi.csb">csb</a>.<a href="../package.html" class="extype" name="edu.msstate.dasi.csb.data">data</a></p>
+        <h1>distributions</h1><span class="permalink">
+      <a href="../../../../../../index.html#edu.msstate.dasi.csb.data.distributions.package" title="Permalink" target="_top">
+        <img src="../../../../../../lib/permalink.png" alt="Permalink" />
+      </a>
+    </span>
+      </div>
+
+      <h4 id="signature" class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">package</span>
+      </span>
+      <span class="symbol">
+        <span class="name">distributions</span>
+      </span>
+      </h4>
+      
+          <div id="comment" class="fullcommenttop"></div>
+        
+
+      <div id="mbrsel">
+        <div id="textfilter"><span class="pre"></span><span class="input"><input id="mbrsel-input" type="text" accesskey="/" /></span><span class="post"></span></div>
+        
+        
+        <div id="visbl">
+            <span class="filtertype">Visibility</span>
+            <ol><li class="public in"><span>Public</span></li><li class="all out"><span>All</span></li></ol>
+          </div>
+      </div>
+
+      <div id="template">
+        <div id="allMembers">
+        
+
+        <div id="types" class="types members">
+              <h3>Type Members</h3>
+              <ol><li name="edu.msstate.dasi.csb.data.distributions.ConditionalDistribution" visbl="prt" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="ConditionalDistribution[Value,Cond]extendsSerializable"></a>
+      <a id="ConditionalDistribution[Value,Cond]:ConditionalDistribution[Value,Cond]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">class</span>
+      </span>
+      <span class="symbol">
+        <a href="ConditionalDistribution.html"><span class="name">ConditionalDistribution</span></a><span class="tparams">[<span name="Value">Value</span>, <span name="Cond">Cond</span>]</span><span class="result"> extends <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4><span class="permalink">
+      <a href="../../../../../../index.html#edu.msstate.dasi.csb.data.distributions.package@ConditionalDistribution[Value,Cond]extendsSerializable" title="Permalink" target="_top">
+        <img src="../../../../../../lib/permalink.png" alt="Permalink" />
+      </a>
+    </span>
+      <p class="shortcomment cmt">Represents a conditional probability distribution.</p><div class="fullcomment"><div class="comment cmt"><p>Represents a conditional probability distribution.
+</p></div><dl class="paramcmts block"><dt class="tparam">Value</dt><dd class="cmt"><p>the input data type</p></dd><dt class="tparam">Cond</dt><dd class="cmt"><p>the data type of the conditioning value</p></dd></dl><dl class="attributes block"> <dt>Attributes</dt><dd>protected </dd><dt>Note</dt><dd><span class="cmt"><p>the resulting distribution is expected to be small, as it is loaded into the driver's memory.</p></span></dd></dl></div>
+    </li><li name="edu.msstate.dasi.csb.data.distributions.DataDistributions" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="DataDistributionsextendsSerializable"></a>
+      <a id="DataDistributions:DataDistributions"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">class</span>
+      </span>
+      <span class="symbol">
+        <a href="DataDistributions.html"><span class="name">DataDistributions</span></a><span class="result"> extends <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4><span class="permalink">
+      <a href="../../../../../../index.html#edu.msstate.dasi.csb.data.distributions.package@DataDistributionsextendsSerializable" title="Permalink" target="_top">
+        <img src="../../../../../../lib/permalink.png" alt="Permalink" />
+      </a>
+    </span>
+      <p class="shortcomment cmt">Contains all the probability distributions of the domain.</p><div class="fullcomment"><div class="comment cmt"><p>Contains all the probability distributions of the domain. All conditional
+distributions are conditioned by originator bytes values.
+</p></div></div>
+    </li><li name="edu.msstate.dasi.csb.data.distributions.Distribution" visbl="prt" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="Distribution[T]extendsSerializable"></a>
+      <a id="Distribution[T]:Distribution[T]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">class</span>
+      </span>
+      <span class="symbol">
+        <a href="Distribution.html"><span class="name">Distribution</span></a><span class="tparams">[<span name="T">T</span>]</span><span class="result"> extends <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4><span class="permalink">
+      <a href="../../../../../../index.html#edu.msstate.dasi.csb.data.distributions.package@Distribution[T]extendsSerializable" title="Permalink" target="_top">
+        <img src="../../../../../../lib/permalink.png" alt="Permalink" />
+      </a>
+    </span>
+      <p class="shortcomment cmt">Represents a probability distribution.</p><div class="fullcomment"><div class="comment cmt"><p>Represents a probability distribution.
+</p></div><dl class="paramcmts block"><dt class="tparam">T</dt><dd class="cmt"><p>the distribution data type</p></dd></dl><dl class="attributes block"> <dt>Attributes</dt><dd>protected </dd><dt>Note</dt><dd><span class="cmt"><p>the input probabilities should be in descending order to maximize sampling performance.</p></span></dd></dl></div>
+    </li></ol>
+            </div>
+
+        
+
+        <div id="values" class="values members">
+              <h3>Value Members</h3>
+              <ol><li name="edu.msstate.dasi.csb.data.distributions.DataDistributions" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="DataDistributions"></a>
+      <a id="DataDistributions:DataDistributions"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">object</span>
+      </span>
+      <span class="symbol">
+        <a href="DataDistributions$.html"><span class="name">DataDistributions</span></a><span class="result"> extends <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4><span class="permalink">
+      <a href="../../../../../../index.html#edu.msstate.dasi.csb.data.distributions.package@DataDistributions" title="Permalink" target="_top">
+        <img src="../../../../../../lib/permalink.png" alt="Permalink" />
+      </a>
+    </span>
+      <p class="shortcomment cmt">Factory for <a href="DataDistributions.html" class="extype" name="edu.msstate.dasi.csb.data.distributions.DataDistributions">DataDistributions</a> instances.</p>
+    </li></ol>
+            </div>
+
+        
+
+        
+        </div>
+
+        <div id="inheritedMembers">
+        
+        
+        </div>
+
+        <div id="groupedMembers">
+        <div class="group" name="Ungrouped">
+              <h3>Ungrouped</h3>
+              
+            </div>
+        </div>
+
+      </div>
+
+      <div id="tooltip"></div>
+
+      <div id="footer">  </div>
+
+
+    </body>
+      </html>
